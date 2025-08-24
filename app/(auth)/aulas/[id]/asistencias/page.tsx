@@ -9,11 +9,11 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/components/ui/use-toast"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
-import { 
-  ArrowLeft, 
+import {
+  ArrowLeft,
   Calendar as CalendarIcon,
   Check,
   X,
@@ -23,7 +23,8 @@ import {
   Loader2,
   Save,
   Settings,
-  BookOpen
+  BookOpen,
+  Trash2
 } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -61,20 +62,20 @@ const tiposAsistencia = {
 }
 
 const trimestres = {
-  '1': { 
-    label: '1er Trimestre', 
+  '1': {
+    label: '1er Trimestre',
     periodo: 'Febrero - Mayo',
     color: 'bg-green-50 border-green-200',
     icon: '🌱'
   },
-  '2': { 
-    label: '2do Trimestre', 
+  '2': {
+    label: '2do Trimestre',
     periodo: 'Junio - Septiembre',
     color: 'bg-blue-50 border-blue-200',
     icon: '☀️'
   },
-  '3': { 
-    label: '3er Trimestre', 
+  '3': {
+    label: '3er Trimestre',
     periodo: 'Octubre - Enero',
     color: 'bg-orange-50 border-orange-200',
     icon: '🍂'
@@ -86,64 +87,48 @@ export default function AsistenciasPage() {
   const router = useRouter()
   const aulaId = params?.id
   const { toast } = useToast()
-  
+
   const [aula, setAula] = useState<Aula | null>(null)
   const [estudiantes, setEstudiantes] = useState<Estudiante[]>([])
   const [asistencias, setAsistencias] = useState<Record<number, Asistencia>>({})
+  const [asistenciasAll, setAsistenciasAll] = useState<Asistencia[]>([])
   const [fechaSeleccionada, setFechaSeleccionada] = useState<Date>(new Date())
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
-  
-  // Estados para el modal de trimestre
-  const [trimestre, setTrimestre] = useState("")
-  const [showTrimestreModal, setShowTrimestreModal] = useState(false)
-  const [recordarTrimestre, setRecordarTrimestre] = useState(false)
-  const [trimestreSeleccionado, setTrimestreSeleccionado] = useState("")
 
-  // Función para determinar el trimestre por defecto basado en la fecha actual
-  const getTrimestreDefault = () => {
-    const mes = new Date().getMonth() + 1
-    if (mes >= 2 && mes <= 5) return "1"
-    if (mes >= 6 && mes <= 9) return "2"
-    return "3"
+  // Eliminado selector de trimestre; mostraremos todas las fechas/bimestres
+
+  // Helper: agrupar asistencias por fecha
+  const groupByDate = (items: Asistencia[]) => {
+    const map: Record<string, Record<number, Asistencia>> = {}
+    items.forEach(a => {
+      if (!map[a.fecha]) map[a.fecha] = {}
+      map[a.fecha][a.id_inscripcion] = a
+    })
+    return map
   }
 
-  // Cargar trimestre guardado o mostrar modal
+  // Cargar aula y data inicial
   useEffect(() => {
     if (!aulaId || aulaId === 'undefined') {
       router.push('/aulas')
       return
     }
-
-    // Verificar si hay un trimestre guardado en localStorage
-    const trimestreGuardado = localStorage.getItem(`trimestre_${aulaId}`)
-    
-    if (trimestreGuardado) {
-      setTrimestre(trimestreGuardado)
-      setTrimestreSeleccionado(trimestreGuardado)
-    } else {
-      // Mostrar modal para seleccionar trimestre
-      setTrimestreSeleccionado(getTrimestreDefault())
-      setShowTrimestreModal(true)
-    }
-
     fetchAula()
   }, [aulaId, router])
 
-  // Cargar estudiantes cuando se selecciona trimestre
+  // Cargar estudiantes
   useEffect(() => {
-    if (trimestre) {
-      fetchEstudiantes()
-    }
-  }, [trimestre])
+    fetchEstudiantes()
+  }, [])
 
-  // Cargar asistencias cuando cambian estudiantes o fecha
+  // Cargar asistencias cuando hay estudiantes
   useEffect(() => {
-    if (estudiantes.length > 0 && trimestre) {
-      fetchAsistencias()
+    if (estudiantes.length > 0) {
+      fetchAsistenciasTodas()
     }
-  }, [fechaSeleccionada, estudiantes, trimestre])
+  }, [estudiantes])
 
   const fetchAula = async () => {
     if (!aulaId) return
@@ -187,41 +172,20 @@ export default function AsistenciasPage() {
     }
   }
 
-  const fetchAsistencias = async () => {
-    if (!aulaId || !fechaSeleccionada || !trimestre) return
-
+  const fetchAsistenciasTodas = async () => {
+    if (!aulaId) return
     try {
-      const fechaStr = format(fechaSeleccionada, 'yyyy-MM-dd')
-      const response = await fetch(`/api/aulas/${aulaId}/asistencias?fecha=${fechaStr}&trimestre=${trimestre}`)
-      
+      const response = await fetch(`/api/aulas/${aulaId}/asistencias/all`)
       if (response.ok) {
         const data = await response.json()
-        const asistenciasMap: Record<number, Asistencia> = {}
-        
-        data.forEach((asistencia: Asistencia) => {
-          asistenciasMap[asistencia.id_inscripcion] = asistencia
-        })
-        
-        setAsistencias(asistenciasMap)
+        setAsistenciasAll(data)
       }
     } catch (error) {
-      console.error("Error al cargar asistencias:", error)
+      console.error("Error al cargar asistencias (all):", error)
     }
   }
 
-  const handleConfirmarTrimestre = () => {
-    setTrimestre(trimestreSeleccionado)
-    
-    if (recordarTrimestre) {
-      localStorage.setItem(`trimestre_${aulaId}`, trimestreSeleccionado)
-    }
-    
-    setShowTrimestreModal(false)
-  }
-
-  const handleCambiarTrimestre = () => {
-    setShowTrimestreModal(true)
-  }
+  // Eliminadas funciones de selección de trimestre
 
   const handleAsistenciaChange = (inscripcionId: number, tipo: 'A' | 'F' | 'R' | 'L') => {
     setAsistencias(prev => ({
@@ -240,35 +204,29 @@ export default function AsistenciasPage() {
 
     setIsSaving(true)
     try {
-      const asistenciasArray = Object.values(asistencias)
-      
-      const response = await fetch(`/api/aulas/${aulaId}/asistencias`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fecha: format(fechaSeleccionada, 'yyyy-MM-dd'),
-          trimestre: parseInt(trimestre),
-          asistencias: asistenciasArray
-        })
-      })
+      const porFecha = groupByDate(asistenciasAll)
+      const fechas = Object.keys(porFecha)
 
-      if (response.ok) {
-        toast({
-          title: "Éxito",
-          description: "Asistencias guardadas correctamente",
+      for (const f of fechas) {
+        const registros = Object.values(porFecha[f]).map(a => ({
+          id_inscripcion: a.id_inscripcion,
+          tipo_asistencia: a.tipo_asistencia,
+        }))
+        const trimestre = getTrimestreByDate(new Date(f))
+        const response = await fetch(`/api/aulas/${aulaId}/asistencias`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fecha: f, trimestre, asistencias: registros })
         })
-        setHasChanges(false)
-        fetchAsistencias()
-      } else {
-        const error = await response.json()
-        toast({
-          title: "Error",
-          description: error.error || "Error al guardar las asistencias",
-          variant: "destructive",
-        })
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}))
+          throw new Error(error.error || `Error al guardar asistencias para ${f}`)
+        }
       }
+
+      toast({ title: "Éxito", description: "Asistencias guardadas correctamente" })
+      setHasChanges(false)
+      fetchAsistenciasTodas()
     } catch (error) {
       console.error("Error al guardar asistencias:", error)
       toast({
@@ -282,15 +240,13 @@ export default function AsistenciasPage() {
   }
 
   const marcarTodosPresentes = () => {
-    const nuevasAsistencias: Record<number, Asistencia> = {}
-    estudiantes.forEach(estudiante => {
-      nuevasAsistencias[estudiante.inscripcion_id] = {
-        id_inscripcion: estudiante.inscripcion_id,
-        fecha: format(fechaSeleccionada, 'yyyy-MM-dd'),
-        tipo_asistencia: 'A'
-      }
+    const today = format(new Date(), 'yyyy-MM-dd')
+    const filas = estudiantes.map(est => ({ id_inscripcion: est.inscripcion_id, fecha: today, tipo_asistencia: 'A' as const }))
+    // Reemplazar asistencias de hoy
+    setAsistenciasAll(prev => {
+      const otros = prev.filter(a => a.fecha !== today)
+      return [...otros, ...filas]
     })
-    setAsistencias(nuevasAsistencias)
     setHasChanges(true)
   }
 
@@ -300,13 +256,21 @@ export default function AsistenciasPage() {
     const faltas = Object.values(asistencias).filter(a => a.tipo_asistencia === 'F').length
     const retrasos = Object.values(asistencias).filter(a => a.tipo_asistencia === 'R').length
     const licencias = Object.values(asistencias).filter(a => a.tipo_asistencia === 'L').length
-    
+
     return { total, presentes, faltas, retrasos, licencias }
   }
 
   const stats = getEstadisticasAsistencia()
 
-  if (isLoading && trimestre) {
+  // Trimestre por fecha (1: Feb-May, 2: Jun-Sep, 3: Oct-Jan)
+  const getTrimestreByDate = (d: Date) => {
+    const m = d.getMonth() + 1
+    if (m >= 2 && m <= 5) return 1
+    if (m >= 6 && m <= 9) return 2
+    return 3
+  }
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
@@ -319,69 +283,7 @@ export default function AsistenciasPage() {
 
   return (
     <div className="space-y-6">
-      {/* Modal de Selección de Trimestre */}
-      <Dialog open={showTrimestreModal} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5" />
-              Seleccionar Período Académico
-            </DialogTitle>
-            <DialogDescription>
-              Elige el trimestre para registrar las asistencias
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            {Object.entries(trimestres).map(([key, trimestre]) => (
-              <Card 
-                key={key}
-                className={cn(
-                  "cursor-pointer transition-all hover:shadow-md",
-                  trimestre.color,
-                  trimestreSeleccionado === key && "ring-2 ring-primary"
-                )}
-                onClick={() => setTrimestreSeleccionado(key)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{trimestre.icon}</span>
-                      <div>
-                        <h3 className="font-semibold">{trimestre.label}</h3>
-                        <p className="text-sm text-muted-foreground">{trimestre.periodo}</p>
-                      </div>
-                    </div>
-                    {trimestreSeleccionado === key && (
-                      <Check className="h-5 w-5 text-primary" />
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-            
-            <div className="flex items-center space-x-2 pt-4">
-              <Checkbox 
-                id="recordar" 
-                checked={recordarTrimestre}
-                onCheckedChange={(checked) => setRecordarTrimestre(checked as boolean)}
-              />
-              <label 
-                htmlFor="recordar" 
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                Recordar mi selección para esta aula
-              </label>
-            </div>
-          </div>
-          
-          <div className="flex justify-end gap-2">
-            <Button onClick={handleConfirmarTrimestre} disabled={!trimestreSeleccionado}>
-              Continuar
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Quitado selector de trimestre */}
 
       {/* Header */}
       <div className="flex items-center gap-4">
@@ -396,206 +298,188 @@ export default function AsistenciasPage() {
             {aula?.nombre_aula} - {aula?.curso} {aula?.paralelo}
           </p>
         </div>
-        {trimestre && (
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-sm">
-              {trimestres[trimestre as keyof typeof trimestres]?.label}
-            </Badge>
-            <Button variant="ghost" size="sm" onClick={handleCambiarTrimestre}>
-              <Settings className="h-4 w-4 mr-1" />
-              Cambiar
-            </Button>
-          </div>
-        )}
+
       </div>
 
-      {trimestre && (
-        <>
-          {/* Controls */}
-          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-              {/* Selector de Fecha */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-[240px] justify-start text-left font-normal",
-                      !fechaSeleccionada && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {fechaSeleccionada ? (
-                      format(fechaSeleccionada, "PPP", { locale: es })
-                    ) : (
-                      <span>Seleccionar fecha</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={fechaSeleccionada}
-                    onSelect={(date) => date && setFechaSeleccionada(date)}
-                    initialFocus
-                    locale={es}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+      {/* Tabla de asistencias de todos los bimestres/fechas */}
+      <>
+        {/* Controles básicos */}
+        <div className="flex justify-between gap-2">
+          <Button variant="outline" onClick={() => {
+            const today = format(new Date(), 'yyyy-MM-dd')
+            if (!asistenciasAll.find(a => a.fecha === today)) {
+              setAsistenciasAll(prev => [...prev, ...estudiantes.map(s => ({ id_inscripcion: s.inscripcion_id, fecha: today, tipo_asistencia: 'A' as const }))])
+              setHasChanges(true)
+            }
+          }}>
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            Agregar fecha (hoy)
+          </Button>
+          <Button variant="outline" onClick={marcarTodosPresentes}>
+            <Check className="mr-2 h-4 w-4" />
+            Marcar Todos Presentes (hoy)
+          </Button>
+          <Button onClick={handleGuardarAsistencias} disabled={!hasChanges || isSaving}>
+            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            Guardar Asistencias
+          </Button>
+        </div>
 
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={marcarTodosPresentes}>
-                <Check className="mr-2 h-4 w-4" />
-                Marcar Todos Presentes
-              </Button>
-              <Button 
-                onClick={handleGuardarAsistencias} 
-                disabled={!hasChanges || isSaving}
-              >
-                {isSaving ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="mr-2 h-4 w-4" />
-                )}
-                Guardar Asistencias
-              </Button>
-            </div>
-          </div>
-
-          {/* Estadísticas */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.total}</div>
-                <p className="text-xs text-muted-foreground">estudiantes</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Presentes</CardTitle>
-                <Check className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">{stats.presentes}</div>
-                <p className="text-xs text-muted-foreground">
-                  {stats.total > 0 ? Math.round((stats.presentes / stats.total) * 100) : 0}%
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Faltas</CardTitle>
-                <X className="h-4 w-4 text-red-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600">{stats.faltas}</div>
-                <p className="text-xs text-muted-foreground">
-                  {stats.total > 0 ? Math.round((stats.faltas / stats.total) * 100) : 0}%
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Retrasos</CardTitle>
-                <Clock className="h-4 w-4 text-yellow-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-yellow-600">{stats.retrasos}</div>
-                <p className="text-xs text-muted-foreground">
-                  {stats.total > 0 ? Math.round((stats.retrasos / stats.total) * 100) : 0}%
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Licencias</CardTitle>
-                <FileText className="h-4 w-4 text-blue-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">{stats.licencias}</div>
-                <p className="text-xs text-muted-foreground">
-                  {stats.total > 0 ? Math.round((stats.licencias / stats.total) * 100) : 0}%
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Lista de Estudiantes */}
+        {/* Estadísticas */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           <Card>
-            <CardHeader>
-              <CardTitle>Lista de Asistencia</CardTitle>
-              <CardDescription>
-                {format(fechaSeleccionada, "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {estudiantes.map((estudiante, index) => {
-                  const asistenciaActual = asistencias[estudiante.inscripcion_id]
-                  
-                  return (
-                    <div 
-                      key={estudiante.id} 
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-sm font-medium">
-                          {index + 1}
-                        </div>
-                        <div>
-                          <p className="font-medium">{estudiante.nombre_completo}</p>
-                          <p className="text-sm text-muted-foreground">
-                            ID: {estudiante.id}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2">
-                        {Object.entries(tiposAsistencia).map(([tipo, config]) => {
-                          const Icon = config.icon
-                          const isSelected = asistenciaActual?.tipo_asistencia === tipo
-                          
-                          return (
-                            <Button
-                              key={tipo}
-                              variant={isSelected ? "default" : "outline"}
-                              size="sm"
-                              className={cn(
-                                "min-w-[100px]",
-                                isSelected && config.color
-                              )}
-                              onClick={() => handleAsistenciaChange(estudiante.inscripcion_id, tipo as 'A' | 'F' | 'R' | 'L')}
-                            >
-                              <Icon className="mr-2 h-4 w-4" />
-                              {config.label}
-                            </Button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              {estudiantes.length === 0 && (
-                <div className="text-center py-8">
-                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No hay estudiantes registrados en esta aula</p>
-                </div>
-              )}
+              <div className="text-2xl font-bold">{stats.total}</div>
+              <p className="text-xs text-muted-foreground">estudiantes</p>
             </CardContent>
           </Card>
-        </>
-      )}
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Presentes</CardTitle>
+              <Check className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{stats.presentes}</div>
+              <p className="text-xs text-muted-foreground">
+                {stats.total > 0 ? Math.round((stats.presentes / stats.total) * 100) : 0}%
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Faltas</CardTitle>
+              <X className="h-4 w-4 text-red-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">{stats.faltas}</div>
+              <p className="text-xs text-muted-foreground">
+                {stats.total > 0 ? Math.round((stats.faltas / stats.total) * 100) : 0}%
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Retrasos</CardTitle>
+              <Clock className="h-4 w-4 text-yellow-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-yellow-600">{stats.retrasos}</div>
+              <p className="text-xs text-muted-foreground">
+                {stats.total > 0 ? Math.round((stats.retrasos / stats.total) * 100) : 0}%
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Licencias</CardTitle>
+              <FileText className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">{stats.licencias}</div>
+              <p className="text-xs text-muted-foreground">
+                {stats.total > 0 ? Math.round((stats.licencias / stats.total) * 100) : 0}%
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Tabla (tipo Excel) con columnas por fecha */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Asistencias por fecha</CardTitle>
+            <CardDescription>Se muestran todas las fechas registradas. Edita la fecha de hoy.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>#</TableHead>
+                    <TableHead>Estudiante</TableHead>
+                    {Array.from(new Set(asistenciasAll.map(a => a.fecha))).map((f) => (
+                      <TableHead key={f} className="text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <span>{format(new Date(f), 'dd/MM/yyyy')}</span>
+                          <Button variant="ghost" size="icon" onClick={() => {
+                            setAsistenciasAll(prev => prev.filter(a => a.fecha !== f))
+                            setHasChanges(true)
+                          }}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {estudiantes.map((e, idx) => {
+                    const porFecha = groupByDate(asistenciasAll)
+                    const fechas = Object.keys(porFecha)
+                    return (
+                      <TableRow key={e.id}>
+                        <TableCell>{idx + 1}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{e.nombre_completo}</span>
+                            <span className="text-xs text-muted-foreground">ID: {e.id}</span>
+                          </div>
+                        </TableCell>
+                        {fechas.map((f) => {
+                          const a = porFecha[f]?.[e.inscripcion_id]
+                          const hoy = format(new Date(), 'yyyy-MM-dd') === f
+                          const trimestreCol = getTrimestreByDate(new Date(f))
+                          const editable = hoy || (trimestreCol === getTrimestreByDate(new Date()))
+                          const valor = a?.tipo_asistencia || ''
+                          return (
+                            <TableCell key={f} className="text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                {(['A', 'R', 'L', 'F'] as const).map((tipo) => {
+                                  const active = valor === tipo
+                                  return (
+                                    <Button
+                                      key={tipo}
+                                      variant={active ? 'default' : 'outline'}
+                                      size="sm"
+                                      className={cn('px-2', active && tiposAsistencia[tipo].color)}
+                                      onClick={() => {
+                                        if (!editable) return
+                                        // actualizar estado in-memory
+                                        setAsistenciasAll(prev => {
+                                          const next = prev.filter(x => !(x.id_inscripcion === e.inscripcion_id && x.fecha === f))
+                                          next.push({ id_inscripcion: e.inscripcion_id, fecha: f, tipo_asistencia: tipo })
+                                          return next
+                                        })
+                                        setHasChanges(true)
+                                      }}
+                                      disabled={!editable}
+                                      title={!editable ? 'Solo editable en el bimestre actual' : ''}
+                                    >
+                                      {tipo}
+                                    </Button>
+                                  )
+                                })}
+                              </div>
+                            </TableCell>
+                          )
+                        })}
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </>
+      )
 
       {/* Indicador de cambios no guardados */}
       {hasChanges && (

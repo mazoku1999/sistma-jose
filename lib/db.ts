@@ -13,8 +13,21 @@ const dbConfig = {
   timezone: '+00:00', // UTC timezone
 }
 
-// Pool de conexiones para reutilizar conexiones
-const pool = mysql.createPool(dbConfig)
+// Usar variable global para asegurar singleton en entornos con HMR (Next.js dev)
+declare global {
+  // eslint-disable-next-line no-var
+  var __mysqlPool__: mysql.Pool | undefined
+}
+
+function createPool() {
+  return mysql.createPool(dbConfig)
+}
+
+// Pool de conexiones para reutilizar conexiones (singleton)
+export const pool: mysql.Pool = global.__mysqlPool__ ?? createPool()
+if (process.env.NODE_ENV !== 'production') {
+  global.__mysqlPool__ = pool
+}
 
 // Función para ejecutar consultas SQL
 export async function executeQuery<T>(query: string, params: any[] = []): Promise<T> {
@@ -116,17 +129,10 @@ if (!global.__db_listeners_registered) {
   process.on('SIGINT', () => gracefulShutdown('SIGINT'))
   process.on('SIGTERM', () => gracefulShutdown('SIGTERM'))
 
-  // Manejo de errores del pool (solo en desarrollo)
+  // Logs de conexiones (solo en desarrollo)
   if (process.env.NODE_ENV === 'development') {
     pool.on('connection', (connection) => {
       console.log('Nueva conexión establecida como id ' + connection.threadId)
-    })
-
-    pool.on('error', (err) => {
-      console.error('Error en el pool de conexiones:', err)
-      if (err.code === 'PROTOCOL_CONNECTION_LOST') {
-        console.log('Conexión con la base de datos perdida. Reintentando...')
-      }
     })
   }
 

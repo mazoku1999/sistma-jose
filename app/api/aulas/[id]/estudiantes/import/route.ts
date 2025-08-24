@@ -21,22 +21,31 @@ export async function POST(
       return NextResponse.json({ error: "No se proporcionaron estudiantes para importar" }, { status: 400 })
     }
 
-    // Obtener el ID del profesor
-    const profesorQuery = await executeQuery<any[]>("SELECT id_profesor FROM profesores WHERE id_usuario = ?", [
-      session.user.id,
-    ])
+    // Validar aula según rol
+    let aulaQuery: any[] = []
+    if (session.user.roles.includes("ADMIN")) {
+      aulaQuery = await executeQuery<any[]>(
+        "SELECT id_aula_profesor, max_estudiantes FROM aulas_profesor WHERE id_aula_profesor = ?",
+        [aulaId]
+      )
+    } else {
+      // Obtener el ID del profesor
+      const profesorQuery = await executeQuery<any[]>("SELECT id_profesor FROM profesores WHERE id_usuario = ?", [
+        session.user.id,
+      ])
 
-    if (!profesorQuery.length) {
-      return NextResponse.json({ error: "Profesor no encontrado" }, { status: 404 })
+      if (!profesorQuery.length) {
+        return NextResponse.json({ error: "Profesor no encontrado" }, { status: 404 })
+      }
+
+      const profesorId = profesorQuery[0].id_profesor
+
+      // Verificar que el aula pertenece al profesor
+      aulaQuery = await executeQuery<any[]>(
+        "SELECT id_aula_profesor FROM aulas_profesor WHERE id_aula_profesor = ? AND id_profesor = ?",
+        [aulaId, profesorId]
+      )
     }
-
-    const profesorId = profesorQuery[0].id_profesor
-
-    // Verificar que el aula pertenece al profesor
-    const aulaQuery = await executeQuery<any[]>(
-      "SELECT id_aula_profesor FROM aulas_profesor WHERE id_aula_profesor = ? AND id_profesor = ?",
-      [aulaId, profesorId]
-    )
 
     if (!aulaQuery.length) {
       return NextResponse.json({ error: "Aula no encontrada" }, { status: 404 })

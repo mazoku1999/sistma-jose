@@ -301,23 +301,29 @@ export default function AssignAulaWizard({
       })
 
       if (response.ok) {
+        const created = await response.json()
         toast({
           title: "¡Aula asignada exitosamente!",
           description: `El aula "${finalFormData.nombre_aula}" ha sido asignada a ${profesorName}.`,
         })
-        onSuccess()
-        onClose()
-        // Reset form
-        setFormData({
-          id_materia: "",
-          id_colegio: "",
-          id_nivel: "",
-          id_curso: "",
-          id_paralelo: "",
-          nombre_aula: "",
-          max_estudiantes: "30",
-        })
-        setCurrentStep(1)
+        // Redirigir a gestión de estudiantes con el aula creada
+        if (created?.id) {
+          window.location.href = `/admin/asignacion-estudiantes?aulaId=${created.id}`
+          return
+        } else {
+          onSuccess()
+          onClose()
+          setFormData({
+            id_materia: "",
+            id_colegio: "",
+            id_nivel: "",
+            id_curso: "",
+            id_paralelo: "",
+            nombre_aula: "",
+            max_estudiantes: "30",
+          })
+          setCurrentStep(1)
+        }
       } else {
         const error = await response.json()
         toast({
@@ -370,18 +376,10 @@ export default function AssignAulaWizard({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
             transition={{ duration: 0.3 }}
-            className="space-y-6"
+            className="space-y-4"
           >
-            <div className="text-center mb-8">
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center"
-              >
-                <BookOpen className="h-10 w-10 text-white" />
-              </motion.div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-2">¿Qué materia enseñará {profesorName}?</h3>
+            <div className="text-center mb-4">
+              <h3 className="text-2xl font-bold text-gray-800 mb-1">¿Qué materia enseñará {profesorName}?</h3>
               <p className="text-gray-600">Selecciona la asignatura que impartirá</p>
             </div>
 
@@ -439,18 +437,10 @@ export default function AssignAulaWizard({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
             transition={{ duration: 0.3 }}
-            className="space-y-6"
+            className="space-y-4"
           >
-            <div className="text-center mb-8">
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center"
-              >
-                <School className="h-10 w-10 text-white" />
-              </motion.div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-2">¿Dónde enseñará {profesorName}?</h3>
+            <div className="text-center mb-4">
+              <h3 className="text-2xl font-bold text-gray-800 mb-1">¿Dónde enseñará {profesorName}?</h3>
               <p className="text-gray-600">Selecciona el colegio y nivel educativo</p>
             </div>
 
@@ -561,18 +551,10 @@ export default function AssignAulaWizard({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
             transition={{ duration: 0.3 }}
-            className="space-y-6"
+            className="space-y-4"
           >
-            <div className="text-center mb-8">
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center"
-              >
-                <GraduationCap className="h-10 w-10 text-white" />
-              </motion.div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-2">¿A qué curso enseñará {profesorName}?</h3>
+            <div className="text-center mb-4">
+              <h3 className="text-2xl font-bold text-gray-800 mb-1">¿A qué curso enseñará {profesorName}?</h3>
               <p className="text-gray-600">Selecciona el curso y paralelo específico</p>
             </div>
 
@@ -706,18 +688,10 @@ export default function AssignAulaWizard({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
             transition={{ duration: 0.3 }}
-            className="space-y-6"
+            className="space-y-4"
           >
-            <div className="text-center mb-8">
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center"
-              >
-                <UserCheck className="h-10 w-10 text-white" />
-              </motion.div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-2">¡Casi listo!</h3>
+            <div className="text-center mb-4">
+              <h3 className="text-2xl font-bold text-gray-800 mb-1">¡Casi listo!</h3>
               <p className="text-gray-600">Configura los detalles finales del aula para {profesorName}</p>
             </div>
 
@@ -829,20 +803,20 @@ export default function AssignAulaWizard({
           {/* Header */}
           <div className="relative bg-white border-b shadow-sm">
             <motion.div
-              className={`h-1 bg-gradient-to-r ${steps[currentStep - 1]?.color}`}
+              className={`h-0.5 bg-gradient-to-r ${steps[currentStep - 1]?.color}`}
               initial={{ scaleX: 0 }}
               animate={{ scaleX: currentStep / steps.length }}
               transition={{ duration: 0.5 }}
             />
 
-            <div className="p-8">
-              <div className="flex items-center justify-between mb-8">
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-4">
                 <div>
                   <motion.h1
                     key={currentStep}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="text-4xl font-bold text-gray-800"
+                    className="text-2xl font-bold text-gray-800"
                   >
                     Asignar Aula a Profesor
                   </motion.h1>
@@ -851,24 +825,24 @@ export default function AssignAulaWizard({
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.1 }}
-                    className="text-gray-600 text-xl mt-2"
+                    className="text-gray-600 text-sm mt-1"
                   >
                     {steps[currentStep - 1]?.title} - Paso {currentStep} de {steps.length}
                   </motion.p>
                 </div>
 
                 <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={onClose}
-                  className="p-3 hover:bg-gray-100 rounded-full transition-colors"
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                 >
-                  <X className="h-7 w-7 text-gray-500" />
+                  <X className="h-6 w-6 text-gray-500" />
                 </motion.button>
               </div>
 
               {/* Step indicators */}
-              <div className="flex items-center justify-center space-x-8">
+              <div className="flex items-center justify-center space-x-4">
                 {steps.map((step, index) => (
                   <motion.div
                     key={step.id}
@@ -879,9 +853,9 @@ export default function AssignAulaWizard({
                   >
                     <div className="flex flex-col items-center">
                       <div className={`
-                          relative flex items-center justify-center w-16 h-16 rounded-full transition-all duration-300
+                          relative flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300
                           ${currentStep >= step.id
-                          ? `bg-gradient-to-r ${step.color} text-white shadow-xl`
+                          ? `bg-gradient-to-r ${step.color} text-white shadow`
                           : 'bg-gray-200 text-gray-500'
                         }
                         `}>
@@ -891,21 +865,21 @@ export default function AssignAulaWizard({
                             animate={{ scale: 1 }}
                             transition={{ type: "spring", stiffness: 500 }}
                           >
-                            <CheckCircle className="h-8 w-8" />
+                            <CheckCircle className="h-5 w-5" />
                           </motion.div>
                         ) : (
-                          <step.icon className="h-8 w-8" />
+                          <step.icon className="h-5 w-5" />
                         )}
 
                         {currentStep === step.id && (
                           <motion.div
-                            className="absolute -inset-2 rounded-full bg-gradient-to-r from-blue-400 to-purple-400 opacity-75"
+                            className="absolute -inset-1 rounded-full bg-gradient-to-r from-blue-400 to-purple-400 opacity-60"
                             animate={{ scale: [1, 1.2, 1] }}
                             transition={{ duration: 2, repeat: Infinity }}
                           />
                         )}
                       </div>
-                      <span className={`mt-3 text-sm font-medium ${currentStep >= step.id ? 'text-gray-800' : 'text-gray-500'
+                      <span className={`mt-2 text-xs font-medium ${currentStep >= step.id ? 'text-gray-800' : 'text-gray-500'
                         }`}>
                         {step.title}
                       </span>
@@ -913,7 +887,7 @@ export default function AssignAulaWizard({
 
                     {index < steps.length - 1 && (
                       <div className={`
-                          w-16 h-1 mx-6 transition-all duration-500 rounded-full
+                          w-8 h-px mx-3 transition-all duration-500 rounded-full
                           ${currentStep > step.id ? 'bg-gradient-to-r from-green-400 to-blue-400' : 'bg-gray-300'}
                         `} />
                     )}

@@ -461,12 +461,12 @@ export default function ProfesoresPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Gestión de Profesores</h1>
-          <p className="text-muted-foreground">Administra los profesores y sus asignaciones por colegio</p>
+          <h1 className="text-3xl font-bold tracking-tight">Gestión de Usuarios</h1>
+          <p className="text-muted-foreground">Administra cuentas y roles. La asignación de aulas se realiza en "Asignación de docentes".</p>
         </div>
         <Button onClick={() => handleOpenDialog()}>
           <UserPlus className="mr-2 h-4 w-4" />
-          Nuevo Profesor
+          Nuevo Usuario
         </Button>
       </div>
 
@@ -540,12 +540,11 @@ export default function ProfesoresPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Profesor</TableHead>
+                  <TableHead>Usuario</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Teléfono</TableHead>
                   <TableHead>Roles</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead>Aulas</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -596,30 +595,8 @@ export default function ProfesoresPage() {
                         {profesor.estado === "activo" ? "Activo" : "Inactivo"}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="text-sm">
-                          <span className="font-medium">{profesor.aulas_asignadas || 0}</span>
-                          <span className="text-muted-foreground"> aula(s)</span>
-                        </div>
-                        {(profesor.aulas_asignadas || 0) === 0 && (
-                          <Badge variant="outline" className="text-xs text-orange-600 border-orange-200">
-                            Sin aulas
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center gap-2 justify-end">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleAssignAula(profesor)}
-                          className="text-green-600 border-green-200 hover:bg-green-50"
-                        >
-                          <UserCheck className="h-4 w-4 mr-1" />
-                          Asignar Aula
-                        </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">
@@ -940,7 +917,7 @@ export default function ProfesoresPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog para asignar aula después de crear profesor */}
+      {/* Dialog para asignar aula después de crear usuario */}
       <Dialog open={showAssignAulaAfterCreate} onOpenChange={setShowAssignAulaAfterCreate}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -951,7 +928,7 @@ export default function ProfesoresPage() {
             <DialogDescription className="text-left">
               <div className="space-y-3">
                 <p>
-                  El profesor <strong>{newlyCreatedProfesorName}</strong> ha sido creado exitosamente.
+                  El usuario <strong>{newlyCreatedProfesorName}</strong> ha sido creado exitosamente.
                 </p>
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                   <h4 className="font-medium text-green-800 mb-2 flex items-center gap-2">
@@ -959,7 +936,7 @@ export default function ProfesoresPage() {
                     Beneficios de asignar un aula ahora:
                   </h4>
                   <ul className="text-sm text-green-700 space-y-1">
-                    <li>• El profesor podrá gestionar estudiantes inmediatamente</li>
+                    <li>• Podrá gestionar estudiantes inmediatamente si es docente</li>
                     <li>• Podrá registrar calificaciones y asistencias</li>
                     <li>• Tendrá acceso completo a las herramientas de enseñanza</li>
                   </ul>

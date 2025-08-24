@@ -8,11 +8,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/components/ui/use-toast"
-import { 
-  ArrowLeft, 
-  Users, 
-  BookOpen, 
-  ClipboardList, 
+import { useAuth } from "@/lib/auth-provider"
+import {
+  ArrowLeft,
+  Users,
+  BookOpen,
+  ClipboardList,
   Calendar,
   Settings,
   Loader2,
@@ -37,7 +38,8 @@ export default function AulaPage() {
   const router = useRouter()
   const aulaId = params?.id
   const { toast } = useToast()
-  
+  const { user } = useAuth()
+
   const [aula, setAula] = useState<Aula | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -148,9 +150,9 @@ export default function AulaPage() {
             <p className="text-xs text-muted-foreground">
               de {aula.max_estudiantes} máximo
             </p>
-            <Progress 
-              value={(aula.estudiantes / aula.max_estudiantes) * 100} 
-              className="mt-2 h-2" 
+            <Progress
+              value={(aula.estudiantes / aula.max_estudiantes) * 100}
+              className="mt-2 h-2"
             />
           </CardContent>
         </Card>
@@ -181,39 +183,28 @@ export default function AulaPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Estado</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
-              Activo
-            </Badge>
-            <p className="text-xs text-muted-foreground mt-2">
-              En curso actual
-            </p>
-          </CardContent>
-        </Card>
+
       </div>
 
       {/* Quick Actions */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Link href={`/aulas/${aulaId}/estudiantes`}>
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Gestionar Estudiantes
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Agregar, editar o eliminar estudiantes del aula
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
+        {user?.roles.includes("ADMIN") && (
+          <Link href={`/admin/asignacion-estudiantes?aulaId=${aulaId}`}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Gestionar Estudiantes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Asignar o remover estudiantes del aula (solo admin)
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
 
         <Link href={`/aulas/${aulaId}/notas`}>
           <Card className="hover:shadow-md transition-shadow cursor-pointer">
@@ -247,21 +238,23 @@ export default function AulaPage() {
           </Card>
         </Link>
 
-        <Link href={`/aulas/${aulaId}/configuracion`}>
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Configuración
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Editar información del aula
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
+        {user?.roles.includes("ADMIN") && (
+          <Link href={`/aulas/${aulaId}/configuracion`}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  Configuración
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Editar información del aula
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
       </div>
 
       {/* Recent Activity */}

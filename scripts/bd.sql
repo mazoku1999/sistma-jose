@@ -379,7 +379,7 @@ CREATE TABLE IF NOT EXISTS historial_estudiantes (
 
 -- Insertar gestion academica actual (calendario escolar boliviano)
 INSERT INTO gestiones_academicas (nombre, anio, fecha_inicio, fecha_fin, activa, descripcion) VALUES 
-('Gestión 2024', 2024, '2024-02-05', '2024-12-04', TRUE, 'Año académico 2024 - Calendario escolar boliviano');
+('Gestión 2025', 2025, '2025-02-05', '2025-12-04', TRUE, 'Año académico 2025 - Calendario escolar boliviano');
 
 -- Insertar configuraciones del sistema
 INSERT INTO configuracion_sistema (clave, valor, descripcion) VALUES 

@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/components/ui/use-toast"
 import { Input } from "@/components/ui/input"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Progress } from "@/components/ui/progress"
@@ -68,6 +69,7 @@ export default function NotasPage() {
     const [aula, setAula] = useState<Aula | null>(null)
     const [estudiantes, setEstudiantes] = useState<Estudiante[]>([])
     const [notas, setNotas] = useState<Record<number, Nota>>({})
+    const [notasPorTrimestre, setNotasPorTrimestre] = useState<Record<number, Record<number, Nota>>>({ 1: {}, 2: {}, 3: {} })
     const [isLoading, setIsLoading] = useState(true)
     const [isSaving, setIsSaving] = useState(false)
     const [hasChanges, setHasChanges] = useState(false)
@@ -107,10 +109,10 @@ export default function NotasPage() {
     }, [trimestreGlobal])
 
     useEffect(() => {
-        if (estudiantes.length > 0 && trimestreGlobal) {
-            fetchNotas()
+        if (estudiantes.length > 0) {
+            fetchNotasTodas()
         }
-    }, [estudiantes, trimestreGlobal])
+    }, [estudiantes])
 
     const fetchAula = async () => {
         if (!aulaId) return
@@ -152,17 +154,29 @@ export default function NotasPage() {
         }
     }
 
-    const fetchNotas = async () => {
-        if (!aulaId || !trimestreGlobal) return
+    const fetchNotasTodas = async () => {
+        if (!aulaId) return
         try {
-            const response = await fetch(`/api/aulas/${aulaId}/notas?trimestre=${trimestreGlobal}`)
-            if (response.ok) {
-                const data = await response.json()
-                const notasMap: Record<number, Nota> = {}
-                data.forEach((nota: Nota) => {
-                    notasMap[nota.id_inscripcion] = nota
-                })
-                setNotas(notasMap)
+            const [r1, r2, r3] = await Promise.all([
+                fetch(`/api/aulas/${aulaId}/notas?trimestre=1`),
+                fetch(`/api/aulas/${aulaId}/notas?trimestre=2`),
+                fetch(`/api/aulas/${aulaId}/notas?trimestre=3`),
+            ])
+            const [d1, d2, d3] = await Promise.all([r1.ok ? r1.json() : [], r2.ok ? r2.json() : [], r3.ok ? r3.json() : []])
+
+            const map1: Record<number, Nota> = {}
+            const map2: Record<number, Nota> = {}
+            const map3: Record<number, Nota> = {}
+
+            d1.forEach((n: Nota) => { map1[n.id_inscripcion] = n })
+            d2.forEach((n: Nota) => { map2[n.id_inscripcion] = n })
+            d3.forEach((n: Nota) => { map3[n.id_inscripcion] = n })
+
+            setNotasPorTrimestre({ 1: map1, 2: map2, 3: map3 })
+            // Sincronizar estado editable con el trimestre actual
+            if (trimestreGlobal) {
+                const t = parseInt(trimestreGlobal)
+                setNotas({ ...(t === 1 ? map1 : t === 2 ? map2 : map3) })
             }
         } catch (error) {
             console.error("Error al cargar notas:", error)
@@ -174,13 +188,12 @@ export default function NotasPage() {
         if (isNaN(nota) || nota < 0 || nota > 100) {
             return
         }
-        setNotas(prev => ({
+        const t = parseInt(trimestreGlobal)
+        const nextNota: Nota = { id_inscripcion: inscripcionId, trimestre: t, promedio_final_trimestre: nota }
+        setNotas(prev => ({ ...prev, [inscripcionId]: nextNota }))
+        setNotasPorTrimestre(prev => ({
             ...prev,
-            [inscripcionId]: {
-                id_inscripcion: inscripcionId,
-                trimestre: parseInt(trimestreGlobal),
-                promedio_final_trimestre: nota
-            }
+            [t]: { ...(prev[t] || {}), [inscripcionId]: nextNota }
         }))
         setHasChanges(true)
     }
@@ -210,7 +223,7 @@ export default function NotasPage() {
                     description: "Notas guardadas correctamente",
                 })
                 setHasChanges(false)
-                fetchNotas()
+                fetchNotasTodas()
             } else {
                 const error = await response.json()
                 toast({
@@ -554,67 +567,82 @@ export default function NotasPage() {
                         <CardHeader>
                             <CardTitle>Registro de Calificaciones</CardTitle>
                             <CardDescription>
-                                Ingresa las notas finales del {trimestres[trimestreGlobal as keyof typeof trimestres]?.label}
+                                Ver los tres bimestres. Solo el bimestre actual es editable.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-4">
-                                {estudiantes.map((estudiante, index) => {
-                                    const notaActual = notas[estudiante.inscripcion_id]
-                                    const nota = notaActual?.promedio_final_trimestre || 0
-
-                                    return (
-                                        <div
-                                            key={estudiante.id}
-                                            className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                                        >
-                                            <div className="flex items-center gap-4 flex-1">
-                                                <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-sm font-medium">
-                                                    {index + 1}
-                                                </div>
-                                                <div className="flex-1">
-                                                    <p className="font-medium">{estudiante.nombre_completo}</p>
-                                                    <p className="text-sm text-muted-foreground">
-                                                        ID: {estudiante.id}
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex items-center gap-4">
-                                                <div className="flex flex-col items-center gap-1">
-                                                    <Input
-                                                        type="number"
-                                                        min="0"
-                                                        max="100"
-                                                        step="0.1"
-                                                        placeholder="0.0"
-                                                        value={nota > 0 ? nota.toString() : ""}
-                                                        onChange={(e) => handleNotaChange(estudiante.inscripcion_id, e.target.value)}
-                                                        className="w-20 text-center"
-                                                    />
-                                                    <span className="text-xs text-muted-foreground">/ 100</span>
-                                                </div>
-
-                                                {nota > 0 && (
-                                                    <div className="flex flex-col items-center gap-1">
-                                                        <Badge
-                                                            variant="outline"
-                                                            className={cn("min-w-[80px] justify-center", getNotaColor(nota))}
-                                                        >
-                                                            {getNotaLabel(nota)}
-                                                        </Badge>
-                                                        <div className="w-16">
-                                                            <Progress
-                                                                value={nota}
-                                                                className="h-2"
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>#</TableHead>
+                                            <TableHead>Estudiante</TableHead>
+                                            <TableHead className="text-center">1er Bim</TableHead>
+                                            <TableHead className="text-center">2do Bim</TableHead>
+                                            <TableHead className="text-center">3er Bim</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {estudiantes.map((estudiante, index) => {
+                                            const n1 = notasPorTrimestre[1]?.[estudiante.inscripcion_id]?.promedio_final_trimestre || 0
+                                            const n2 = notasPorTrimestre[2]?.[estudiante.inscripcion_id]?.promedio_final_trimestre || 0
+                                            const n3 = notasPorTrimestre[3]?.[estudiante.inscripcion_id]?.promedio_final_trimestre || 0
+                                            const tActual = parseInt(trimestreGlobal)
+                                            const renderCell = (t: number, valor: number) => {
+                                                const editable = t === tActual
+                                                if (editable) {
+                                                    return (
+                                                        <div className="flex flex-col items-center gap-1">
+                                                            <Input
+                                                                type="number"
+                                                                min="0"
+                                                                max="100"
+                                                                step="0.1"
+                                                                placeholder="0.0"
+                                                                value={valor > 0 ? valor.toString() : ""}
+                                                                onChange={(e) => handleNotaChange(estudiante.inscripcion_id, e.target.value)}
+                                                                className="w-20 text-center"
                                                             />
+                                                            <span className="text-[10px] text-muted-foreground">/ 100</span>
                                                         </div>
+                                                    )
+                                                }
+                                                // No editable: mostrar input bloqueado con valor (0 si null/NaN)
+                                                const shown = Number.isFinite(valor) && valor > 0 ? valor : 0
+                                                return (
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <Input
+                                                            type="number"
+                                                            min="0"
+                                                            max="100"
+                                                            step="0.1"
+                                                            value={shown}
+                                                            readOnly
+                                                            disabled
+                                                            className="w-20 text-center bg-muted"
+                                                        />
+                                                        <span className="text-[10px] text-muted-foreground">/ 100</span>
                                                     </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )
-                                })}
+                                                )
+                                            }
+
+                                            return (
+                                                <TableRow key={estudiante.id}>
+                                                    <TableCell>{index + 1}</TableCell>
+                                                    <TableCell>
+                                                        <div className="flex flex-col">
+                                                            <span className="font-medium">{estudiante.nombre_completo}</span>
+                                                            <span className="text-xs text-muted-foreground">ID: {estudiante.id}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">{renderCell(1, n1)}</TableCell>
+                                                    <TableCell className="text-center">{renderCell(2, n2)}</TableCell>
+                                                    <TableCell className="text-center">{renderCell(3, n3)}</TableCell>
+                                                </TableRow>
+                                            )
+                                        })}
+                                    </TableBody>
+                                </Table>
                             </div>
 
                             {estudiantes.length === 0 && (

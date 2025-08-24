@@ -20,25 +20,30 @@ export async function GET(
       return NextResponse.json({ error: "ID de aula o estudiante no proporcionado" }, { status: 400 })
     }
 
-    // Obtener el ID del profesor
-    const profesorQuery = await executeQuery<any[]>("SELECT id_profesor FROM profesores WHERE id_usuario = ?", [
-      session.user.id,
-    ])
-
-    if (!profesorQuery.length) {
-      return NextResponse.json({ error: "Profesor no encontrado" }, { status: 404 })
-    }
-
-    const profesorId = profesorQuery[0].id_profesor
-
-    // Verificar que el aula pertenece al profesor
-    const aulaQuery = await executeQuery<any[]>(
-      "SELECT id_aula_profesor FROM aulas_profesor WHERE id_aula_profesor = ? AND id_profesor = ?",
-      [aulaId, profesorId]
-    )
-
-    if (!aulaQuery.length) {
-      return NextResponse.json({ error: "Aula no encontrada" }, { status: 404 })
+    // Si no es ADMIN, validar propiedad; ADMIN solo valida existencia de aula
+    if (!session.user.roles.includes("ADMIN")) {
+      const profesorQuery = await executeQuery<any[]>("SELECT id_profesor FROM profesores WHERE id_usuario = ?", [
+        session.user.id,
+      ])
+      if (!profesorQuery.length) {
+        return NextResponse.json({ error: "Profesor no encontrado" }, { status: 404 })
+      }
+      const profesorId = profesorQuery[0].id_profesor
+      const aulaQuery = await executeQuery<any[]>(
+        "SELECT id_aula_profesor FROM aulas_profesor WHERE id_aula_profesor = ? AND id_profesor = ?",
+        [aulaId, profesorId]
+      )
+      if (!aulaQuery.length) {
+        return NextResponse.json({ error: "Aula no encontrada" }, { status: 404 })
+      }
+    } else {
+      const aulaExists = await executeQuery<any[]>(
+        "SELECT id_aula_profesor FROM aulas_profesor WHERE id_aula_profesor = ?",
+        [aulaId]
+      )
+      if (!aulaExists.length) {
+        return NextResponse.json({ error: "Aula no encontrada" }, { status: 404 })
+      }
     }
 
     // Obtener información del estudiante
@@ -91,25 +96,29 @@ export async function PUT(
       return NextResponse.json({ error: "Nombres y apellidos son requeridos" }, { status: 400 })
     }
 
-    // Obtener el ID del profesor
-    const profesorQuery = await executeQuery<any[]>("SELECT id_profesor FROM profesores WHERE id_usuario = ?", [
-      session.user.id,
-    ])
-
-    if (!profesorQuery.length) {
-      return NextResponse.json({ error: "Profesor no encontrado" }, { status: 404 })
-    }
-
-    const profesorId = profesorQuery[0].id_profesor
-
-    // Verificar que el aula pertenece al profesor
-    const aulaQuery = await executeQuery<any[]>(
-      "SELECT id_aula_profesor FROM aulas_profesor WHERE id_aula_profesor = ? AND id_profesor = ?",
-      [aulaId, profesorId]
-    )
-
-    if (!aulaQuery.length) {
-      return NextResponse.json({ error: "Aula no encontrada" }, { status: 404 })
+    if (!session.user.roles.includes("ADMIN")) {
+      const profesorQuery = await executeQuery<any[]>("SELECT id_profesor FROM profesores WHERE id_usuario = ?", [
+        session.user.id,
+      ])
+      if (!profesorQuery.length) {
+        return NextResponse.json({ error: "Profesor no encontrado" }, { status: 404 })
+      }
+      const profesorId = profesorQuery[0].id_profesor
+      const aulaQuery = await executeQuery<any[]>(
+        "SELECT id_aula_profesor FROM aulas_profesor WHERE id_aula_profesor = ? AND id_profesor = ?",
+        [aulaId, profesorId]
+      )
+      if (!aulaQuery.length) {
+        return NextResponse.json({ error: "Aula no encontrada" }, { status: 404 })
+      }
+    } else {
+      const aulaExists = await executeQuery<any[]>(
+        "SELECT id_aula_profesor FROM aulas_profesor WHERE id_aula_profesor = ?",
+        [aulaId]
+      )
+      if (!aulaExists.length) {
+        return NextResponse.json({ error: "Aula no encontrada" }, { status: 404 })
+      }
     }
 
     // Verificar que el estudiante existe y pertenece al aula
@@ -162,25 +171,29 @@ export async function DELETE(
       return NextResponse.json({ error: "ID de aula o estudiante no proporcionado" }, { status: 400 })
     }
 
-    // Obtener el ID del profesor
-    const profesorQuery = await executeQuery<any[]>("SELECT id_profesor FROM profesores WHERE id_usuario = ?", [
-      session.user.id,
-    ])
-
-    if (!profesorQuery.length) {
-      return NextResponse.json({ error: "Profesor no encontrado" }, { status: 404 })
-    }
-
-    const profesorId = profesorQuery[0].id_profesor
-
-    // Verificar que el aula pertenece al profesor
-    const aulaQuery = await executeQuery<any[]>(
-      "SELECT id_aula_profesor FROM aulas_profesor WHERE id_aula_profesor = ? AND id_profesor = ?",
-      [aulaId, profesorId]
-    )
-
-    if (!aulaQuery.length) {
-      return NextResponse.json({ error: "Aula no encontrada" }, { status: 404 })
+    if (!session.user.roles.includes("ADMIN")) {
+      const profesorQuery = await executeQuery<any[]>("SELECT id_profesor FROM profesores WHERE id_usuario = ?", [
+        session.user.id,
+      ])
+      if (!profesorQuery.length) {
+        return NextResponse.json({ error: "Profesor no encontrado" }, { status: 404 })
+      }
+      const profesorId = profesorQuery[0].id_profesor
+      const aulaQuery = await executeQuery<any[]>(
+        "SELECT id_aula_profesor FROM aulas_profesor WHERE id_aula_profesor = ? AND id_profesor = ?",
+        [aulaId, profesorId]
+      )
+      if (!aulaQuery.length) {
+        return NextResponse.json({ error: "Aula no encontrada" }, { status: 404 })
+      }
+    } else {
+      const aulaExists = await executeQuery<any[]>(
+        "SELECT id_aula_profesor FROM aulas_profesor WHERE id_aula_profesor = ?",
+        [aulaId]
+      )
+      if (!aulaExists.length) {
+        return NextResponse.json({ error: "Aula no encontrada" }, { status: 404 })
+      }
     }
 
     // Verificar que el estudiante existe y pertenece al aula

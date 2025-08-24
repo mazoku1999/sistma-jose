@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useAuth } from "@/lib/auth-provider"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -43,6 +44,7 @@ export default function EstudiantesPage() {
     const router = useRouter()
     const aulaId = params?.id as string
     const { toast } = useToast()
+    const { user } = useAuth()
 
     const [aula, setAula] = useState<Aula | null>(null)
     const [estudiantes, setEstudiantes] = useState<Estudiante[]>([])
@@ -52,13 +54,17 @@ export default function EstudiantesPage() {
     const [showAddModal, setShowAddModal] = useState(false)
 
     useEffect(() => {
+        if (user && !user.roles.includes("ADMIN")) {
+            router.push(`/aulas/${aulaId}`)
+            return
+        }
         if (!aulaId || aulaId === 'undefined') {
             router.push('/aulas')
             return
         }
         fetchAula()
         fetchEstudiantes()
-    }, [aulaId, router])
+    }, [aulaId, router, user])
 
     useEffect(() => {
         const filtered = estudiantes.filter(estudiante =>
@@ -146,7 +152,7 @@ export default function EstudiantesPage() {
                         <Plus className="mr-2 h-4 w-4" />
                         Agregar Estudiante
                     </Button>
-                    
+
                     {/* Componente de Import/Export */}
                     {aula && (
                         <StudentImportExport
@@ -168,7 +174,7 @@ export default function EstudiantesPage() {
                         />
                     )}
                 </div>
-                
+
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                     <Input

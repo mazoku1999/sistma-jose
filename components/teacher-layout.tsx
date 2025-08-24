@@ -111,7 +111,7 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
       try {
         // En un sistema real, esto vendría de una API
         // Por ahora, simulamos algunas notificaciones
-        const baseNotifications = [
+        const baseNotifications: Notification[] = [
           {
             id: 2,
             title: "Reunión de profesores",
@@ -407,11 +407,24 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
                       <SidebarMenuButton
                         asChild
                         isActive={pathname.startsWith("/admin/profesores")}
-                        tooltip="Profesores"
+                        tooltip="Usuarios"
                       >
                         <Link href="/admin/profesores">
                           <GraduationCap className="h-4 w-4" />
-                          <span>Profesores</span>
+                          <span>Usuarios</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={pathname.startsWith("/admin/asignacion-docentes")}
+                        tooltip="Asignación de docentes"
+                      >
+                        <Link href="/admin/asignacion-docentes">
+                          <Users className="h-4 w-4" />
+                          <span>Asignación de docentes</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -428,15 +441,17 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
                     <SidebarMenuItem>
                       <SidebarMenuButton
                         asChild
-                        isActive={pathname.startsWith("/admin/estudiantes")}
-                        tooltip="Estudiantes"
+                        isActive={pathname.startsWith("/admin/asignacion-estudiantes")}
+                        tooltip="Asignación de estudiantes"
                       >
-                        <Link href="/admin/estudiantes">
+                        <Link href="/admin/asignacion-estudiantes">
                           <Users className="h-4 w-4" />
-                          <span>Estudiantes</span>
+                          <span>Asignación de estudiantes</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
+
+
 
                     <SidebarMenuItem>
                       <SidebarMenuButton asChild isActive={pathname.startsWith("/admin/gestiones")} tooltip="Gestiones">
@@ -603,11 +618,13 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
             </div>
 
             <div className="flex items-center gap-2">
-              {/* Selectores globales */}
-              <div className="flex items-center gap-2 mr-2">
-                <GestionSelectorGlobal variant="compact" showLabel={false} />
-                <TrimestreSelector variant="compact" showLabel={false} />
-              </div>
+              {/* Selectores globales (solo ADMIN) */}
+              {isAdmin && (
+                <div className="flex items-center gap-2 mr-2">
+                  <GestionSelectorGlobal variant="compact" showLabel={false} />
+                  <TrimestreSelector variant="compact" showLabel={false} />
+                </div>
+              )}
 
               <Popover>
                 <PopoverTrigger asChild>
@@ -657,12 +674,14 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
                       Mi perfil
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/configuracion" className="cursor-pointer">
-                      <Settings className="h-4 w-4 mr-2" />
-                      Configuración
-                    </Link>
-                  </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/configuracion" className="cursor-pointer">
+                        <Settings className="h-4 w-4 mr-2" />
+                        Configuración
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => logout()}>
                     <LogOut className="h-4 w-4 mr-2" />

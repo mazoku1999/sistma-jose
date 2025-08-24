@@ -18,7 +18,46 @@ export async function GET(
     const { searchParams } = new URL(request.url)
     const trimestre = searchParams.get("trimestre") || "1"
 
-    // Obtener el ID del profesor
+    // Si es ADMIN, no exigir propiedad; solo validar que exista el aula y devolver info
+    if (session.user.roles.includes("ADMIN")) {
+      const aulaInfo = await executeQuery<any[]>(
+        `
+        SELECT 
+          ap.id_aula_profesor as id,
+          ap.nombre_aula,
+          ap.id_colegio,
+          ap.id_nivel,
+          ap.id_curso,
+          ap.id_paralelo,
+          ap.id_materia,
+          COALESCE(ap.id_gestion, 1) as id_gestion,
+          c.nombre as colegio,
+          n.nombre as nivel,
+          cur.nombre as curso,
+          p.letra as paralelo,
+          m.nombre_completo as materia,
+          COUNT(DISTINCT ia.id_estudiante) as estudiantes,
+          ap.max_estudiantes,
+          TRUE as gestion_activa
+        FROM aulas_profesor ap
+        JOIN colegios c ON ap.id_colegio = c.id_colegio
+        JOIN niveles n ON ap.id_nivel = n.id_nivel
+        JOIN cursos cur ON ap.id_curso = cur.id_curso
+        JOIN paralelos p ON ap.id_paralelo = p.id_paralelo
+        JOIN materias m ON ap.id_materia = m.id_materia
+        LEFT JOIN inscripciones_aula ia ON ap.id_aula_profesor = ia.id_aula_profesor
+        WHERE ap.id_aula_profesor = ?
+        GROUP BY ap.id_aula_profesor
+      `,
+        [aulaId]
+      )
+      if (!aulaInfo.length) {
+        return NextResponse.json({ error: "Aula no encontrada" }, { status: 404 })
+      }
+      return NextResponse.json(aulaInfo[0])
+    }
+
+    // Obtener el ID del profesor (para PROFESOR)
     const profesorQuery = await executeQuery<any[]>("SELECT id_profesor FROM profesores WHERE id_usuario = ?", [
       session.user.id,
     ])
@@ -31,9 +70,9 @@ export async function GET(
 
     // Verificar si existen gestiones
     const gestionesExist = await executeQuery<any[]>("SHOW TABLES LIKE 'gestiones_academicas'")
-    
+
     let aulaQuery: any[] = []
-    
+
     if (gestionesExist.length > 0) {
       // Obtener información del aula con gestión
       aulaQuery = await executeQuery<any[]>(
