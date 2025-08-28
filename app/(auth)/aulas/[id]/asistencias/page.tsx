@@ -61,26 +61,7 @@ const tiposAsistencia = {
   'L': { label: 'Licencia', color: 'bg-blue-100 text-blue-800 border-blue-200', icon: FileText }
 }
 
-const trimestres = {
-  '1': {
-    label: '1er Trimestre',
-    periodo: 'Febrero - Mayo',
-    color: 'bg-green-50 border-green-200',
-    icon: '🌱'
-  },
-  '2': {
-    label: '2do Trimestre',
-    periodo: 'Junio - Septiembre',
-    color: 'bg-blue-50 border-blue-200',
-    icon: '☀️'
-  },
-  '3': {
-    label: '3er Trimestre',
-    periodo: 'Octubre - Enero',
-    color: 'bg-orange-50 border-orange-200',
-    icon: '🍂'
-  }
-}
+
 
 export default function AsistenciasPage() {
   const params = useParams()
