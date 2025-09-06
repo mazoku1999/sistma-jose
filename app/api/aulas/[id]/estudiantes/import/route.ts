@@ -53,11 +53,37 @@ export async function POST(
 
     let importedCount = 0
     let errors: string[] = []
+    let skippedByCapacity = 0
+    let createdNewStudents = 0
+    let reusedExistingStudents = 0
 
     // Iniciar transacción
     await executeQuery("START TRANSACTION")
 
     try {
+      // Obtener capacidad disponible
+      const aulaCapRow = await executeQuery<any[]>(
+        "SELECT max_estudiantes FROM aulas_profesor WHERE id_aula_profesor = ?",
+        [aulaId]
+      )
+      const max = aulaCapRow[0]?.max_estudiantes ?? 0
+      const countRow = await executeQuery<any[]>(
+        "SELECT COUNT(*) as total FROM inscripciones_aula WHERE id_aula_profesor = ?",
+        [aulaId]
+      )
+      let remaining = Math.max(0, max - (countRow[0]?.total ?? 0))
+
+      if (remaining <= 0) {
+        await executeQuery("ROLLBACK")
+        return NextResponse.json({
+          success: true,
+          imported: 0,
+          errors: ["No hay cupos disponibles en el aula"],
+          skippedByCapacity: estudiantes.length,
+          createdNewStudents: 0,
+          reusedExistingStudents: 0,
+        })
+      }
       for (const estudiante of estudiantes) {
         // Validar datos
         if (!estudiante.Nombres || !estudiante.Apellidos) {
@@ -74,6 +100,10 @@ export async function POST(
         }
 
         try {
+          if (remaining <= 0) {
+            skippedByCapacity += 1
+            continue
+          }
           // Verificar si el estudiante ya existe
           const existingStudent = await executeQuery<any[]>(
             "SELECT id_estudiante FROM estudiantes WHERE nombres = ? AND apellidos = ?",
@@ -84,6 +114,7 @@ export async function POST(
 
           if (existingStudent.length > 0) {
             studentId = existingStudent[0].id_estudiante
+            reusedExistingStudents += 1
           } else {
             // Crear nuevo estudiante
             const insertResult = await executeQuery<any>(
@@ -91,6 +122,7 @@ export async function POST(
               [nombres, apellidos]
             )
             studentId = insertResult.insertId
+            createdNewStudents += 1
           }
 
           // Verificar si ya está inscrito en esta aula
@@ -106,6 +138,7 @@ export async function POST(
               [aulaId, studentId]
             )
             importedCount++
+            remaining = Math.max(0, remaining - 1)
           } else {
             errors.push(`${nombres} ${apellidos} ya está inscrito en esta aula`)
           }
@@ -121,6 +154,9 @@ export async function POST(
         success: true,
         imported: importedCount,
         errors: errors,
+        skippedByCapacity,
+        createdNewStudents,
+        reusedExistingStudents,
         message: `${importedCount} estudiantes importados correctamente`
       })
     } catch (error) {

@@ -70,6 +70,7 @@ export default function ProfesoresPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [openDialog, setOpenDialog] = useState(false)
   const [editingProfesor, setEditingProfesor] = useState<Profesor | null>(null)
+  const [editingUserId, setEditingUserId] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
 
@@ -86,6 +87,8 @@ export default function ProfesoresPage() {
   const [formData, setFormData] = useState({
     usuario: "",
     nombre_completo: "",
+    email: "",
+    telefono: "",
     password: "",
     estado: "activo" as "activo" | "inactivo",
   })
@@ -152,6 +155,8 @@ export default function ProfesoresPage() {
     setFormData({
       usuario: "",
       nombre_completo: "",
+      email: "",
+      telefono: "",
       password: "",
       estado: "activo",
     })
@@ -164,9 +169,13 @@ export default function ProfesoresPage() {
     resetForm()
     if (profesor) {
       setEditingProfesor(profesor)
+
+      setEditingUserId((profesor as any).id_usuario ?? profesor.id)
       setFormData({
         usuario: profesor.usuario,
         nombre_completo: profesor.nombre_completo,
+        email: profesor.email || "",
+        telefono: profesor.telefono || "",
         password: "",
         estado: profesor.estado,
       })
@@ -177,6 +186,8 @@ export default function ProfesoresPage() {
   const handleCloseDialog = () => {
     setOpenDialog(false)
     resetForm()
+    setEditingProfesor(null)
+    setEditingUserId(null)
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -184,62 +195,7 @@ export default function ProfesoresPage() {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  const handleRoleChange = (role: string, checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      roles: checked
-        ? [...prev.roles, role]
-        : prev.roles.filter(r => r !== role)
-    }))
-  }
 
-  const handleColegioToggle = (colegioId: number) => {
-    setAsignaciones(prev => {
-      const exists = prev.find(a => a.colegioId === colegioId)
-      if (exists) {
-        return prev.filter(a => a.colegioId !== colegioId)
-      } else {
-        return [...prev, { colegioId, materias: [] }]
-      }
-    })
-  }
-
-  const handleMateriaToggle = (colegioId: number, materiaId: number) => {
-    setAsignaciones(prev =>
-      prev.map(asignacion => {
-        if (asignacion.colegioId === colegioId) {
-          const materias = asignacion.materias.includes(materiaId)
-            ? asignacion.materias.filter(id => id !== materiaId)
-            : [...asignacion.materias, materiaId]
-          return { ...asignacion, materias }
-        }
-        return asignacion
-      })
-    )
-  }
-
-  const handleSelectAllMaterias = (colegioId: number) => {
-    const allMateriaIds = materias.map(m => m.id)
-    setAsignaciones(prev =>
-      prev.map(asignacion =>
-        asignacion.colegioId === colegioId
-          ? { ...asignacion, materias: allMateriaIds }
-          : asignacion
-      )
-    )
-  }
-
-  const handleNext = (e: React.MouseEvent) => {
-    e.preventDefault()
-    // formulario simple: no hay pasos
-  }
-
-  const handleBack = (e: React.MouseEvent) => {
-    e.preventDefault()
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1)
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -248,11 +204,17 @@ export default function ProfesoresPage() {
     try {
       let response
       if (editingProfesor) {
-        const payload: any = { nombre_completo: formData.nombre_completo.trim(), estado: formData.estado }
+        const payload: any = {
+          nombre_completo: formData.nombre_completo.trim(),
+          estado: formData.estado,
+          email: formData.email.trim(),
+          telefono: formData.telefono.trim(),
+        }
         if (formData.password && formData.password.trim() !== "") {
           payload.password = formData.password
         }
-        response = await fetch(`/api/profesores/${editingProfesor.id}`, {
+        const targetId = editingUserId ?? (editingProfesor as any).id_usuario ?? editingProfesor.id
+        response = await fetch(`/api/profesores/${targetId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -267,12 +229,24 @@ export default function ProfesoresPage() {
         response = await fetch("/api/profesores", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ usuario: formData.usuario.trim(), nombre_completo: formData.nombre_completo.trim(), password: formData.password, estado: formData.estado }),
+          body: JSON.stringify({
+            usuario: formData.usuario.trim(),
+            nombre_completo: formData.nombre_completo.trim(),
+            email: formData.email.trim(),
+            telefono: formData.telefono.trim(),
+            password: formData.password,
+            estado: formData.estado,
+          }),
         })
       }
 
       if (response.ok) {
-        const result = await response.json()
+        // Intentar leer JSON pero no bloquear el toast si no hay cuerpo
+        try {
+          if (response.headers.get("content-type")?.includes("application/json")) {
+            await response.json().catch(() => null)
+          }
+        } catch { }
 
         toast({
           title: "Éxito",
@@ -364,10 +338,6 @@ export default function ProfesoresPage() {
     }
   }
 
-  const handleAssignAula = (profesor: Profesor) => {
-    setSelectedProfesorForAssign(profesor)
-    setShowAssignWizard(true)
-  }
 
   const handleAssignAulaAfterCreate = () => {
     setShowAssignAulaAfterCreate(false)
@@ -512,13 +482,13 @@ export default function ProfesoresPage() {
                             <DropdownMenuItem onClick={() => handleOpenDialog(profesor)}>
                               Editar
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleResetPassword(profesor.id)}>
+                            <DropdownMenuItem onClick={() => handleResetPassword((profesor as any).id_usuario ?? profesor.id)}>
                               Restablecer contraseña
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-red-600"
-                              onClick={() => handleDeleteProfesor(profesor.id)}
+                              onClick={() => handleDeleteProfesor((profesor as any).id_usuario ?? profesor.id)}
                             >
                               Eliminar
                             </DropdownMenuItem>
@@ -579,6 +549,27 @@ export default function ProfesoresPage() {
                   onChange={handleInputChange}
                   required
                   disabled={!!editingProfesor}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  placeholder="usuario@colegio.edu"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="telefono">Teléfono</Label>
+                <Input
+                  id="telefono"
+                  name="telefono"
+                  value={formData.telefono}
+                  onChange={handleInputChange}
+                  placeholder="Ej: 70000000"
                 />
               </div>
               <div className="space-y-2">

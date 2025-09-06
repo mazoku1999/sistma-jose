@@ -128,9 +128,6 @@ export async function PUT(
 
       updateQuery += ` WHERE id_usuario = ?`
       updateParams.push(profesorId)
-
-      updateQuery += ` WHERE id_usuario = ?`
-      updateParams.push(profesorId)
       await executeQuery(updateQuery, updateParams)
 
       // Actualizar roles

@@ -183,7 +183,7 @@ export async function POST(request: Request) {
 
       // Verificación final: verificar que el profesor existe en la base de datos
       const profesorFinalVerificado = await executeQuery<any[]>(
-        "SELECT id_profesor, id_usuario, u.nombre_completo FROM profesores p JOIN usuarios u ON p.id_usuario = u.id_usuario WHERE p.id_profesor = ?",
+        "SELECT p.id_profesor, p.id_usuario, u.nombre_completo FROM profesores p JOIN usuarios u ON p.id_usuario = u.id_usuario WHERE p.id_profesor = ?",
         [profesorIdFinal]
       )
 

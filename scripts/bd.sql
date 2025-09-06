@@ -261,19 +261,7 @@ INSERT INTO materias (nombre_corto, nombre_completo, descripcion) VALUES
 
 -- Insertar un colegio de ejemplo
 INSERT INTO colegios (nombre, direccion, telefono, email) VALUES 
-('Colegio San Francisco', 'Av. Principal 123', '555-1234', 'info@colegiosanfrancisco.edu');
-
--- Crear tabla de notificaciones
-CREATE TABLE IF NOT EXISTS notifications (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL,
-  title VARCHAR(255) NOT NULL,
-  message TEXT NOT NULL,
-  type VARCHAR(50) DEFAULT 'info',
-  `read` BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES usuarios(id_usuario) ON DELETE CASCADE
-);
+('Colegio San Francisco', 'Calle Ayacucho 123, La Paz, Bolivia', '22123456', 'info@colegio.bo');
 
 -- Tabla de gestiones academicas (anos escolares)
 CREATE TABLE IF NOT EXISTS gestiones_academicas (
@@ -291,6 +279,8 @@ CREATE TABLE IF NOT EXISTS gestiones_academicas (
 -- Modificar tabla de aulas para incluir gestión
 ALTER TABLE aulas_profesor ADD COLUMN id_gestion INT NOT NULL DEFAULT 1;
 ALTER TABLE aulas_profesor ADD FOREIGN KEY (id_gestion) REFERENCES gestiones_academicas(id_gestion) ON DELETE CASCADE;
+-- Aulas activas/eliminadas (compatibilidad con backend)
+-- Ya se definen en CREATE TABLE aulas_profesor, por lo que no se alteran aquí para evitar duplicados
 
 -- Agregar restricción única que incluye la gestión y el estado activo
 -- Esto permite que la misma combinación exista si una está eliminada (activa=FALSE)
@@ -313,94 +303,14 @@ ALTER TABLE centralizacion_notas ADD COLUMN id_gestion INT NOT NULL DEFAULT 1;
 ALTER TABLE centralizacion_notas ADD FOREIGN KEY (id_gestion) REFERENCES gestiones_academicas(id_gestion) ON DELETE CASCADE;
 
 -- Tabla de configuración del sistema
-CREATE TABLE IF NOT EXISTS configuracion_sistema (
-  id_config INT AUTO_INCREMENT PRIMARY KEY,
-  clave VARCHAR(100) NOT NULL UNIQUE,
-  valor TEXT NOT NULL,
-  descripcion VARCHAR(255),
-  fecha_modificacion DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
--- Tabla para plantillas de aulas (para reutilizar configuraciones)
-CREATE TABLE IF NOT EXISTS plantillas_aula (
-  id_plantilla INT AUTO_INCREMENT PRIMARY KEY,
-  nombre VARCHAR(100) NOT NULL,
-  id_colegio INT NOT NULL,
-  id_nivel INT NOT NULL,
-  id_curso INT NOT NULL,
-  id_paralelo INT NOT NULL,
-  id_materia INT NOT NULL,
-  max_estudiantes INT DEFAULT 50,
-  descripcion VARCHAR(255),
-  activa BOOLEAN DEFAULT TRUE,
-  fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (id_colegio) REFERENCES colegios(id_colegio) ON DELETE CASCADE,
-  FOREIGN KEY (id_nivel) REFERENCES niveles(id_nivel) ON DELETE CASCADE,
-  FOREIGN KEY (id_curso) REFERENCES cursos(id_curso) ON DELETE CASCADE,
-  FOREIGN KEY (id_paralelo) REFERENCES paralelos(id_paralelo) ON DELETE CASCADE,
-  FOREIGN KEY (id_materia) REFERENCES materias(id_materia) ON DELETE CASCADE
-);
-
--- Tabla de asignación de profesores a plantillas (para el próximo año)
-CREATE TABLE IF NOT EXISTS asignaciones_plantilla (
-  id_asignacion INT AUTO_INCREMENT PRIMARY KEY,
-  id_plantilla INT NOT NULL,
-  id_profesor INT NOT NULL,
-  id_gestion INT NOT NULL,
-  confirmada BOOLEAN DEFAULT FALSE,
-  fecha_asignacion DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (id_plantilla) REFERENCES plantillas_aula(id_plantilla) ON DELETE CASCADE,
-  FOREIGN KEY (id_profesor) REFERENCES profesores(id_profesor) ON DELETE CASCADE,
-  FOREIGN KEY (id_gestion) REFERENCES gestiones_academicas(id_gestion) ON DELETE CASCADE,
-  UNIQUE KEY unique_asignacion (id_plantilla, id_profesor, id_gestion)
-);
-
--- Tabla de historial de estudiantes (para seguimiento entre años)
-CREATE TABLE IF NOT EXISTS historial_estudiantes (
-  id_historial INT AUTO_INCREMENT PRIMARY KEY,
-  id_estudiante INT NOT NULL,
-  id_gestion INT NOT NULL,
-  id_colegio INT NOT NULL,
-  id_nivel INT NOT NULL,
-  id_curso INT NOT NULL,
-  id_paralelo INT NOT NULL,
-  estado VARCHAR(20) DEFAULT 'ACTIVO', -- ACTIVO, RETIRADO, PROMOVIDO, REPROBADO
-  promedio_general DECIMAL(5,2),
-  observaciones TEXT,
-  fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (id_estudiante) REFERENCES estudiantes(id_estudiante) ON DELETE CASCADE,
-  FOREIGN KEY (id_gestion) REFERENCES gestiones_academicas(id_gestion) ON DELETE CASCADE,
-  FOREIGN KEY (id_colegio) REFERENCES colegios(id_colegio) ON DELETE CASCADE,
-  FOREIGN KEY (id_nivel) REFERENCES niveles(id_nivel) ON DELETE CASCADE,
-  FOREIGN KEY (id_curso) REFERENCES cursos(id_curso) ON DELETE CASCADE,
-  FOREIGN KEY (id_paralelo) REFERENCES paralelos(id_paralelo) ON DELETE CASCADE,
-  UNIQUE KEY unique_historial (id_estudiante, id_gestion, id_colegio, id_nivel, id_curso, id_paralelo)
-);
+-- (Tablas avanzadas removidas por no uso actual)
 
 -- Insertar gestion academica actual (calendario escolar boliviano)
 INSERT INTO gestiones_academicas (nombre, anio, fecha_inicio, fecha_fin, activa, descripcion) VALUES 
 ('Gestión 2025', 2025, '2025-02-05', '2025-12-04', TRUE, 'Año académico 2025 - Calendario escolar boliviano');
 
 -- Insertar configuraciones del sistema
-INSERT INTO configuracion_sistema (clave, valor, descripcion) VALUES 
-('gestion_activa', '1', 'ID de la gestión académica activa'),
-('auto_promover_estudiantes', 'false', 'Promover automáticamente estudiantes al siguiente curso'),
-('permitir_inscripcion_multiple', 'false', 'Permitir que un estudiante esté en múltiples aulas del mismo curso'),
-('backup_automatico', 'true', 'Realizar backup automático al finalizar gestión');
-
--- Insertar algunas notificaciones de ejemplo
-INSERT INTO notifications (user_id, title, message, type, `read`, created_at)
-SELECT u.id_usuario, 'Bienvenido al sistema', 'Gracias por usar nuestro sistema académico. Aquí podrás gestionar tus aulas y estudiantes.', 'info', false, NOW()
-FROM usuarios u WHERE u.usuario = 'admin'
-UNION ALL
-SELECT u.id_usuario, 'Recordatorio de notas', 'Recuerda que debes ingresar las notas del primer parcial antes del viernes.', 'warning', false, NOW() - INTERVAL 1 DAY
-FROM usuarios u WHERE u.usuario = 'admin'
-UNION ALL
-SELECT u.id_usuario, 'Actualización del sistema', 'El sistema ha sido actualizado con nuevas funcionalidades.', 'info', true, NOW() - INTERVAL 2 DAY
-FROM usuarios u WHERE u.usuario = 'admin'
-UNION ALL
-SELECT u.id_usuario, 'Centralización completada', 'La centralización de notas del curso 1A se ha completado exitosamente.', 'success', false, NOW() - INTERVAL 3 DAY
-FROM usuarios u WHERE u.usuario = 'admin';
+-- (Se elimina configuración_sistema por no uso)
 
 -- Índice para consultas eficientes de aulas activas
 CREATE INDEX idx_aulas_activas ON aulas_profesor(activa, id_gestion);

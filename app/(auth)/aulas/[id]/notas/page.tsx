@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,7 @@ import { Progress } from "@/components/ui/progress"
 import { useTrimestreGlobal } from "@/hooks/use-trimestre-global"
 import { useGestionGlobal } from "@/hooks/use-gestion-global"
 import { useAuth } from "@/lib/auth-provider"
+import * as XLSX from "xlsx"
 import {
     ArrowLeft,
     Check,
@@ -72,6 +73,8 @@ export default function NotasPage() {
     const [notasPorTrimestre, setNotasPorTrimestre] = useState<Record<number, Record<number, Nota>>>({ 1: {}, 2: {}, 3: {} })
     const [isLoading, setIsLoading] = useState(true)
     const [isSaving, setIsSaving] = useState(false)
+    const [isImporting, setIsImporting] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
     const [hasChanges, setHasChanges] = useState(false)
     const [isCentralizing, setIsCentralizing] = useState(false)
     const [showConfirmCentralizar, setShowConfirmCentralizar] = useState(false)
@@ -241,6 +244,120 @@ export default function NotasPage() {
             })
         } finally {
             setIsSaving(false)
+        }
+    }
+
+    const stripDiacritics = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    const normalizeName = (s: string) => {
+        return stripDiacritics(s)
+            .toLowerCase()
+            .replace(/[^a-z\s]/g, ' ') // quitar puntuación/números
+            .replace(/\s+/g, ' ')
+            .trim()
+    }
+    const connectors = new Set(['de','del','la','las','los','y','e'])
+    const tokenize = (s: string) => normalizeName(s).split(' ').filter(t => t && !connectors.has(t) && t.length > 1)
+    const keySorted = (tokens: string[]) => tokens.slice().sort().join(' ')
+
+    const handleImportClick = () => fileInputRef.current?.click()
+
+    const handleImportNotasFromExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        if (!trimestreGlobal) {
+            toast({ title: "Selecciona trimestre", description: "Define el trimestre antes de importar", variant: "destructive" })
+            e.target.value = ""
+            return
+        }
+        try {
+            setIsImporting(true)
+            const data = await file.arrayBuffer()
+            const workbook = XLSX.read(data, { type: "array" })
+            const sheetName = workbook.SheetNames[0]
+            const worksheet = workbook.Sheets[sheetName]
+            const rows: any[] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" })
+
+            if (!Array.isArray(estudiantes) || estudiantes.length === 0) {
+                toast({ title: "Sin lista", description: "Aún no se cargan los estudiantes del aula", variant: "destructive" })
+                return
+            }
+
+            // Construir mapa de estudiantes por varias claves de coincidencia y lista para búsqueda difusa
+            const matchMap = new Map<string, { inscripcion_id: number; id: number }>()
+            const candidates: { key: string; tokens: string[]; inscripcion_id: number; id: number }[] = []
+            for (const est of estudiantes) {
+                const full = `${est.nombres || ''} ${est.apellidos || ''}`
+                const alt = `${est.apellidos || ''} ${est.nombres || ''}`
+                const t1 = tokenize(full)
+                const t2 = tokenize(alt)
+                const k1 = t1.join(' ')
+                const k2 = t2.join(' ')
+                const ks = keySorted(t1)
+                // insertar múltiples llaves para robustez
+                if (k1) matchMap.set(k1, { inscripcion_id: est.inscripcion_id, id: est.id })
+                if (k2) matchMap.set(k2, { inscripcion_id: est.inscripcion_id, id: est.id })
+                if (ks) matchMap.set(ks, { inscripcion_id: est.inscripcion_id, id: est.id })
+                candidates.push({ key: k1 || ks || k2, tokens: t1.length ? t1 : t2, inscripcion_id: est.inscripcion_id, id: est.id })
+            }
+
+            let matched = 0
+            let invalid = 0
+            let notFound = 0
+            const updates: Record<number, Nota> = {}
+            const t = parseInt(trimestreGlobal)
+
+            // Similar al ejemplo dado: comienza en fila 10, nombre en columna B (1), nota en AD (29)
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i] as any[]
+                if (!row) continue
+                const nombre = String(row[1] || "").trim()
+                const notaRaw = row[29]
+                if (!nombre) continue
+                const tokens = tokenize(nombre)
+                const keyA = tokens.join(' ')
+                const keyB = keySorted(tokens)
+                let target = matchMap.get(keyA) || matchMap.get(keyB)
+                // Fallback: mejor coincidencia por intersección de tokens (>=2)
+                if (!target && tokens.length) {
+                    let best: { c: number; inscripcion_id: number; id: number } | null = null
+                    const tokSet = new Set(tokens)
+                    for (const c of candidates) {
+                        let inter = 0
+                        for (const tkn of c.tokens) if (tokSet.has(tkn)) inter++
+                        if (inter >= 2) {
+                            if (!best || inter > best.c) best = { c: inter, inscripcion_id: c.inscripcion_id, id: c.id }
+                        }
+                    }
+                    if (best) target = { inscripcion_id: best.inscripcion_id, id: best.id }
+                }
+                if (!target) { notFound++; continue }
+
+                const notaVal = Number(notaRaw)
+                if (!isFinite(notaVal)) { invalid++; continue }
+                const bounded = Math.max(0, Math.min(100, notaVal))
+                updates[target.inscripcion_id] = { id_inscripcion: target.inscripcion_id, trimestre: t, promedio_final_trimestre: bounded }
+                matched++
+            }
+
+            if (matched === 0) {
+                toast({ title: "Sin coincidencias", description: `No se encontraron estudiantes coincidentes. No se importó nada.`, variant: "destructive" })
+            } else {
+                // Aplicar a estado local y marcar cambios
+                setNotas((prev) => ({ ...prev, ...updates }))
+                setNotasPorTrimestre((prev) => ({
+                    ...prev,
+                    [t]: { ...(prev[t] || {}), ...updates }
+                }))
+                setHasChanges(true)
+
+                toast({ title: "Importación preparada", description: `${matched} coincidentes. ${notFound} no encontrados. ${invalid} inválidos. Revisa y guarda.`, })
+            }
+        } catch (err: any) {
+            console.error("Error importando notas:", err)
+            toast({ title: "Error al importar", description: err?.message || "Archivo inválido" , variant: "destructive" })
+        } finally {
+            setIsImporting(false)
+            e.target.value = ""
         }
     }
 
@@ -464,6 +581,19 @@ export default function NotasPage() {
                 <>
                     <div className="flex justify-end gap-2">
                         <Button
+                            variant="outline"
+                            onClick={handleImportClick}
+                            disabled={isImporting}
+                            title="Importar desde Excel (columna AD)"
+                        >
+                            {isImporting ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <Send className="mr-2 h-4 w-4 rotate-[-90deg]" />
+                            )}
+                            Importar Excel
+                        </Button>
+                        <Button
                             onClick={handleGuardarNotas}
                             disabled={!hasChanges || isSaving}
                         >
@@ -632,7 +762,6 @@ export default function NotasPage() {
                                                     <TableCell>
                                                         <div className="flex flex-col">
                                                             <span className="font-medium">{estudiante.nombre_completo}</span>
-                                                            <span className="text-xs text-muted-foreground">ID: {estudiante.id}</span>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="text-center">{renderCell(1, n1)}</TableCell>
@@ -685,6 +814,8 @@ export default function NotasPage() {
                     </Card>
                 </>
             )}
+            {/* Input oculto para importar */}
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleImportNotasFromExcel} style={{ display: "none" }} />
 
             {hasChanges && (
                 <div className="fixed bottom-4 right-4 bg-yellow-100 border border-yellow-200 rounded-lg p-4 shadow-lg">
