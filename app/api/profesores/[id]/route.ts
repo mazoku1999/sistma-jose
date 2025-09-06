@@ -76,19 +76,16 @@ export async function PUT(
     const { id } = await params
     const profesorId = id
 
-    const {
-      nombre_completo,
-      email,
-      telefono,
-      password,
-      estado,
-      roles,
-      colegios,
-      colegioMaterias
-    } = await request.json()
+    const body = await request.json()
+    const nombre_completo: string | undefined = body.nombre_completo
+    const email: string | undefined = body.email
+    const telefono: string | undefined = body.telefono
+    const password: string | undefined = body.password
+    const estado: string | undefined = body.estado
+    const roles: string[] | undefined = body.roles
 
-    if (!nombre_completo || !email) {
-      return NextResponse.json({ error: "Campos requeridos faltantes" }, { status: 400 })
+    if (!nombre_completo) {
+      return NextResponse.json({ error: "Nombre es requerido" }, { status: 400 })
     }
 
     // Verificar que el profesor existe
@@ -106,8 +103,21 @@ export async function PUT(
 
     try {
       // Actualizar usuario
-      let updateQuery = `UPDATE usuarios SET nombre_completo = ?, email = ?, telefono = ?, activo = ?`
-      let updateParams = [nombre_completo, email, telefono || null, estado === "activo"]
+      let updateQuery = `UPDATE usuarios SET nombre_completo = ?`
+      const updateParams: any[] = [nombre_completo]
+
+      if (typeof email !== "undefined") {
+        updateQuery += `, email = ?`
+        updateParams.push(email && email.trim() !== "" ? email : null)
+      }
+      if (typeof telefono !== "undefined") {
+        updateQuery += `, telefono = ?`
+        updateParams.push(telefono || null)
+      }
+      if (typeof estado !== "undefined") {
+        updateQuery += `, activo = ?`
+        updateParams.push(estado === "activo")
+      }
 
       // Si se proporciona nueva contraseña, incluirla
       if (password && password.trim() !== "") {
@@ -119,6 +129,8 @@ export async function PUT(
       updateQuery += ` WHERE id_usuario = ?`
       updateParams.push(profesorId)
 
+      updateQuery += ` WHERE id_usuario = ?`
+      updateParams.push(profesorId)
       await executeQuery(updateQuery, updateParams)
 
       // Actualizar roles
@@ -144,7 +156,7 @@ export async function PUT(
 
       await executeQuery("COMMIT")
 
-      return NextResponse.json({ message: "Profesor actualizado correctamente" })
+      return NextResponse.json({ message: "Usuario actualizado correctamente" })
     } catch (error) {
       await executeQuery("ROLLBACK")
       throw error

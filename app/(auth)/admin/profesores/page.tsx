@@ -86,11 +86,8 @@ export default function ProfesoresPage() {
   const [formData, setFormData] = useState({
     usuario: "",
     nombre_completo: "",
-    email: "",
-    telefono: "",
     password: "",
-    estado: "activo",
-    roles: ["PROFESOR"] as string[],
+    estado: "activo" as "activo" | "inactivo",
   })
 
   // Asignaciones por colegio (simplificadas)
@@ -155,11 +152,8 @@ export default function ProfesoresPage() {
     setFormData({
       usuario: "",
       nombre_completo: "",
-      email: "",
-      telefono: "",
       password: "",
       estado: "activo",
-      roles: ["PROFESOR"],
     })
     setAsignaciones([])
     setEditingProfesor(null)
@@ -173,11 +167,8 @@ export default function ProfesoresPage() {
       setFormData({
         usuario: profesor.usuario,
         nombre_completo: profesor.nombre_completo,
-        email: profesor.email,
-        telefono: profesor.telefono || "",
         password: "",
         estado: profesor.estado,
-        roles: profesor.roles,
       })
     }
     setOpenDialog(true)
@@ -240,35 +231,7 @@ export default function ProfesoresPage() {
 
   const handleNext = (e: React.MouseEvent) => {
     e.preventDefault()
-
-    // Validar campos requeridos según el paso actual
-    if (currentStep === 1) {
-      if (!formData.nombre_completo || !formData.email) {
-        toast({
-          title: "Campos requeridos",
-          description: "Por favor completa todos los campos obligatorios",
-          variant: "destructive",
-        })
-        return
-      }
-    }
-
-    if (currentStep === 2) {
-      if (!formData.usuario || !formData.password) {
-        toast({
-          title: "Campos requeridos",
-          description: "Por favor completa el usuario y contraseña",
-          variant: "destructive",
-        })
-        return
-      }
-    }
-
-    console.log("Avanzando al paso:", currentStep + 1)
-    console.log("FormData actual:", formData)
-    if (currentStep < 3) {
-      setCurrentStep(currentStep + 1)
-    }
+    // formulario simple: no hay pasos
   }
 
   const handleBack = (e: React.MouseEvent) => {
@@ -283,52 +246,40 @@ export default function ProfesoresPage() {
     setIsSubmitting(true)
 
     try {
-      const dataToSend = {
-        ...formData,
-        asignaciones
-      }
-
-      console.log("Datos a enviar:", dataToSend)
-
       let response
       if (editingProfesor) {
+        const payload: any = { nombre_completo: formData.nombre_completo.trim(), estado: formData.estado }
+        if (formData.password && formData.password.trim() !== "") {
+          payload.password = formData.password
+        }
         response = await fetch(`/api/profesores/${editingProfesor.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(dataToSend),
+          body: JSON.stringify(payload),
         })
       } else {
+        // Validación mínima en creación
+        if (!formData.usuario.trim() || !formData.nombre_completo.trim() || !formData.password.trim()) {
+          toast({ title: "Campos requeridos", description: "Nombre, usuario y contraseña son obligatorios", variant: "destructive" })
+          setIsSubmitting(false)
+          return
+        }
         response = await fetch("/api/profesores", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(dataToSend),
+          body: JSON.stringify({ usuario: formData.usuario.trim(), nombre_completo: formData.nombre_completo.trim(), password: formData.password, estado: formData.estado }),
         })
       }
 
       if (response.ok) {
         const result = await response.json()
 
-        if (editingProfesor) {
-          toast({
-            title: "Éxito",
-            description: "Profesor actualizado correctamente",
-          })
-          handleCloseDialog()
-          fetchProfesores()
-        } else {
-          // Para nuevos profesores, mostrar opción de asignar aula
-          setNewlyCreatedProfesorId(result.id)
-          setNewlyCreatedProfesorName(formData.nombre_completo)
-          setShowAssignAulaAfterCreate(true)
-
-          console.log("Profesor creado - ID recibido:", result.id, "Nombre:", formData.nombre_completo)
-          console.log("Result completo:", result)
-
-          toast({
-            title: "¡Profesor creado exitosamente!",
-            description: "El profesor ha sido registrado. ¿Deseas asignarle un aula ahora para que pueda comenzar a trabajar?",
-          })
-        }
+        toast({
+          title: "Éxito",
+          description: editingProfesor ? "Usuario actualizado" : "Usuario creado",
+        })
+        handleCloseDialog()
+        fetchProfesores()
       } else {
         const error = await response.json()
         toast({
@@ -442,7 +393,7 @@ export default function ProfesoresPage() {
 
   const filteredProfesores = profesores.filter(profesor =>
     profesor.nombre_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    profesor.email.toLowerCase().includes(searchTerm.toLowerCase())
+    (profesor.email ? profesor.email.toLowerCase() : "").includes(searchTerm.toLowerCase())
   )
 
   if (isLoading) {
@@ -470,54 +421,7 @@ export default function ProfesoresPage() {
         </Button>
       </div>
 
-      {/* Stats Panel */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <UserPlus className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Profesores</p>
-                <p className="text-2xl font-bold">{profesores.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <UserCheck className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Con Aulas</p>
-                <p className="text-2xl font-bold">
-                  {profesores.filter(p => (p.aulas_asignadas || 0) > 0).length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                <School className="h-5 w-5 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Aulas</p>
-                <p className="text-2xl font-bold">
-                  {profesores.reduce((total, p) => total + (p.aulas_asignadas || 0), 0)}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Stats Panel removido por simplificación de UI */}
 
       {/* Search */}
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
@@ -647,271 +551,69 @@ export default function ProfesoresPage() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingProfesor ? "Editar Profesor" : "Nuevo Profesor"}
+              {editingProfesor ? "Editar Usuario" : "Nuevo Usuario"}
             </DialogTitle>
             <DialogDescription>
-              {editingProfesor
-                ? "Actualiza la información del profesor y sus asignaciones"
-                : "Completa la información del profesor y asigna colegios y materias"}
+              Formulario simple: nombre, usuario, contraseña y estado
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Step 1: Información Personal */}
-            {currentStep === 1 && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
-                    1
-                  </div>
-                  <h3 className="text-lg font-medium">Información Personal</h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="nombre_completo">Nombre completo *</Label>
-                    <Input
-                      id="nombre_completo"
-                      name="nombre_completo"
-                      value={formData.nombre_completo}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email *</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="telefono">Teléfono</Label>
-                    <Input
-                      id="telefono"
-                      name="telefono"
-                      value={formData.telefono}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="nombre_completo">Nombre completo *</Label>
+                <Input
+                  id="nombre_completo"
+                  name="nombre_completo"
+                  value={formData.nombre_completo}
+                  onChange={handleInputChange}
+                  required
+                />
               </div>
-            )}
-
-            {/* Step 2: Acceso y Roles */}
-            {currentStep === 2 && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
-                    2
-                  </div>
-                  <h3 className="text-lg font-medium">Acceso y Roles</h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="usuario">Usuario *</Label>
-                    <Input
-                      id="usuario"
-                      name="usuario"
-                      value={formData.usuario}
-                      onChange={handleInputChange}
-                      required
-                      disabled={!!editingProfesor}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">
-                      {editingProfesor ? "Nueva contraseña (opcional)" : "Contraseña *"}
-                    </Label>
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      required={!editingProfesor}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Estado</Label>
-                    <Select
-                      value={formData.estado}
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, estado: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="activo">Activo</SelectItem>
-                        <SelectItem value="inactivo">Inactivo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Roles</Label>
-                    <div className="flex gap-4 pt-2">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="role-profesor"
-                          checked={formData.roles.includes("PROFESOR")}
-                          onCheckedChange={(checked) => handleRoleChange("PROFESOR", checked as boolean)}
-                        />
-                        <Label htmlFor="role-profesor">Profesor</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="role-admin"
-                          checked={formData.roles.includes("ADMIN")}
-                          onCheckedChange={(checked) => handleRoleChange("ADMIN", checked as boolean)}
-                        />
-                        <Label htmlFor="role-admin">Administrador</Label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="usuario">Usuario *</Label>
+                <Input
+                  id="usuario"
+                  name="usuario"
+                  value={formData.usuario}
+                  onChange={handleInputChange}
+                  required
+                  disabled={!!editingProfesor}
+                />
               </div>
-            )}
-
-            {/* Step 3: Asignaciones por Colegio (Simplificado) */}
-            {currentStep === 3 && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
-                    3
-                  </div>
-                  <h3 className="text-lg font-medium">Asignaciones por Colegio</h3>
-                </div>
-                <p className="text-sm text-muted-foreground mb-6">
-                  Selecciona los colegios donde trabajará el profesor y las materias que puede enseñar en cada uno.
-                  <br />
-                  <strong>Nota:</strong> Los niveles, cursos y paralelos específicos se asignarán cuando el profesor cree sus aulas.
-                </p>
-
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                  <div className="flex items-start gap-3">
-                    <UserCheck className="h-5 w-5 text-blue-600 mt-0.5" />
-                    <div>
-                      <h4 className="font-medium text-blue-800 mb-1">Próximo paso: Asignación de Aulas</h4>
-                      <p className="text-sm text-blue-700">
-                        Después de crear el profesor, podrás asignarle aulas específicas con materias, cursos y paralelos.
-                        Esto le permitirá gestionar estudiantes y calificaciones.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  {colegios.map((colegio) => {
-                    const asignacion = asignaciones.find(a => a.colegioId === colegio.id)
-                    const isSelected = !!asignacion
-
-                    return (
-                      <Card key={colegio.id} className={isSelected ? "border-primary/50 bg-primary/5" : ""}>
-                        <CardHeader className="pb-3">
-                          <div className="flex items-center space-x-3">
-                            <Checkbox
-                              id={`colegio-${colegio.id}`}
-                              checked={isSelected}
-                              onCheckedChange={() => handleColegioToggle(colegio.id)}
-                            />
-                            <div className="flex items-center gap-2">
-                              <School className="h-5 w-5 text-primary" />
-                              <Label htmlFor={`colegio-${colegio.id}`} className="text-base font-medium cursor-pointer">
-                                {colegio.nombre}
-                              </Label>
-                            </div>
-                          </div>
-                        </CardHeader>
-
-                        {isSelected && (
-                          <CardContent className="pt-0">
-                            <Separator className="mb-4" />
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <BookOpen className="h-4 w-4 text-muted-foreground" />
-                                  <Label className="text-sm font-medium">
-                                    Materias que puede enseñar:
-                                  </Label>
-                                </div>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleSelectAllMaterias(colegio.id)}
-                                >
-                                  Seleccionar todas
-                                </Button>
-                              </div>
-
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4 bg-muted/30 rounded-lg max-h-48 overflow-y-auto">
-                                {materias.map((materia) => (
-                                  <div key={materia.id} className="flex items-center space-x-2">
-                                    <Checkbox
-                                      id={`colegio-${colegio.id}-materia-${materia.id}`}
-                                      checked={asignacion?.materias.includes(materia.id) || false}
-                                      onCheckedChange={() => handleMateriaToggle(colegio.id, materia.id)}
-                                    />
-                                    <Label
-                                      htmlFor={`colegio-${colegio.id}-materia-${materia.id}`}
-                                      className="text-sm cursor-pointer"
-                                    >
-                                      {materia.nombre_completo}
-                                    </Label>
-                                  </div>
-                                ))}
-                              </div>
-
-                              {asignacion && asignacion.materias.length > 0 && (
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <Users className="h-3 w-3" />
-                                  <span>{asignacion.materias.length} materia(s) seleccionada(s)</span>
-                                </div>
-                              )}
-                            </div>
-                          </CardContent>
-                        )}
-                      </Card>
-                    )
-                  })}
-                </div>
-
-                {asignaciones.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <School className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>Selecciona al menos un colegio para continuar</p>
-                  </div>
-                )}
+              <div className="space-y-2">
+                <Label>Estado</Label>
+                <Select
+                  value={formData.estado}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, estado: value as "activo" | "inactivo" }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="activo">Activo</SelectItem>
+                    <SelectItem value="inactivo">Inactivo</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            )}
-
-            {/* Navigation */}
-            <div className="flex items-center justify-between pt-6 border-t">
-              <div className="text-sm text-muted-foreground">
-                Paso {currentStep} de 3
+              <div className="space-y-2">
+                <Label htmlFor="password">{editingProfesor ? "Nueva contraseña (opcional)" : "Contraseña *"}</Label>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  required={!editingProfesor}
+                />
               </div>
-              <div className="flex gap-2">
-                {currentStep > 1 && (
-                  <Button type="button" variant="outline" onClick={handleBack}>
-                    Anterior
-                  </Button>
-                )}
-                {currentStep < 3 ? (
-                  <Button type="button" onClick={handleNext}>
-                    Siguiente
-                  </Button>
-                ) : (
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {editingProfesor ? "Actualizar" : "Crear"} Profesor
-                  </Button>
-                )}
-              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-4 border-t">
+              <Button type="button" variant="outline" onClick={handleCloseDialog}>Cancelar</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {editingProfesor ? "Actualizar" : "Crear"} Usuario
+              </Button>
             </div>
           </form>
         </DialogContent>

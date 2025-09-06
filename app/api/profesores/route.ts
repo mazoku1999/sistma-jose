@@ -67,32 +67,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    const {
-      usuario,
-      nombre_completo,
-      email,
-      telefono,
-      password,
-      estado,
-      roles,
-      asignaciones
-    } = await request.json()
+    const body = await request.json()
+    const usuario: string | undefined = body.usuario
+    const nombre_completo: string | undefined = body.nombre_completo
+    const email: string | undefined = body.email
+    const telefono: string | undefined = body.telefono
+    const estado: string | undefined = body.estado
+    const roles: string[] | undefined = body.roles
+    let password: string | undefined = body.password
 
-    if (!usuario || !nombre_completo || !email || !password) {
-      return NextResponse.json({ error: "Campos requeridos faltantes" }, { status: 400 })
+    if (!usuario || !nombre_completo) {
+      return NextResponse.json({ error: "Usuario y nombre son requeridos" }, { status: 400 })
     }
 
     // Verificar si el usuario ya existe
     const existingUser = await executeQuery<any[]>(
-      "SELECT id_usuario FROM usuarios WHERE usuario = ? OR email = ?",
-      [usuario, email]
+      email && email.trim() !== ""
+        ? "SELECT id_usuario FROM usuarios WHERE usuario = ? OR email = ?"
+        : "SELECT id_usuario FROM usuarios WHERE usuario = ?",
+      email && email.trim() !== "" ? [usuario, email] : [usuario]
     )
 
     if (existingUser.length > 0) {
       return NextResponse.json({ error: "El usuario o email ya existe" }, { status: 400 })
     }
 
-    // Encriptar contraseña
+    // Generar contraseña temporal si no se envía
+    let generatedTemp = false
+    if (!password || password.trim() === "") {
+      const tmp = Math.random().toString(36).slice(-10)
+      password = tmp
+      generatedTemp = true
+    }
     const hashedPassword = await bcrypt.hash(password, 10)
 
     // Iniciar transacción
@@ -103,7 +109,14 @@ export async function POST(request: Request) {
       const userResult = await executeQuery<any>(
         `INSERT INTO usuarios (usuario, password, nombre_completo, email, telefono, activo) 
          VALUES (?, ?, ?, ?, ?, ?)`,
-        [usuario, hashedPassword, nombre_completo, email, telefono || null, estado === "activo"]
+        [
+          usuario,
+          hashedPassword,
+          nombre_completo,
+          email && email.trim() !== "" ? email : null,
+          telefono || null,
+          estado ? estado === "activo" : true,
+        ]
       )
 
       const userId = userResult.insertId
@@ -137,33 +150,21 @@ export async function POST(request: Request) {
       console.log("Profesores antes del commit:", profesoresAntes)
 
       // Asignar roles
-      if (roles && Array.isArray(roles)) {
-        for (const roleName of roles) {
-          const roleResult = await executeQuery<any[]>(
-            "SELECT id_rol FROM roles WHERE nombre = ?",
-            [roleName]
+      const desiredRoles = roles && Array.isArray(roles) && roles.length > 0 ? roles : ["PROFESOR"]
+      for (const roleName of desiredRoles) {
+        const roleResult = await executeQuery<any[]>(
+          "SELECT id_rol FROM roles WHERE nombre = ?",
+          [roleName]
+        )
+        if (roleResult.length > 0) {
+          await executeQuery(
+            "INSERT INTO usuario_roles (id_usuario, id_rol) VALUES (?, ?)",
+            [userId, roleResult[0].id_rol]
           )
-
-          if (roleResult.length > 0) {
-            await executeQuery(
-              "INSERT INTO usuario_roles (id_usuario, id_rol) VALUES (?, ?)",
-              [userId, roleResult[0].id_rol]
-            )
-          }
         }
       }
 
-      // Crear asignaciones por colegio-materia (para futuro uso en creación de aulas)
-      if (asignaciones && Array.isArray(asignaciones)) {
-        for (const asignacion of asignaciones) {
-          if (asignacion.colegioId && Array.isArray(asignacion.materias)) {
-            for (const materiaId of asignacion.materias) {
-              // Aquí podrías crear una tabla de asignaciones profesor-colegio-materia
-              // Por ahora, esta información se usará cuando el profesor cree aulas
-            }
-          }
-        }
-      }
+      // Nota: se omiten asignaciones de colegio/materia en este flujo básico
 
       await executeQuery("COMMIT")
 
@@ -196,8 +197,9 @@ export async function POST(request: Request) {
         id: profesorIdFinal,
         usuario,
         nombre_completo,
-        email,
-        message: "Profesor creado correctamente"
+        email: email || null,
+        message: "Usuario creado correctamente",
+        tempPassword: generatedTemp ? password : undefined,
       })
     } catch (error) {
       await executeQuery("ROLLBACK")

@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Loader2, Search, ArrowRight, Check } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader as DialogHeaderUI, DialogTitle as DialogTitleUI } from "@/components/ui/dialog"
 import { useToast } from "@/components/ui/use-toast"
+import { Checkbox } from "@/components/ui/checkbox"
 
 type Aula = {
     id: number
@@ -46,6 +47,7 @@ export default function AsignacionEstudiantesAdminPage() {
     // Inscritos actuales (para remover)
     const [inscritos, setInscritos] = useState<Estudiante[]>([])
     const [inscritosLoading, setInscritosLoading] = useState(false)
+    const [selectedInscritos, setSelectedInscritos] = useState<number[]>([])
 
     // Crear estudiante rápido
     const [createOpen, setCreateOpen] = useState(false)
@@ -54,19 +56,24 @@ export default function AsignacionEstudiantesAdminPage() {
     const [creating, setCreating] = useState(false)
 
     useEffect(() => {
-        const loadAulas = async () => {
-            setAulasLoading(true)
+        let active = true
+        setAulasLoading(true)
+        const t = setTimeout(async () => {
             try {
                 const res = await fetch(`/api/aulas/admin?search=${encodeURIComponent(searchAula)}&page=1&size=20`)
+                if (!active) return
                 if (res.ok) {
                     const data = await res.json()
                     setAulas(data.data)
                 }
             } finally {
-                setAulasLoading(false)
+                if (active) setAulasLoading(false)
             }
+        }, 300)
+        return () => {
+            active = false
+            clearTimeout(t)
         }
-        loadAulas()
     }, [searchAula])
 
     // Preselección si llega ?aulaId=xxx
@@ -116,6 +123,29 @@ export default function AsignacionEstudiantesAdminPage() {
         }
     }
 
+    // Debounce candidate search
+    useEffect(() => {
+        if (!selectedAula) return
+        let active = true
+        setCandidatosLoading(true)
+        const t = setTimeout(async () => {
+            try {
+                const res = await fetch(`/api/aulas/${selectedAula.id}/estudiantes/available?search=${encodeURIComponent(searchStudent)}&page=${page}&size=${pageSize}`)
+                if (!active) return
+                if (res.ok) {
+                    const data = await res.json()
+                    setCandidatos(data.data)
+                }
+            } finally {
+                if (active) setCandidatosLoading(false)
+            }
+        }, 300)
+        return () => {
+            active = false
+            clearTimeout(t)
+        }
+    }, [selectedAula, searchStudent, page])
+
     const loadInscritos = async () => {
         if (!selectedAula) return
         setInscritosLoading(true)
@@ -129,6 +159,15 @@ export default function AsignacionEstudiantesAdminPage() {
             setInscritosLoading(false)
         }
     }
+
+    // When aula changes, refresh lists and clear selections
+    useEffect(() => {
+        if (!selectedAula) return
+        setSelectedIds([])
+        setSelectedInscritos([])
+        setPage(1)
+        loadInscritos()
+    }, [selectedAula])
 
     useEffect(() => {
         if (selectedAula) {
@@ -183,12 +222,23 @@ export default function AsignacionEstudiantesAdminPage() {
         if (res.ok) {
             toast({ title: "Estudiantes removidos" })
             setInscritos((prev) => prev.filter((e) => !ids.includes(e.id)))
+            setSelectedInscritos((prev) => prev.filter((id) => !ids.includes(id)))
             setSelectedAula((prev) => (prev ? { ...prev, inscritos: Math.max(0, prev.inscritos - ids.length) } : prev))
         } else {
             const err = await res.json().catch(() => ({}))
             toast({ title: "Error al remover", description: err.error || "", variant: "destructive" })
         }
     }
+
+    const toggleInscrito = (id: number) => {
+        setSelectedInscritos((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+    }
+
+    const selectAllInscritos = () => {
+        setSelectedInscritos(inscritos.map((i) => i.id))
+    }
+
+    const clearInscritosSelection = () => setSelectedInscritos([])
 
     const handleCreateStudent = async () => {
         if (!selectedAula) return
@@ -339,7 +389,17 @@ export default function AsignacionEstudiantesAdminPage() {
                         <CardContent className="space-y-3">
                             <div className="flex items-center justify-between">
                                 <div className="font-medium">Inscritos</div>
-                                <div className="text-xs text-muted-foreground">{inscritos.length} estudiante(s)</div>
+                                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                    <span>{inscritos.length} estudiante(s)</span>
+                                    <span>Seleccionados: {selectedInscritos.length}</span>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Button variant="outline" size="sm" onClick={selectAllInscritos} disabled={inscritos.length === 0}>Seleccionar todos</Button>
+                                <Button variant="ghost" size="sm" onClick={clearInscritosSelection} disabled={selectedInscritos.length === 0}>Limpiar selección</Button>
+                                <Button size="sm" variant="destructive" onClick={() => handleRemove(selectedInscritos)} disabled={selectedInscritos.length === 0}>
+                                    Remover seleccionados
+                                </Button>
                             </div>
                             {inscritosLoading ? (
                                 <div className="flex items-center justify-center py-8">
@@ -349,7 +409,14 @@ export default function AsignacionEstudiantesAdminPage() {
                                 <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
                                     {inscritos.map((e) => (
                                         <div key={e.id} className="flex items-center justify-between rounded border p-2">
-                                            <div className="text-sm">{e.nombre_completo}</div>
+                                            <div className="flex items-center gap-2">
+                                                <Checkbox
+                                                    checked={selectedInscritos.includes(e.id)}
+                                                    onCheckedChange={() => toggleInscrito(e.id)}
+                                                    aria-label={`Seleccionar ${e.nombre_completo}`}
+                                                />
+                                                <div className="text-sm">{e.nombre_completo}</div>
+                                            </div>
                                             <Button variant="outline" size="sm" onClick={() => handleRemove([e.id])}>
                                                 Remover
                                             </Button>
@@ -395,5 +462,3 @@ export default function AsignacionEstudiantesAdminPage() {
         </div>
     )
 }
-
-

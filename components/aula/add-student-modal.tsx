@@ -27,11 +27,22 @@ export default function AddStudentModal({
         nombres: "",
         apellidos: ""
     })
+    const [errors, setErrors] = useState<{ nombres?: string; apellidos?: string }>({})
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         
-        if (!newStudent.nombres.trim() || !newStudent.apellidos.trim()) {
+        const trimmed = {
+            nombres: newStudent.nombres.replace(/\s+/g, " ").trim(),
+            apellidos: newStudent.apellidos.replace(/\s+/g, " ").trim(),
+        }
+
+        const localErrors: { nombres?: string; apellidos?: string } = {}
+        if (!trimmed.nombres) localErrors.nombres = "Ingresa los nombres"
+        if (!trimmed.apellidos) localErrors.apellidos = "Ingresa los apellidos"
+
+        if (localErrors.nombres || localErrors.apellidos) {
+            setErrors(localErrors)
             toast({
                 title: "Campos requeridos",
                 description: "Nombres y apellidos son obligatorios",
@@ -48,8 +59,8 @@ export default function AddStudentModal({
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    nombres: newStudent.nombres.trim(),
-                    apellidos: newStudent.apellidos.trim()
+                    nombres: trimmed.nombres,
+                    apellidos: trimmed.apellidos
                 })
             })
 
@@ -61,6 +72,7 @@ export default function AddStudentModal({
                 
                 // Limpiar formulario
                 setNewStudent({ nombres: "", apellidos: "" })
+                setErrors({})
                 onClose()
                 onStudentAdded()
             } else {
@@ -86,6 +98,7 @@ export default function AddStudentModal({
     const handleClose = () => {
         if (!isLoading) {
             setNewStudent({ nombres: "", apellidos: "" })
+            setErrors({})
             onClose()
         }
     }
@@ -111,11 +124,18 @@ export default function AddStudentModal({
                         <Input
                             id="nombres"
                             placeholder="Ej: Juan Carlos"
+                            autoFocus
+                            maxLength={80}
+                            aria-invalid={!!errors.nombres}
+                            aria-describedby={errors.nombres ? "nombres-error" : undefined}
                             value={newStudent.nombres}
                             onChange={(e) => setNewStudent(prev => ({ ...prev, nombres: e.target.value }))}
                             disabled={isLoading}
                             className="w-full"
                         />
+                        {errors.nombres && (
+                            <p id="nombres-error" className="text-xs text-red-600">{errors.nombres}</p>
+                        )}
                     </div>
                     
                     <div className="space-y-2">
@@ -125,11 +145,17 @@ export default function AddStudentModal({
                         <Input
                             id="apellidos"
                             placeholder="Ej: Pérez García"
+                            maxLength={80}
+                            aria-invalid={!!errors.apellidos}
+                            aria-describedby={errors.apellidos ? "apellidos-error" : undefined}
                             value={newStudent.apellidos}
                             onChange={(e) => setNewStudent(prev => ({ ...prev, apellidos: e.target.value }))}
                             disabled={isLoading}
                             className="w-full"
                         />
+                        {errors.apellidos && (
+                            <p id="apellidos-error" className="text-xs text-red-600">{errors.apellidos}</p>
+                        )}
                     </div>
                     
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">

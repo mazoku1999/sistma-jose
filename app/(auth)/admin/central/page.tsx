@@ -19,6 +19,7 @@ import {
     Filter
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/lib/auth-provider"
 
 interface Estudiante {
     id_estudiante: number
@@ -42,6 +43,7 @@ interface SelectOption {
 
 export default function CentralPage() {
     const { toast } = useToast()
+    const { user, isLoading: isAuthLoading } = useAuth()
 
     const [colegios, setColegios] = useState<SelectOption[]>([])
     const [niveles, setNiveles] = useState<SelectOption[]>([])
@@ -60,11 +62,11 @@ export default function CentralPage() {
     const [isLoading, setIsLoading] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [hasChanges, setHasChanges] = useState(false)
-    const [canCentralize, setCanCentralize] = useState(false)
+    // Derivar permisos directamente del usuario autenticado
+    const canCentralize = !!user?.roles?.includes("ADMIN")
 
     useEffect(() => {
         fetchSelectOptions()
-        checkCentralizationPermission()
     }, [])
 
     useEffect(() => {
@@ -92,17 +94,7 @@ export default function CentralPage() {
         }
     }
 
-    const checkCentralizationPermission = async () => {
-        try {
-            const response = await fetch("/api/central/permission")
-            if (response.ok) {
-                const data = await response.json()
-                setCanCentralize(data.canCentralize)
-            }
-        } catch (error) {
-            console.error("Error al verificar permisos:", error)
-        }
-    }
+    // Eliminado: verificación de permisos por API. Middleware + useAuth cubren esto.
 
     const fetchEstudiantesYNotas = async () => {
         if (!selectedColegio || !selectedNivel || !selectedCurso || !selectedParalelo) return
@@ -285,6 +277,18 @@ export default function CentralPage() {
     }
 
     const stats = getEstadisticas()
+
+    // Mostrar loader mientras se resuelve la sesión para evitar parpadeo
+    if (isAuthLoading) {
+        return (
+            <div className="flex items-center justify-center h-full py-12">
+                <div className="text-center">
+                    <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+                    <p className="mt-4 text-muted-foreground">Verificando permisos…</p>
+                </div>
+            </div>
+        )
+    }
 
     if (!canCentralize) {
         return (

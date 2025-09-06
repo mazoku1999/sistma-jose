@@ -66,16 +66,17 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    if (user) {
-      fetchDashboardData()
-    }
+    if (!user) return
+    const controller = new AbortController()
+    fetchDashboardData(controller.signal)
+    return () => controller.abort()
   }, [user])
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (signal?: AbortSignal) => {
     setIsLoading(true)
     try {
       // Obtener estadísticas del dashboard
-      const response = await fetch("/api/dashboard/stats")
+      const response = await fetch("/api/dashboard/stats", { signal })
       if (response.ok) {
         const data = await response.json()
         setStats(data)
@@ -83,7 +84,9 @@ export default function DashboardPage() {
         console.error("Error al cargar estadísticas del dashboard")
       }
     } catch (error) {
-      console.error("Error al cargar datos del dashboard:", error)
+      if ((error as any)?.name !== 'AbortError') {
+        console.error("Error al cargar datos del dashboard:", error)
+      }
     } finally {
       setIsLoading(false)
     }

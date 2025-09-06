@@ -29,10 +29,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
   useEffect(() => {
-    // Check if user is logged in
+    // Check if user is logged in (solo al montar o cuando se fuerce)
+    const controller = new AbortController()
     const checkAuth = async () => {
       try {
-        const res = await fetch("/api/auth/session")
+        const res = await fetch("/api/auth/session", { signal: controller.signal })
         if (res.ok) {
           const data = await res.json()
           if (data.user) {
@@ -58,7 +59,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     checkAuth()
-  }, [pathname, router])
+    return () => controller.abort()
+  // No revalidar en cada navegación: el middleware protege rutas.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const login = async (username: string, password: string) => {
     setIsLoading(true)
