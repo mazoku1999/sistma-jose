@@ -11,15 +11,29 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { id_materia, id_colegio, id_nivel, id_curso, id_paralelo, id_gestion } = body
+    let { id_materia, id_colegio, id_nivel, id_curso, id_paralelo, id_gestion } = body
 
     if (!id_materia) {
       return NextResponse.json({ error: "Materia requerida" }, { status: 400 })
     }
 
+    // Normalizar id_gestion si viene como string/no numérico
+    const gestionParsed = Number.parseInt(String(id_gestion || ''))
+    if (!Number.isFinite(gestionParsed) || gestionParsed <= 0) {
+      // Usar la gestión activa por defecto
+      const gestionActiva = await executeQuery<any[]>("SELECT id_gestion FROM gestiones_academicas WHERE activa = TRUE LIMIT 1")
+      if (gestionActiva && gestionActiva.length > 0) {
+        id_gestion = gestionActiva[0].id_gestion
+      } else {
+        id_gestion = undefined
+      }
+    } else {
+      id_gestion = gestionParsed
+    }
+
     // Construir la consulta dinámicamente según los campos proporcionados
     let whereConditions = ["ap.id_materia = ?"]
-    let queryParams = [id_materia]
+    let queryParams: any[] = [id_materia]
 
     if (id_colegio) {
       whereConditions.push("ap.id_colegio = ?")

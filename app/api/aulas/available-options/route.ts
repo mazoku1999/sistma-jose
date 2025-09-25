@@ -12,10 +12,20 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url)
     const materiaId = searchParams.get('materia')
-    const gestionId = searchParams.get('gestion')
+    const gestionRaw = searchParams.get('gestion')
+    const gestionParsed = Number.parseInt(gestionRaw || '')
+    let gestionId: number | null = Number.isFinite(gestionParsed) && gestionParsed > 0 ? gestionParsed : null
 
     if (!materiaId) {
       return NextResponse.json({ error: "Materia requerida" }, { status: 400 })
+    }
+
+    // Si no se recibe gestión válida, usar la gestión activa por defecto
+    if (!gestionId) {
+      const gestionActiva = await executeQuery<any[]>("SELECT id_gestion FROM gestiones_academicas WHERE activa = TRUE LIMIT 1")
+      if (gestionActiva && gestionActiva.length > 0) {
+        gestionId = Number(gestionActiva[0].id_gestion)
+      }
     }
 
     // Obtener todas las combinaciones ya ocupadas para esta materia (solo aulas activas)
@@ -34,7 +44,7 @@ export async function GET(request: Request) {
       WHERE ap.id_materia = ? AND COALESCE(ap.activa, TRUE) = TRUE
       ${gestionId ? 'AND ap.id_gestion = ?' : ''}
     `
-    
+
     const ocupadasParams = gestionId ? [materiaId, gestionId] : [materiaId]
     const ocupadas = await executeQuery<any[]>(ocupadasQuery, ocupadasParams)
 
@@ -56,7 +66,7 @@ export async function GET(request: Request) {
     // Obtener todas las opciones disponibles
     const [colegios, niveles, cursos, paralelos] = await Promise.all([
       executeQuery<any[]>("SELECT id_colegio as id, nombre FROM colegios ORDER BY nombre"),
-      executeQuery<any[]>("SELECT id_nivel as id, nombre FROM niveles ORDER BY nombre"), 
+      executeQuery<any[]>("SELECT id_nivel as id, nombre FROM niveles ORDER BY nombre"),
       executeQuery<any[]>("SELECT id_curso as id, nombre FROM cursos ORDER BY nombre"),
       executeQuery<any[]>("SELECT id_paralelo as id, letra as nombre FROM paralelos ORDER BY letra")
     ])

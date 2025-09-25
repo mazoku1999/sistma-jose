@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Search, Plus, Filter, SortAsc, SortDesc, Loader2, Lock } from "lucide-react"
 // import CreateAulaWizard from "./create-aula-wizard" // Removido: Los profesores ya no crean aulas
-import AulasListWithActions from "@/components/aula/aulas-list-with-actions"
+import dynamic from "next/dynamic"
+import { Suspense } from "react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +19,17 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+
+const AulasListWithActions = dynamic(() => import("@/components/aula/aulas-list-with-actions"), {
+  ssr: false,
+  loading: () => (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="h-40 bg-muted rounded" />
+      <div className="h-40 bg-muted rounded" />
+      <div className="h-40 bg-muted rounded" />
+    </div>
+  )
+})
 
 interface Aula {
   id: number
@@ -299,13 +311,15 @@ export default function AulasPage() {
       </div>
 
       {/* Componente de lista de aulas con acciones CRUD */}
-      <AulasListWithActions
-        aulas={filteredAulas}
-        onUpdate={fetchAulas}
-        showDeleted={showDeleted}
-        onToggleDeleted={setShowDeleted}
-        isAdmin={user?.roles?.includes("ADMIN") || false}
-      />
+      <Suspense fallback={<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"><div className="h-40 bg-muted rounded" /><div className="h-40 bg-muted rounded" /><div className="h-40 bg-muted rounded" /></div>}>
+        <AulasListWithActions
+          aulas={filteredAulas}
+          onUpdate={fetchAulas}
+          showDeleted={showDeleted}
+          onToggleDeleted={setShowDeleted}
+          isAdmin={user?.roles?.includes("ADMIN") || false}
+        />
+      </Suspense>
 
       {/* Wizard removido: Los profesores ya no crean aulas directamente */}
     </div>

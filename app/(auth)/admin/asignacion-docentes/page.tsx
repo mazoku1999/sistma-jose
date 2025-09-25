@@ -81,9 +81,9 @@ export default function AsignacionDocentesPage() {
                 </div>
             </div>
 
-            <Card>
+            <Card className="overflow-hidden">
                 <CardHeader />
-                <CardContent>
+                <CardContent className="overflow-x-hidden">
                     {isLoading ? (
                         <div className="flex items-center justify-center py-16">
                             <Loader2 className="h-8 w-8 animate-spin" />
@@ -91,26 +91,24 @@ export default function AsignacionDocentesPage() {
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {filtered.map((p) => (
-                                <Card key={p.id} className="p-4">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <div className="font-medium">{p.nombre_completo}</div>
-                                            <div className="text-xs text-muted-foreground">@{p.usuario} · {p.email}</div>
-                                            <div className="text-xs text-muted-foreground mt-1">
-                                                Aulas asignadas: {p.aulas_asignadas || 0}
-                                            </div>
+                                <Card key={p.id} className="p-4 overflow-hidden">
+                                    <div className="min-w-0">
+                                        <div className="font-medium truncate">{p.nombre_completo}</div>
+                                        <div className="text-xs text-muted-foreground truncate">@{p.usuario} · {p.email}</div>
+                                        <div className="text-xs text-muted-foreground mt-1 truncate">
+                                            Aulas asignadas: {p.aulas_asignadas || 0}
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <Button size="sm" variant="outline" asChild>
-                                                <a href={`/admin/asignacion-estudiantes`}>
-                                                    Gestionar estudiantes
-                                                </a>
-                                            </Button>
-                                            <Button size="sm" onClick={() => handleAssign(p)}>
-                                                <UserCheck className="h-4 w-4 mr-1" />
-                                                Asignar
-                                            </Button>
-                                        </div>
+                                    </div>
+                                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
+                                        <Button className="w-full" size="sm" variant="outline" asChild>
+                                            <a href={`/admin/asignacion-estudiantes`}>
+                                                Gestionar estudiantes
+                                            </a>
+                                        </Button>
+                                        <Button className="w-full" size="sm" onClick={() => handleAssign(p)}>
+                                            <UserCheck className="h-4 w-4 mr-1" />
+                                            Asignar
+                                        </Button>
                                     </div>
                                 </Card>
                             ))}

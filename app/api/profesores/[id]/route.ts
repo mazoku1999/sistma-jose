@@ -22,9 +22,11 @@ export async function GET(
       `SELECT 
         u.id_usuario as id,
         u.usuario,
+        u.nombres,
+        u.apellido_paterno,
+        u.apellido_materno,
         u.nombre_completo,
         u.email,
-        u.telefono,
         u.activo,
         DATE_FORMAT(u.fecha_creacion, '%Y-%m-%d') as fecha_registro,
         p.especialidad,
@@ -74,90 +76,49 @@ export async function PUT(
     }
 
     const { id } = await params
-    const profesorId = id
-
     const body = await request.json()
-    const nombre_completo: string | undefined = body.nombre_completo
-    const email: string | undefined = body.email
-    const telefono: string | undefined = body.telefono
-    const password: string | undefined = body.password
-    const estado: string | undefined = body.estado
-    const roles: string[] | undefined = body.roles
 
-    if (!nombre_completo) {
-      return NextResponse.json({ error: "Nombre es requerido" }, { status: 400 })
+    const updates: string[] = []
+    const paramsArr: any[] = []
+
+    if (typeof body.nombres !== "undefined") { updates.push("nombres = ?"); paramsArr.push(body.nombres) }
+    if (typeof body.apellido_paterno !== "undefined") { updates.push("apellido_paterno = ?"); paramsArr.push(body.apellido_paterno) }
+    if (typeof body.apellido_materno !== "undefined") { updates.push("apellido_materno = ?"); paramsArr.push(body.apellido_materno) }
+    if (typeof body.email !== "undefined") { updates.push("email = ?"); paramsArr.push(body.email || null) }
+    if (typeof body.activo !== "undefined") { updates.push("activo = ?"); paramsArr.push(!!body.activo) }
+
+    // Recalcular nombre_completo si cambian nombres o apellidos
+    const willRecalc = ["nombres", "apellido_paterno", "apellido_materno"].some(k => typeof body[k] !== "undefined")
+
+    if (updates.length > 0) {
+      await executeQuery(`UPDATE usuarios SET ${updates.join(', ')} WHERE id_usuario = ?`, [...paramsArr, id])
+      if (willRecalc) {
+        await executeQuery(`UPDATE usuarios SET nombre_completo = CONCAT(nombres,' ',apellido_paterno,' ',apellido_materno) WHERE id_usuario = ?`, [id])
+      }
     }
 
-    // Verificar que el profesor existe
-    const existingProfesor = await executeQuery<any[]>(
-      "SELECT id_usuario FROM usuarios WHERE id_usuario = ?",
-      [profesorId]
-    )
-
-    if (!existingProfesor.length) {
-      return NextResponse.json({ error: "Profesor no encontrado" }, { status: 404 })
+    // Actualizar banderas de profesor
+    const profUpdates: string[] = []
+    const profParams: any[] = []
+    if (typeof body.especialidad !== "undefined") { profUpdates.push("especialidad = ?"); profParams.push(body.especialidad || null) }
+    if (typeof body.puede_centralizar_notas !== "undefined") { profUpdates.push("puede_centralizar_notas = ?"); profParams.push(!!body.puede_centralizar_notas) }
+    if (typeof body.profesor_area !== "undefined") { profUpdates.push("profesor_area = ?"); profParams.push(!!body.profesor_area) }
+    if (profUpdates.length > 0) {
+      await executeQuery(`UPDATE profesores SET ${profUpdates.join(', ')} WHERE id_usuario = ?`, [...profParams, id])
     }
 
-    // Iniciar transacción
-    await executeQuery("START TRANSACTION")
-
-    try {
-      // Actualizar usuario
-      let updateQuery = `UPDATE usuarios SET nombre_completo = ?`
-      const updateParams: any[] = [nombre_completo]
-
-      if (typeof email !== "undefined") {
-        updateQuery += `, email = ?`
-        updateParams.push(email && email.trim() !== "" ? email : null)
-      }
-      if (typeof telefono !== "undefined") {
-        updateQuery += `, telefono = ?`
-        updateParams.push(telefono || null)
-      }
-      if (typeof estado !== "undefined") {
-        updateQuery += `, activo = ?`
-        updateParams.push(estado === "activo")
-      }
-
-      // Si se proporciona nueva contraseña, incluirla
-      if (password && password.trim() !== "") {
-        const hashedPassword = await bcrypt.hash(password, 10)
-        updateQuery += `, password = ?`
-        updateParams.push(hashedPassword)
-      }
-
-      updateQuery += ` WHERE id_usuario = ?`
-      updateParams.push(profesorId)
-      await executeQuery(updateQuery, updateParams)
-
-      // Actualizar roles
-      if (roles && Array.isArray(roles)) {
-        // Eliminar roles existentes
-        await executeQuery("DELETE FROM usuario_roles WHERE id_usuario = ?", [profesorId])
-
-        // Asignar nuevos roles
-        for (const roleName of roles) {
-          const roleResult = await executeQuery<any[]>(
-            "SELECT id_rol FROM roles WHERE nombre = ?",
-            [roleName]
-          )
-
-          if (roleResult.length > 0) {
-            await executeQuery(
-              "INSERT INTO usuario_roles (id_usuario, id_rol) VALUES (?, ?)",
-              [profesorId, roleResult[0].id_rol]
-            )
-          }
+    // Roles (opcional): reemplazar roles si se envía roles[]
+    if (Array.isArray(body.roles)) {
+      await executeQuery("DELETE FROM usuario_roles WHERE id_usuario = ?", [id])
+      for (const roleName of body.roles) {
+        const role = await executeQuery<any[]>("SELECT id_rol FROM roles WHERE nombre = ?", [roleName])
+        if (role.length) {
+          await executeQuery("INSERT INTO usuario_roles (id_usuario, id_rol) VALUES (?, ?)", [id, role[0].id_rol])
         }
       }
-
-      await executeQuery("COMMIT")
-
-      return NextResponse.json({ message: "Usuario actualizado correctamente" })
-    } catch (error) {
-      await executeQuery("ROLLBACK")
-      throw error
     }
+
+    return NextResponse.json({ success: true })
   } catch (error) {
     console.error("Error updating profesor:", error)
     return NextResponse.json({ error: "Error al actualizar profesor" }, { status: 500 })

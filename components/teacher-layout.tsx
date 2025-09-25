@@ -2,9 +2,9 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-provider"
 import { cn } from "@/lib/utils"
 import {
@@ -97,6 +97,7 @@ interface QuickAction {
 export function TeacherLayout({ children }: TeacherLayoutProps) {
   const { user, logout } = useAuth()
   const pathname = usePathname()
+  const router = useRouter()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -104,6 +105,7 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
   const [quickActions, setQuickActions] = useState<QuickAction[]>([])
   const [aulas, setAulas] = useState<{ id: number; nombre: string }[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [pendingPath, setPendingPath] = useState<string | null>(null)
 
   useEffect(() => {
     // Cargar notificaciones desde la API
@@ -185,6 +187,11 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
     fetchQuickActions()
     fetchAulas()
   }, [user])
+
+  useEffect(() => {
+    // Cuando cambia la ruta, limpiar el estado pendiente para reflejar la ruta actual
+    setPendingPath(null)
+  }, [pathname])
 
   // Get user initials for avatar
   const getInitials = () => {
@@ -281,13 +288,15 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
                 <SidebarGroupLabel>Académico</SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    <Collapsible className="w-full">
+                    <Collapsible className="w-full" defaultOpen={pathname.startsWith("/aulas")}>
                       <SidebarMenuItem>
                         <CollapsibleTrigger className="w-full" asChild>
-                          <SidebarMenuButton tooltip="Aulas">
-                            <BookOpen className="h-4 w-4" />
-                            <span>Mis Aulas</span>
-                            <ChevronDown className="ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                          <SidebarMenuButton asChild tooltip="Aulas" isActive={pendingPath ? pendingPath.startsWith("/aulas") : pathname.startsWith("/aulas")}>
+                            <Link href="/aulas" onClick={(e) => { e.preventDefault(); setPendingPath("/aulas"); router.push("/aulas"); }}>
+                              <BookOpen className="h-4 w-4" />
+                              <span>Mis Aulas</span>
+                              <ChevronDown className="ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                            </Link>
                           </SidebarMenuButton>
                         </CollapsibleTrigger>
                         {aulas.length > 0 && (
@@ -297,8 +306,8 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
                       <CollapsibleContent>
                         <SidebarMenuSub>
                           <SidebarMenuSubItem>
-                            <SidebarMenuSubButton asChild isActive={pathname === "/aulas"}>
-                              <Link href="/aulas">
+                            <SidebarMenuSubButton asChild isActive={pendingPath ? pendingPath === "/aulas" : pathname === "/aulas"}>
+                              <Link href="/aulas" onClick={(e) => { e.preventDefault(); setPendingPath("/aulas"); router.push("/aulas"); }}>
                                 <span>Todas las aulas</span>
                               </Link>
                             </SidebarMenuSubButton>
@@ -314,8 +323,8 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
                             <>
                               {aulas.slice(0, 3).map((aula) => (
                                 <SidebarMenuSubItem key={aula.id}>
-                                  <SidebarMenuSubButton asChild>
-                                    <Link href={`/aulas/${aula.id}`}>
+                                  <SidebarMenuSubButton asChild isActive={pendingPath ? pendingPath === `/aulas/${aula.id}` : pathname === `/aulas/${aula.id}`}>
+                                    <Link href={`/aulas/${aula.id}`} onClick={(e) => { e.preventDefault(); setPendingPath(`/aulas/${aula.id}`); router.push(`/aulas/${aula.id}`); }}>
                                       <span>{aula.nombre}</span>
                                     </Link>
                                   </SidebarMenuSubButton>
@@ -324,8 +333,8 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
 
                               {aulas.length > 3 && (
                                 <SidebarMenuSubItem>
-                                  <SidebarMenuSubButton asChild size="sm">
-                                    <Link href="/aulas">
+                                  <SidebarMenuSubButton asChild size="sm" isActive={pendingPath ? pendingPath === "/aulas" : pathname === "/aulas"}>
+                                    <Link href="/aulas" onClick={(e) => { e.preventDefault(); setPendingPath("/aulas"); router.push("/aulas"); }}>
                                       <PlusCircle className="h-3 w-3 mr-1" />
                                       <span>Ver todas ({aulas.length})</span>
                                     </Link>
@@ -694,7 +703,9 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
 
           {/* Content Area */}
           <main className="flex-1 overflow-y-auto !w-full !max-w-none p-4 md:p-6">
-            {children}
+            <Suspense fallback={<div className="flex items-center justify-center py-10 text-muted-foreground">Cargando…</div>}>
+              {children}
+            </Suspense>
           </main>
 
           {/* Search dialog */}
@@ -709,7 +720,8 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
                       <CommandItem
                         key={aula.id}
                         onSelect={() => {
-                          window.location.href = `/aulas/${aula.id}`
+                          setPendingPath(`/aulas/${aula.id}`)
+                          router.push(`/aulas/${aula.id}`)
                           setSearchOpen(false)
                         }}
                       >
@@ -723,7 +735,8 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
                       <CommandItem
                         key={action.id}
                         onSelect={() => {
-                          window.location.href = action.href
+                          setPendingPath(action.href)
+                          router.push(action.href)
                           setSearchOpen(false)
                         }}
                       >

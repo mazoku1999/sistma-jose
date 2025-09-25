@@ -39,6 +39,7 @@ interface NotaCentralizada {
 interface SelectOption {
     id: number
     nombre: string
+    nombre_corto?: string
 }
 
 export default function CentralPage() {
@@ -113,7 +114,8 @@ export default function CentralPage() {
                 const materiasDelCurso = (data.materias || []).map((materia: any) => ({
                     id: materia.id_materia,
                     nombre: materia.nombre_completo,
-                    nombre_corto: materia.nombre_corto
+                    // nombre_corto opcional, solo para visual
+                    nombre_corto: materia.nombre_corto as string | undefined
                 }))
                 setMaterias(materiasDelCurso)
 
@@ -184,6 +186,31 @@ export default function CentralPage() {
             }
         }))
         setHasChanges(true)
+    }
+
+    const rellenarAleatorio = () => {
+        if (estudiantes.length === 0 || materias.length === 0) {
+            toast({ title: "Sin datos", description: "Selecciona curso, paralelo y trimestre.", variant: "destructive" })
+            return
+        }
+        const nuevo: Record<string, NotaCentralizada> = { ...notasCentralizadas }
+        for (const est of estudiantes) {
+            for (const mat of materias) {
+                const key = `${est.id_estudiante}-${mat.id}`
+                // Asignar siempre una nota entre 50 y 100 (nunca 0)
+                const valor = Math.round(50 + Math.random() * 50)
+                nuevo[key] = {
+                    id_estudiante: est.id_estudiante,
+                    id_materia: mat.id,
+                    materia_nombre: mat.nombre,
+                    materia_corto: mat.nombre_corto || mat.nombre,
+                    nota_final: valor
+                }
+            }
+        }
+        setNotasCentralizadas(nuevo)
+        setHasChanges(true)
+        toast({ title: "Notas generadas", description: "Se rellenaron notas aleatorias para las materias visibles." })
     }
 
     const handleCentralizarNotas = async () => {
@@ -316,16 +343,22 @@ export default function CentralPage() {
                         Centraliza las notas de todas las materias por curso y paralelo
                     </p>
                 </div>
-                {hasChanges && (
-                    <Button onClick={handleCentralizarNotas} disabled={isSaving}>
-                        {isSaving ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                            <Save className="mr-2 h-4 w-4" />
-                        )}
-                        Centralizar Notas
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={rellenarAleatorio} disabled={isLoading}>
+                        <Calculator className="mr-2 h-4 w-4" />
+                        Rellenar aleatorio
                     </Button>
-                )}
+                    {hasChanges && (
+                        <Button onClick={handleCentralizarNotas} disabled={isSaving}>
+                            {isSaving ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <Save className="mr-2 h-4 w-4" />
+                            )}
+                            Centralizar Notas
+                        </Button>
+                    )}
+                </div>
             </div>
 
             {/* Filtros */}

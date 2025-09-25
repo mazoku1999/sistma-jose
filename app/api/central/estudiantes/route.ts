@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     const estudiantes = await executeQuery<any[]>(
       `SELECT DISTINCT 
          e.id_estudiante as id, 
-         CONCAT(e.nombres, ' ', e.apellidos) AS nombre_completo
+         CONCAT(e.nombres, ' ', e.apellido_paterno, ' ', e.apellido_materno) AS nombre_completo
        FROM estudiantes e
        JOIN inscripciones_aula ia ON e.id_estudiante = ia.id_estudiante
        JOIN aulas_profesor ap ON ia.id_aula_profesor = ap.id_aula_profesor

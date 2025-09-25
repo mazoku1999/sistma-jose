@@ -1,0 +1,197 @@
+function isValidHttpUrl(value) {
+    try { const url = new URL(value); return url.protocol === 'http:' || url.protocol === 'https:'; } catch (_) { return false; }
+}
+// Compute current trimester using same logic as the Next.js app
+function getDefaultTrimestre() {
+    const now = new Date(); const mes = now.getMonth() + 1; const dia = now.getDate();
+    if ((mes === 2 && dia >= 5) || mes === 3 || mes === 4 || (mes === 5 && dia <= 10)) return 1;
+    if ((mes === 5 && dia >= 13) || mes === 6 || mes === 7 || (mes === 8 && dia <= 30)) return 2;
+    if ((mes === 9 && dia >= 2) || mes === 10 || mes === 11 || (mes === 12 && dia <= 10)) return 3;
+    if (mes === 1 || (mes === 2 && dia < 5)) return 1; if (mes === 5 && dia >= 11 && dia < 13) return 1; if (mes === 8 && dia > 30) return 2; if (mes === 12 && dia > 10) return 1; return 1;
+}
+async function loadConfig() { try { const resp = await fetch(chrome.runtime.getURL('config.json')); if (!resp.ok) return {}; return await resp.json(); } catch { return {}; } }
+async function getDefaultBaseUrl() { const cfg = await loadConfig(); if (cfg && cfg.productionBaseUrl && isValidHttpUrl(cfg.productionBaseUrl)) return cfg.productionBaseUrl; return 'http://localhost:3000'; }
+async function getStoredBaseUrl() { const d = await chrome.storage.local.get(['baseUrl']); return d.baseUrl || null; }
+async function setStoredBaseUrl(v) { await chrome.storage.local.set({ baseUrl: v }); }
+async function ensureDefaultBaseUrl() { const s = await getStoredBaseUrl(); if (s && isValidHttpUrl(s)) return s; const def = await getDefaultBaseUrl(); await setStoredBaseUrl(def); return def; }
+async function getUiState() { const { uiState } = await chrome.storage.local.get(['uiState']); return uiState || { view: 'courses', selectedAulaId: null, trimestre: getDefaultTrimestre(), search: '', sort: 'name' }; }
+async function setUiState(partial) { const cur = await getUiState(); const next = { ...cur, ...partial }; if (!next.trimestre) next.trimestre = getDefaultTrimestre(); await chrome.storage.local.set({ uiState: next }); return next; }
+function $(id) { return document.getElementById(id); }
+function render(el, html) { el.innerHTML = html; }
+
+function heroLogin() {
+    return `
+<div class="sp-hero sp-card">
+  <h1>Bienvenido</h1>
+  <p>Inicia sesión para ver tus cursos y las notas del trimestre actual.</p>
+  <div><button id="heroLogin" class="tw-btn tw-btn-primary">Ir a iniciar sesión</button></div>
+</div>`;
+}
+
+function colorFromText(t) { let h = 0; for (let i = 0; i < String(t).length; i++) h = (h * 31 + String(t).charCodeAt(i)) % 360; return `hsl(${h} 70% 50%)`; }
+function initials(t) { const p = String(t || '').split(' ').filter(Boolean); if (!p.length) return 'A'; if (p.length === 1) return p[0].slice(0, 2).toUpperCase(); return (p[0][0] + p[p.length - 1][0]).toUpperCase(); }
+
+function courseCard(a) {
+    const progreso = Math.max(0, Math.min(100, Number(a.progreso || 0))); const chip = `<div class=\"sp-avatar\" style=\"background:${colorFromText(a.materia || a.nombre_aula)}\">${initials(a.materia || a.nombre_aula)}</div>`; return `
+<div class="sp-card" data-aula-id="${a.id}">
+  <div class="sp-row" style="justify-content: space-between; gap:10px;">
+    <div class="sp-row" style="gap:10px;">
+      ${chip}
+      <div>
+        <div class="sp-title">${a.nombre_aula || a.materia}</div>
+        <div class="sp-subtle-12">${a.curso || ''} ${a.paralelo || ''} • ${a.materia || ''}</div>
+      </div>
+    </div>
+    <span class="sp-badge">${a.estudiantes || 0} estudiantes</span>
+  </div>
+  <div class="sp-space"></div>
+  <div class="sp-progress"><span style="width:${progreso}%"></span></div>
+</div>`;
+}
+
+function viewCourses(aulas) {
+    if (!aulas || aulas.length === 0) { return `<div class="sp-hero sp-card"><h1>No tienes aulas asignadas</h1><p>Cuando tengas aulas activas, aparecerán aquí.</p></div>`; } return `
+<div class="sp-toolbar">
+  <div class="sp-row" style="flex:1">
+    <input id="searchInput" class="sp-input" placeholder="Buscar curso..." />
+  </div>
+</div>
+<div id="coursesGrid" class="sp-grid">${aulas.map(courseCard).join('')}</div>`;
+}
+
+function computeGradesRows(estudiantes, notas, uiState) {
+    const map = new Map(notas.map(n => [String(n.id_inscripcion), n]));
+    let rows = estudiantes.map(e => {
+        const n = map.get(String(e.inscripcion_id));
+        const val = n ? (n.promedio_final_trimestre ?? '-') : '-';
+        return { nombre: e.nombre_completo, nota: val };
+    });
+    if (uiState && uiState.search) {
+        const q = uiState.search.toLowerCase();
+        rows = rows.filter(r => r.nombre.toLowerCase().includes(q));
+    }
+    if (uiState && uiState.sort === 'grade') {
+        rows.sort((a, b) => (a.nota === '-' ? -1 : a.nota) - (b.nota === '-' ? -1 : b.nota));
+    } else {
+        rows.sort((a, b) => a.nombre.localeCompare(b.nombre));
+    }
+    return rows.map(r => {
+        let cls = 'grade-neutral';
+        const num = parseFloat(r.nota);
+        if (!isNaN(num)) {
+            if (num >= 85) cls = 'grade-good';
+            else if (num >= 60) cls = 'grade-warn';
+            else cls = 'grade-bad';
+        }
+        const badge = `<span class=\"grade-badge ${cls}\">${r.nota}</span>`;
+        return `<tr><td>${r.nombre}</td><td style=\"text-align:right\">${badge}</td></tr>`;
+    }).join('');
+}
+
+function viewGrades(aula, estudiantes, notas, trimestre, uiState) {
+    const rowsHtml = computeGradesRows(estudiantes, notas, uiState);
+    return `
+<div class="sp-card">
+  <div class="sp-toolbar">
+    <div>
+      <div class="sp-title">${aula.nombre_aula || aula.materia}</div>
+      <div class="sp-subtle-12">Trimestre ${trimestre}</div>
+    </div>
+    <div class="sp-row" style="gap:8px; flex-wrap: wrap;">
+      <input id="gradesSearch" class="sp-input" placeholder="Buscar estudiante..." value="${uiState?.search || ''}" />
+      <button id="toggleSort" class="sp-chip" data-sort="${uiState?.sort || 'name'}">${(uiState?.sort || 'name') === 'name' ? 'Orden: Nombre' : 'Orden: Nota'}</button>
+      <button id="backToCourses" class="tw-btn">Volver</button>
+    </div>
+  </div>
+  <table class="sp-table"><thead><tr><th>Estudiante</th><th style="text-align:right">Nota</th></tr></thead><tbody id="gradesBody">${rowsHtml}</tbody></table>
+</div>`;
+}
+
+function skeletonCourses() { return `<div class="sp-grid">${Array.from({ length: 4 }).map(() => `<div class="sp-card"><div class="skel card"></div></div>`).join('')}</div>`; }
+function skeletonGrades() { return `<div class="sp-card"><div class="skel row"></div><div class="sp-space"></div><div class="skel row"></div><div class="sp-space"></div><div class="skel row"></div></div>`; }
+
+async function fetchJson(url) { const resp = await fetch(url, { credentials: 'include' }); if (!resp.ok) throw new Error(`HTTP ${resp.status}`); return await resp.json(); }
+async function fetchSession(base) { try { return await fetchJson(new URL('/api/auth/session', base).toString()); } catch { return { user: null }; } }
+async function fetchAulas(base) { return await fetchJson(new URL('/api/aulas', base).toString()); }
+async function fetchEstudiantes(base, aulaId) { return await fetchJson(new URL(`/api/aulas/${aulaId}/estudiantes`, base).toString()); }
+async function fetchNotas(base, aulaId, tri) { const u = new URL(`/api/aulas/${aulaId}/notas`, base); u.searchParams.set('trimestre', String(tri)); return await fetchJson(u.toString()); }
+
+function bindCourseCards(gridEl, aulas, base) {
+    gridEl.querySelectorAll('[data-aula-id]').forEach(card => {
+        card.addEventListener('click', async () => {
+            const aulaId = card.getAttribute('data-aula-id');
+            try {
+                const s = await getUiState(); const tri = s.trimestre || getDefaultTrimestre();
+                const container = gridEl.parentElement; if (!container) return;
+                render(container, skeletonGrades());
+                const [estudiantes, notas] = await Promise.all([fetchEstudiantes(base, aulaId), fetchNotas(base, aulaId, tri)]);
+                const aula = aulas.find(a => String(a.id) === String(aulaId)) || { id: aulaId };
+                await setUiState({ view: 'grades', selectedAulaId: aulaId, trimestre: tri, search: '', sort: 'name' });
+                render(container, viewGrades(aula, estudiantes, notas, tri, await getUiState()));
+                wireGrades(container, aulas, base, aula, estudiantes, notas);
+            } catch { /* ignore */ }
+        });
+    });
+}
+
+function wireCourses(container, aulas, base, uiState) {
+    // Setup search to update only grid
+    const searchInput = container.querySelector('#searchInput');
+    const grid = container.querySelector('#coursesGrid');
+    if (searchInput && grid) {
+        searchInput.addEventListener('input', async (e) => {
+            const q = e.target.value;
+            await setUiState({ search: q });
+            const filtered = (q ? aulas.filter(a => `${a.nombre_aula || a.materia} ${a.curso || ''} ${a.paralelo || ''}`.toLowerCase().includes(q.toLowerCase())) : aulas);
+            grid.innerHTML = filtered.map(courseCard).join('');
+            bindCourseCards(grid, filtered, base);
+        });
+    }
+    // Initial bind
+    if (grid) bindCourseCards(grid, aulas, base);
+}
+
+function wireGrades(container, aulas, base, aula, estudiantes, notas) {
+    // Back
+    container.querySelector('#backToCourses').addEventListener('click', async () => {
+        await setUiState({ view: 'courses', selectedAulaId: null });
+        render(container, viewCourses(aulas));
+        wireCourses(container, aulas, base, await getUiState());
+    });
+    // Search (update only tbody)
+    const search = container.querySelector('#gradesSearch');
+    const body = container.querySelector('#gradesBody');
+    const toggle = container.querySelector('#toggleSort');
+    if (search && body) {
+        search.addEventListener('input', async (e) => {
+            const s = await setUiState({ search: e.target.value });
+            body.innerHTML = computeGradesRows(estudiantes, notas, s);
+        });
+    }
+    // Sort toggle (update only tbody + button label)
+    if (toggle && body) {
+        toggle.addEventListener('click', async () => {
+            const cur = await getUiState(); const nextSort = cur.sort === 'name' ? 'grade' : 'name';
+            const s = await setUiState({ sort: nextSort });
+            toggle.textContent = s.sort === 'name' ? 'Orden: Nombre' : 'Orden: Nota';
+            body.innerHTML = computeGradesRows(estudiantes, notas, s);
+        });
+    }
+}
+
+async function updateUi() {
+    const base = await ensureDefaultBaseUrl();
+    const content = $('content');
+    const session = await fetchSession(base); const user = session && session.user ? session.user : null;
+    if (!user) { await setUiState({ view: 'courses', selectedAulaId: null, trimestre: getDefaultTrimestre() }); render(content, heroLogin()); $('heroLogin').addEventListener('click', () => { chrome.tabs.create({ url: new URL('/login', base).toString() }); }); return; }
+    let uiState = await getUiState(); if (!uiState.trimestre) uiState = await setUiState({ trimestre: getDefaultTrimestre() });
+    try {
+        render(content, skeletonCourses()); const aulas = await fetchAulas(base);
+        if (uiState.view === 'grades' && uiState.selectedAulaId) {
+            try { render(content, skeletonGrades()); const [estudiantes, notas] = await Promise.all([fetchEstudiantes(base, uiState.selectedAulaId), fetchNotas(base, uiState.selectedAulaId, uiState.trimestre || getDefaultTrimestre()),]); const aula = aulas.find(a => String(a.id) === String(uiState.selectedAulaId)) || { id: uiState.selectedAulaId }; render(content, viewGrades(aula, estudiantes, notas, uiState.trimestre || getDefaultTrimestre(), uiState)); wireGrades(content, aulas, base, aula, estudiantes, notas); return; } catch { }
+        }
+        await setUiState({ view: 'courses', selectedAulaId: null }); render(content, viewCourses(aulas)); wireCourses(content, aulas, base, await getUiState());
+    } catch { render(content, `<div class=\"sp-card\">No se pudieron cargar tus aulas.</div>`); }
+}
+
+updateUi(); 

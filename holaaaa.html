@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        /* LoginForm.css */
+
+        .login-form {
+            text-align: center;
+        }
+
+        .form {
+            margin-top: 20px;
+        }
+
+        .input-container {
+            display: flex;
+            /* justify-content: space-between;
+            gap: 10px; */
+        }
+
+        .input-container div {
+            flex: 1;
+            /* Hace que cada campo ocupe el mismo espacio */
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 10px;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-form">
+        <h2>Login</h2>
+        <form class="form">
+            <div class="input-container">
+                <div>
+                    <label htmlFor="username">Usuario</label>
+                    <input type="text" id="username" placeholder="Ingrese su usuario" />
+                </div>
+                <div>
+                    <label htmlFor="password">Contraseña</label>
+                    <input type="password" id="password" placeholder="Ingrese su contraseña" />
+                </div>
+            </div>
+            <button type="submit">Iniciar sesión</button>
+        </form>
+    </div>
+</body>
+
+</html>

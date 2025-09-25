@@ -32,9 +32,11 @@ import { Separator } from "@/components/ui/separator"
 interface Profesor {
   id: number
   usuario: string
+  nombres: string
+  apellido_paterno: string
+  apellido_materno: string
   nombre_completo: string
   email: string
-  telefono: string
   estado: "activo" | "inactivo"
   fecha_registro: string
   roles: string[]
@@ -72,12 +74,13 @@ export default function ProfesoresPageSimple() {
   // Form data
   const [formData, setFormData] = useState({
     usuario: "",
-    nombre_completo: "",
+    nombres: "",
+    apellido_paterno: "",
+    apellido_materno: "",
     email: "",
-    telefono: "",
     password: "",
     estado: "activo",
-    roles: ["PROFESOR"] as string[],
+    role: "PROFESOR" as "PROFESOR" | "ADMIN",
   })
 
   // Asignaciones por colegio (simplificadas)
@@ -141,12 +144,13 @@ export default function ProfesoresPageSimple() {
   const resetForm = () => {
     setFormData({
       usuario: "",
-      nombre_completo: "",
+      nombres: "",
+      apellido_paterno: "",
+      apellido_materno: "",
       email: "",
-      telefono: "",
       password: "",
       estado: "activo",
-      roles: ["PROFESOR"],
+      role: "PROFESOR",
     })
     setAsignaciones([])
     setEditingProfesor(null)
@@ -159,12 +163,13 @@ export default function ProfesoresPageSimple() {
       setEditingProfesor(profesor)
       setFormData({
         usuario: profesor.usuario,
-        nombre_completo: profesor.nombre_completo,
+        nombres: profesor.nombres || "",
+        apellido_paterno: profesor.apellido_paterno || "",
+        apellido_materno: profesor.apellido_materno || "",
         email: profesor.email,
-        telefono: profesor.telefono || "",
         password: "",
         estado: profesor.estado,
-        roles: profesor.roles,
+        role: (profesor.roles && profesor.roles.includes("ADMIN")) ? "ADMIN" : "PROFESOR",
       })
     }
     setOpenDialog(true)
@@ -180,13 +185,8 @@ export default function ProfesoresPageSimple() {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  const handleRoleChange = (role: string, checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      roles: checked
-        ? [...prev.roles, role]
-        : prev.roles.filter(r => r !== role)
-    }))
+  const handleRoleSelect = (value: string) => {
+    setFormData(prev => ({ ...prev, role: (value === "ADMIN" ? "ADMIN" : "PROFESOR") }))
   }
 
   const handleColegioToggle = (colegioId: number) => {
@@ -245,7 +245,14 @@ export default function ProfesoresPageSimple() {
 
     try {
       const dataToSend = {
-        ...formData,
+        usuario: formData.usuario,
+        nombres: formData.nombres,
+        apellido_paterno: formData.apellido_paterno,
+        apellido_materno: formData.apellido_materno,
+        email: formData.email,
+        password: formData.password,
+        estado: formData.estado,
+        roles: [formData.role],
         asignaciones
       }
 
@@ -408,8 +415,7 @@ export default function ProfesoresPageSimple() {
                 <TableRow>
                   <TableHead>Profesor</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Teléfono</TableHead>
-                  <TableHead>Roles</TableHead>
+                  <TableHead>Rol</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Asignaciones</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
@@ -432,23 +438,17 @@ export default function ProfesoresPageSimple() {
                       </div>
                     </TableCell>
                     <TableCell>{profesor.email}</TableCell>
-                    <TableCell>{profesor.telefono || "—"}</TableCell>
                     <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {profesor.roles.map((rol) => (
-                          <Badge
-                            key={rol}
-                            variant="outline"
-                            className={
-                              rol === "ADMIN"
-                                ? "bg-red-50 text-red-700 border-red-200"
-                                : "bg-green-50 text-green-700 border-green-200"
-                            }
-                          >
-                            {rol === "ADMIN" ? "Admin" : "Profesor"}
-                          </Badge>
-                        ))}
-                      </div>
+                      <Badge
+                        variant="outline"
+                        className={
+                          (profesor.roles || []).includes("ADMIN")
+                            ? "bg-red-50 text-red-700 border-red-200"
+                            : "bg-green-50 text-green-700 border-green-200"
+                        }
+                      >
+                        {(profesor.roles || []).includes("ADMIN") ? "Admin" : "Profesor"}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -540,11 +540,31 @@ export default function ProfesoresPageSimple() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="nombre_completo">Nombre completo *</Label>
+                    <Label htmlFor="nombres">Nombres *</Label>
                     <Input
-                      id="nombre_completo"
-                      name="nombre_completo"
-                      value={formData.nombre_completo}
+                      id="nombres"
+                      name="nombres"
+                      value={formData.nombres}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="apellido_paterno">Apellido paterno *</Label>
+                    <Input
+                      id="apellido_paterno"
+                      name="apellido_paterno"
+                      value={formData.apellido_paterno}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="apellido_materno">Apellido materno *</Label>
+                    <Input
+                      id="apellido_materno"
+                      name="apellido_materno"
+                      value={formData.apellido_materno}
                       onChange={handleInputChange}
                       required
                     />
@@ -558,15 +578,6 @@ export default function ProfesoresPageSimple() {
                       value={formData.email}
                       onChange={handleInputChange}
                       required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="telefono">Teléfono</Label>
-                    <Input
-                      id="telefono"
-                      name="telefono"
-                      value={formData.telefono}
-                      onChange={handleInputChange}
                     />
                   </div>
                 </div>
@@ -624,25 +635,16 @@ export default function ProfesoresPageSimple() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Roles</Label>
-                    <div className="flex gap-4 pt-2">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="role-profesor"
-                          checked={formData.roles.includes("PROFESOR")}
-                          onCheckedChange={(checked) => handleRoleChange("PROFESOR", checked as boolean)}
-                        />
-                        <Label htmlFor="role-profesor">Profesor</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="role-admin"
-                          checked={formData.roles.includes("ADMIN")}
-                          onCheckedChange={(checked) => handleRoleChange("ADMIN", checked as boolean)}
-                        />
-                        <Label htmlFor="role-admin">Administrador</Label>
-                      </div>
-                    </div>
+                    <Label>Rol</Label>
+                    <Select value={formData.role} onValueChange={handleRoleSelect}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="PROFESOR">Profesor</SelectItem>
+                        <SelectItem value="ADMIN">Administrador</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>

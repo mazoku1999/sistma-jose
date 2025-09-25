@@ -1,0 +1,27 @@
+{
+    "name": "SIS Escolar Side Panel",
+    "description": "Accede a SIS Escolar desde el panel lateral y comparte la sesión del sitio.",
+    "version": "0.1.0",
+    "manifest_version": 3,
+    "minimum_chrome_version": "114",
+    "permissions": [
+        "sidePanel",
+        "tabs",
+        "storage",
+        "cookies",
+        "scripting"
+    ],
+    "host_permissions": [
+        "http://*/*",
+        "https://*/*"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "action": {
+        "default_title": "SIS Escolar"
+    },
+    "side_panel": {
+        "default_path": "sidepanel.html"
+    }
+}

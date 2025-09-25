@@ -14,9 +14,11 @@ CREATE TABLE IF NOT EXISTS usuarios (
   id_usuario INT AUTO_INCREMENT PRIMARY KEY,
   usuario VARCHAR(50) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL,
+  nombres VARCHAR(50) NOT NULL,
+  apellido_paterno VARCHAR(50) NOT NULL,
+  apellido_materno VARCHAR(50) NOT NULL,
   nombre_completo VARCHAR(100) NOT NULL,
   email VARCHAR(100),
-  telefono VARCHAR(20),
   activo BOOLEAN DEFAULT TRUE,
   intentos_fallidos INT DEFAULT 0,
   bloqueado_hasta DATETIME,
@@ -48,7 +50,8 @@ CREATE TABLE IF NOT EXISTS profesores (
 CREATE TABLE IF NOT EXISTS estudiantes (
   id_estudiante INT AUTO_INCREMENT PRIMARY KEY,
   nombres VARCHAR(50) NOT NULL,
-  apellidos VARCHAR(50) NOT NULL,
+  apellido_paterno VARCHAR(50) NOT NULL,
+  apellido_materno VARCHAR(50) NOT NULL,
   fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -197,12 +200,12 @@ INSERT INTO roles (nombre, descripcion) VALUES
 ('PROFESOR', 'Profesor con acceso a aulas y notas');
 
 -- Insertar usuario administrador (password: admin123)
-INSERT INTO usuarios (usuario, password, nombre_completo, activo) VALUES 
-('admin', '$2b$10$WnF./ztE.2asPXhhFBN/1.ttDlaQja3eRgJFtUFt0AO7IscFXwzEa', 'Administrador del Sistema', TRUE);
+INSERT INTO usuarios (usuario, password, nombres, apellido_paterno, apellido_materno, nombre_completo, activo) VALUES 
+('admin', '$2b$10$WnF./ztE.2asPXhhFBN/1.ttDlaQja3eRgJFtUFt0AO7IscFXwzEa', 'Administrador', 'Del', 'Sistema', 'Administrador del Sistema', TRUE);
 
 -- Insertar usuario profesor (password: admin123)
-INSERT INTO usuarios (usuario, password, nombre_completo, activo) VALUES 
-('profesor', '$2b$10$WnF./ztE.2asPXhhFBN/1.ttDlaQja3eRgJFtUFt0AO7IscFXwzEa', 'Profesor Ejemplo', TRUE);
+INSERT INTO usuarios (usuario, password, nombres, apellido_paterno, apellido_materno, nombre_completo, activo) VALUES 
+('profesor', '$2b$10$WnF./ztE.2asPXhhFBN/1.ttDlaQja3eRgJFtUFt0AO7IscFXwzEa', 'Profesor', 'Ejemplo', 'Demo', 'Profesor Ejemplo Demo', TRUE);
 
 -- Asignar rol de administrador al usuario admin
 INSERT INTO usuario_roles (id_usuario, id_rol) 
@@ -245,19 +248,19 @@ INSERT INTO paralelos (letra) VALUES
 
 -- Insertar materias
 INSERT INTO materias (nombre_corto, nombre_completo, descripcion) VALUES 
-('MAT', 'Matemáticas', 'Matemáticas generales'),
-('LEN', 'Lenguaje', 'Lenguaje y comunicación'),
-('CS', 'Ciencias Sociales', 'Ciencias sociales y cívica'),
-('CN', 'Ciencias Naturales', 'Ciencias naturales y biología'),
-('ING', 'Inglés', 'Idioma inglés'),
-('EF', 'Educación Física', 'Educación física y deportes'),
-('ART', 'Artes', 'Educación artística'),
-('TEC', 'Tecnología', 'Tecnología e informática'),
-('MUS', 'Música', 'Educación musical'),
-('REL', 'Religión', 'Educación religiosa'),
-('FIL', 'Filosofía', 'Filosofía'),
-('QUI', 'Química', 'Química'),
-('FIS', 'Física', 'Física');
+('COM-LEN', 'COMUNICACIÓN Y LENGUAJES: LENGUA CASTELLANA Y ORIGINARIA', NULL),
+('LEN-EXT', 'LENGUA EXTRANJERA', NULL),
+('CSOC', 'CIENCIAS SOCIALES', NULL),
+('EFYD', 'EDUCACIÓN FÍSICA Y DEPORTES', NULL),
+('MUS', 'EDUCACIÓN MUSICAL', NULL),
+('ART-PV', 'ARTES PLÁSTICAS Y VISUALES', NULL),
+('MAT', 'MATEMÁTICA', NULL),
+('TEC', 'TÉCNICA TECNOLÓGICA ESPECIALIZADA', NULL),
+('CN-BIOGEO', 'CIENCIAS NATURALES: BIOLOGÍA - GEOGRAFÍA', NULL),
+('CN-FIS', 'CIENCIAS NATURALES: FÍSICA', NULL),
+('CN-QUI', 'CIENCIAS NATURALES: QUÍMICA', NULL),
+('COS-FIL', 'COSMOVISIÓNES, FILOSOFÍA Y SICOLOGÍA', NULL),
+('VAL-REL', 'VALORES, ESPIRITUALIDAD Y RELIGIONES', NULL);
 
 -- Insertar un colegio de ejemplo
 INSERT INTO colegios (nombre, direccion, telefono, email) VALUES 

@@ -58,11 +58,14 @@ export async function POST(request: NextRequest) {
       { expiresIn: "8h" },
     )
 
-    // Set cookie
+    // Set cookie (SameSite=None; Secure when HTTPS so it works inside chrome.sidePanel iframe)
     const cookieStore = await cookies()
+    const isHttps = request.nextUrl.protocol === "https:"
+    const useSecure = isHttps || process.env.FORCE_SECURE_COOKIES === "true"
     cookieStore.set("auth-token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: useSecure,
+      sameSite: useSecure ? "none" : "lax",
       maxAge: 8 * 60 * 60, // 8 hours
       path: "/",
     })

@@ -2,196 +2,65 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useToast } from "@/components/ui/use-toast"
-import { Loader2, Plus, User } from "lucide-react"
 
-interface AddStudentModalProps {
-    aulaId: string
-    isOpen: boolean
-    onClose: () => void
-    onStudentAdded: () => void
-}
-
-export default function AddStudentModal({ 
-    aulaId, 
-    isOpen, 
-    onClose, 
-    onStudentAdded 
-}: AddStudentModalProps) {
-    const { toast } = useToast()
+export default function AddStudentModal({ aulaId, onAdded }: { aulaId: number; onAdded: () => void }) {
+    const [newStudent, setNewStudent] = useState<{ nombres: string; apellido_paterno: string; apellido_materno: string }>({ nombres: "", apellido_paterno: "", apellido_materno: "" })
+    const [errors, setErrors] = useState<{ nombres?: string; apellido_paterno?: string; apellido_materno?: string }>({})
     const [isLoading, setIsLoading] = useState(false)
-    const [newStudent, setNewStudent] = useState({
-        nombres: "",
-        apellidos: ""
-    })
-    const [errors, setErrors] = useState<{ nombres?: string; apellidos?: string }>({})
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        
+    const validate = () => {
         const trimmed = {
             nombres: newStudent.nombres.replace(/\s+/g, " ").trim(),
-            apellidos: newStudent.apellidos.replace(/\s+/g, " ").trim(),
+            apellido_paterno: newStudent.apellido_paterno.replace(/\s+/g, " ").trim(),
+            apellido_materno: newStudent.apellido_materno.replace(/\s+/g, " ").trim(),
         }
-
-        const localErrors: { nombres?: string; apellidos?: string } = {}
+        const localErrors: { nombres?: string; apellido_paterno?: string; apellido_materno?: string } = {}
         if (!trimmed.nombres) localErrors.nombres = "Ingresa los nombres"
-        if (!trimmed.apellidos) localErrors.apellidos = "Ingresa los apellidos"
-
-        if (localErrors.nombres || localErrors.apellidos) {
-            setErrors(localErrors)
-            toast({
-                title: "Campos requeridos",
-                description: "Nombres y apellidos son obligatorios",
-                variant: "destructive",
-            })
-            return
-        }
-
-        setIsLoading(true)
-        try {
-            const response = await fetch(`/api/aulas/${aulaId}/estudiantes`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    nombres: trimmed.nombres,
-                    apellidos: trimmed.apellidos
-                })
-            })
-
-            if (response.ok) {
-                toast({
-                    title: "✅ Estudiante agregado",
-                    description: `${newStudent.nombres} ${newStudent.apellidos} fue agregado correctamente`,
-                })
-                
-                // Limpiar formulario
-                setNewStudent({ nombres: "", apellidos: "" })
-                setErrors({})
-                onClose()
-                onStudentAdded()
-            } else {
-                const error = await response.json()
-                toast({
-                    title: "Error",
-                    description: error.error || "Error al agregar estudiante",
-                    variant: "destructive",
-                })
-            }
-        } catch (error) {
-            console.error("Error al agregar estudiante:", error)
-            toast({
-                title: "Error",
-                description: "Error al agregar estudiante",
-                variant: "destructive",
-            })
-        } finally {
-            setIsLoading(false)
-        }
+        if (!trimmed.apellido_paterno) localErrors.apellido_paterno = "Ingresa el apellido paterno"
+        if (!trimmed.apellido_materno) localErrors.apellido_materno = "Ingresa el apellido materno"
+        setErrors(localErrors)
+        return { ok: Object.keys(localErrors).length === 0, trimmed }
     }
 
-    const handleClose = () => {
-        if (!isLoading) {
-            setNewStudent({ nombres: "", apellidos: "" })
-            setErrors({})
-            onClose()
-        }
+    const handleAdd = async () => {
+        const { ok, trimmed } = validate()
+        if (!ok) return
+        setIsLoading(true)
+        try {
+            const res = await fetch(`/api/aulas/${aulaId}/estudiantes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(trimmed)
+            })
+            if (res.ok) {
+                setNewStudent({ nombres: "", apellido_paterno: "", apellido_materno: "" })
+                onAdded()
+            }
+        } finally { setIsLoading(false) }
     }
 
     return (
-        <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <User className="h-5 w-5 text-blue-600" />
-                        Agregar Nuevo Estudiante
-                    </DialogTitle>
-                    <DialogDescription>
-                        Ingresa la información del estudiante que deseas agregar al aula
-                    </DialogDescription>
-                </DialogHeader>
-                
-                <form onSubmit={handleSubmit} className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="nombres" className="text-sm font-medium">
-                            Nombres *
-                        </Label>
-                        <Input
-                            id="nombres"
-                            placeholder="Ej: Juan Carlos"
-                            autoFocus
-                            maxLength={80}
-                            aria-invalid={!!errors.nombres}
-                            aria-describedby={errors.nombres ? "nombres-error" : undefined}
-                            value={newStudent.nombres}
-                            onChange={(e) => setNewStudent(prev => ({ ...prev, nombres: e.target.value }))}
-                            disabled={isLoading}
-                            className="w-full"
-                        />
-                        {errors.nombres && (
-                            <p id="nombres-error" className="text-xs text-red-600">{errors.nombres}</p>
-                        )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                        <Label htmlFor="apellidos" className="text-sm font-medium">
-                            Apellidos *
-                        </Label>
-                        <Input
-                            id="apellidos"
-                            placeholder="Ej: Pérez García"
-                            maxLength={80}
-                            aria-invalid={!!errors.apellidos}
-                            aria-describedby={errors.apellidos ? "apellidos-error" : undefined}
-                            value={newStudent.apellidos}
-                            onChange={(e) => setNewStudent(prev => ({ ...prev, apellidos: e.target.value }))}
-                            disabled={isLoading}
-                            className="w-full"
-                        />
-                        {errors.apellidos && (
-                            <p id="apellidos-error" className="text-xs text-red-600">{errors.apellidos}</p>
-                        )}
-                    </div>
-                    
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="text-sm text-blue-700">
-                            💡 <strong>Tip:</strong> También puedes importar múltiples estudiantes usando un archivo Excel.
-                        </p>
-                    </div>
-                    
-                    <div className="flex justify-end gap-2 pt-4">
-                        <Button 
-                            type="button"
-                            variant="outline" 
-                            onClick={handleClose}
-                            disabled={isLoading}
-                        >
-                            Cancelar
-                        </Button>
-                        <Button 
-                            type="submit"
-                            disabled={isLoading || !newStudent.nombres.trim() || !newStudent.apellidos.trim()}
-                        >
-                            {isLoading ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Agregando...
-                                </>
-                            ) : (
-                                <>
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Agregar Estudiante
-                                </>
-                            )}
-                        </Button>
-                    </div>
-                </form>
-            </DialogContent>
-        </Dialog>
+        <div className="space-y-3">
+            <div>
+                <Label htmlFor="nombres" className="text-sm font-medium">Nombres *</Label>
+                <Input id="nombres" value={newStudent.nombres} onChange={(e) => setNewStudent(prev => ({ ...prev, nombres: e.target.value }))} aria-invalid={!!errors.nombres} />
+                {errors.nombres && <p className="text-xs text-red-600">{errors.nombres}</p>}
+            </div>
+            <div>
+                <Label htmlFor="apellido_paterno" className="text-sm font-medium">Apellido paterno *</Label>
+                <Input id="apellido_paterno" value={newStudent.apellido_paterno} onChange={(e) => setNewStudent(prev => ({ ...prev, apellido_paterno: e.target.value }))} aria-invalid={!!errors.apellido_paterno} />
+                {errors.apellido_paterno && <p className="text-xs text-red-600">{errors.apellido_paterno}</p>}
+            </div>
+            <div>
+                <Label htmlFor="apellido_materno" className="text-sm font-medium">Apellido materno *</Label>
+                <Input id="apellido_materno" value={newStudent.apellido_materno} onChange={(e) => setNewStudent(prev => ({ ...prev, apellido_materno: e.target.value }))} aria-invalid={!!errors.apellido_materno} />
+                {errors.apellido_materno && <p className="text-xs text-red-600">{errors.apellido_materno}</p>}
+            </div>
+            <div className="flex justify-end">
+                <Button onClick={handleAdd} disabled={isLoading}>Agregar</Button>
+            </div>
+        </div>
     )
 }

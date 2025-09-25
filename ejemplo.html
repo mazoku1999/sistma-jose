@@ -1,0 +1,527 @@
+<div class="modal-dialog modal-lg">
+    <div class="modal-content">
+        <form action="" id="formNotas" onsubmit="registrarNotas(); return false">
+            <input type="hidden" name="infoUe" id="infoUe"
+                value="a:3:{s:14:&quot;ueducativaInfo&quot;;a:4:{s:5:&quot;nivel&quot;;s:33:&quot;Secundaria Comunitaria Productiva&quot;;s:5:&quot;grado&quot;;s:6:&quot;Quinto&quot;;s:8:&quot;paralelo&quot;;s:1:&quot;A&quot;;s:5:&quot;turno&quot;;s:7:&quot;MAÑANA&quot;;}s:16:&quot;ueducativaInfoId&quot;;a:6:{s:10:&quot;paraleloId&quot;;s:1:&quot;1&quot;;s:7:&quot;turnoId&quot;;i:1;s:7:&quot;nivelId&quot;;i:13;s:7:&quot;gradoId&quot;;i:5;s:7:&quot;cicloId&quot;;i:3;s:5:&quot;iecId&quot;;i:167669400;}s:11:&quot;requestUser&quot;;a:4:{s:3:&quot;sie&quot;;s:8:&quot;80980472&quot;;s:7:&quot;gestion&quot;;s:4:&quot;2025&quot;;s:23:&quot;swRegisterCalifications&quot;;b:1;s:19:&quot;swRegisterPersonBjp&quot;;b:1;}}">
+            <input type="hidden" name="infoStudent" id="infoStudent"
+                value="{&quot;estadomatriculaId&quot;:4,&quot;id&quot;:3387677,&quot;carnetIdentidad&quot;:&quot;14446937&quot;,&quot;codigoRude&quot;:&quot;809804722015338&quot;,&quot;paterno&quot;:&quot;&quot;,&quot;materno&quot;:&quot;&quot;,&quot;nombre&quot;:&quot;&quot;,&quot;fechaNacimiento&quot;:{&quot;date&quot;:&quot;2009-07-12 00:00:00.000000&quot;,&quot;timezone_type&quot;:3,&quot;timezone&quot;:&quot;America/La_Paz&quot;},&quot;eInsId&quot;:499245568,&quot;nivel&quot;:&quot;Secundaria Comunitaria Productiva&quot;,&quot;grado&quot;:&quot;Quinto&quot;,&quot;paralelo&quot;:&quot;A&quot;}">
+            <div class="panel panel-danger">
+                <div class="panel-heading">
+                    <div class="pull-left">
+                        <h3 class="panel-title">Calificaciones del Estudiante</h3>
+                    </div>
+                    <div class="clearfix"></div>
+                </div>
+                <div class="panel-body no-padding" id="modal-body">
+                    <div class="alert " style="padding:10px">
+                        <h5 class="text-lilac">Datos del Curso</h5>
+                        <table class="table table-condensed table-bordered" style="background:#EEEEEE">
+                            <tr>
+                                <th>Nivel</th>
+                                <td>SECUNDARIA COMUNITARIA PRODUCTIVA</td>
+                                <th>Turno</th>
+                                <td>MAÑANA</td>
+                            </tr>
+                            <tr>
+                                <th>Grado</th>
+                                <td>QUINTO</td>
+                                <th>Paralelo</th>
+                                <td>A</td>
+                            </tr>
+                        </table>
+
+                        <h5 class="text-info">Datos del Estudiante</h5>
+                        <table class="table table-condensed table-bordered" style="background:#EEEEEE">
+                            <tr>
+                                <th>Codigo Rude</th>
+                                <td style="color:#0086DD">809804722015338</td>
+                            </tr>
+                            <tr>
+                                <th>Estudiante</th>
+                                <td style="color:#0086DD"><b>BRANDON ALDUNATE RIOS</b></td>
+                            </tr>
+                            <tr>
+                                <th>Estado de matrícula</th>
+                                <td>EFECTIVO</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <h5 class="text-success" style="margin-left:10px">Calificaciones <span
+                            style="float:right; margin-right:10px; font-size:0.9em;">Gestion: 2025 | <span
+                                style="color:#2D839A; font-size: 1em"> A2 </span> </span></h5>
+                    <div style="padding:0px 10px 0px 10px">
+
+                        <input type="hidden" name="tipoNota" value="newTemplateDB">
+                        <input type="hidden" name="nivel" value="13">
+                        <input type="hidden" name="idInscripcion" value="499245568">
+                        <input type="hidden" name="gestion" value="2025">
+
+
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <table class="table table-bordered cf" style="backgroud:#FFFFFF">
+                                    <thead class="cf">
+                                        <tr>
+                                            <th>
+                                                Área
+                                            </th>
+                                            <th>1 Trimestre</th>
+
+                                            <th>2 Trimestre</th>
+
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td data-title="Asignatura">
+                                                COMUNICACIÓN Y LENGUAJES: LENGUA CASTELLANA Y ORIGINARIA
+                                            </td>
+
+
+                                            <td data-title="Promedio">
+                                                <input type="hidden" name="idEstudianteNota[]" value="2490895742">
+                                                <input type="hidden" name="idNotaTipo[]" value="6">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1076344886">
+                                                <input type="text" id="0-6" name="nota[]" value="68" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="notaVacia(this.id,this.value)"
+                                                    class="form-control input-sm  nota 499245568_1031 "
+                                                    style="width:50px" maxlength="3" autocomplete="off"
+                                                    readonly="readonly">
+                                            </td>
+
+
+
+                                            <td data-title="7 Trimestre">
+                                                <input type="hidden" name="idEstudianteNota[]" value="nuevo">
+                                                <input type="hidden" name="idNotaTipo[]" value="7">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1076344886">
+                                                <input type="text" id="0-7" name="nota[]" value="" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="promedio(this,'499245568_1031')"
+                                                    onblur="notaVacia(this,'499245568_1031')"
+                                                    class="form-control input-sm nota 499245568_1031" style="width:50px"
+                                                    maxlength="3" autocomplete="off">
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                            <td data-title="Asignatura">
+                                                LENGUA EXTRANJERA
+                                            </td>
+
+
+                                            <td data-title="Promedio">
+                                                <input type="hidden" name="idEstudianteNota[]" value="2490895775">
+                                                <input type="hidden" name="idNotaTipo[]" value="6">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1076344906">
+                                                <input type="text" id="1-6" name="nota[]" value="72" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="notaVacia(this.id,this.value)"
+                                                    class="form-control input-sm  nota 499245568_1032 "
+                                                    style="width:50px" maxlength="3" autocomplete="off"
+                                                    readonly="readonly">
+                                            </td>
+
+
+
+                                            <td data-title="7 Trimestre">
+                                                <input type="hidden" name="idEstudianteNota[]" value="nuevo">
+                                                <input type="hidden" name="idNotaTipo[]" value="7">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1076344906">
+                                                <input type="text" id="1-7" name="nota[]" value="" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="promedio(this,'499245568_1032')"
+                                                    onblur="notaVacia(this,'499245568_1032')"
+                                                    class="form-control input-sm nota 499245568_1032" style="width:50px"
+                                                    maxlength="3" autocomplete="off">
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                            <td data-title="Asignatura">
+                                                CIENCIAS SOCIALES
+                                            </td>
+
+
+                                            <td data-title="Promedio">
+                                                <input type="hidden" name="idEstudianteNota[]" value="2490895781">
+                                                <input type="hidden" name="idNotaTipo[]" value="6">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1076344910">
+                                                <input type="text" id="2-6" name="nota[]" value="81" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="notaVacia(this.id,this.value)"
+                                                    class="form-control input-sm  nota 499245568_1033 "
+                                                    style="width:50px" maxlength="3" autocomplete="off"
+                                                    readonly="readonly">
+                                            </td>
+
+
+
+                                            <td data-title="7 Trimestre">
+                                                <input type="hidden" name="idEstudianteNota[]" value="nuevo">
+                                                <input type="hidden" name="idNotaTipo[]" value="7">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1076344910">
+                                                <input type="text" id="2-7" name="nota[]" value="" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="promedio(this,'499245568_1033')"
+                                                    onblur="notaVacia(this,'499245568_1033')"
+                                                    class="form-control input-sm nota 499245568_1033" style="width:50px"
+                                                    maxlength="3" autocomplete="off">
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                            <td data-title="Asignatura">
+                                                EDUCACIÓN FÍSICA Y DEPORTES
+                                            </td>
+
+
+                                            <td data-title="Promedio">
+                                                <input type="hidden" name="idEstudianteNota[]" value="2490895783">
+                                                <input type="hidden" name="idNotaTipo[]" value="6">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1076344912">
+                                                <input type="text" id="3-6" name="nota[]" value="66" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="notaVacia(this.id,this.value)"
+                                                    class="form-control input-sm  nota 499245568_1034 "
+                                                    style="width:50px" maxlength="3" autocomplete="off"
+                                                    readonly="readonly">
+                                            </td>
+
+
+
+                                            <td data-title="7 Trimestre">
+                                                <input type="hidden" name="idEstudianteNota[]" value="nuevo">
+                                                <input type="hidden" name="idNotaTipo[]" value="7">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1076344912">
+                                                <input type="text" id="3-7" name="nota[]" value="" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="promedio(this,'499245568_1034')"
+                                                    onblur="notaVacia(this,'499245568_1034')"
+                                                    class="form-control input-sm nota 499245568_1034" style="width:50px"
+                                                    maxlength="3" autocomplete="off">
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                            <td data-title="Asignatura">
+                                                EDUCACIÓN MUSICAL
+                                            </td>
+
+
+                                            <td data-title="Promedio">
+                                                <input type="hidden" name="idEstudianteNota[]" value="2490895786">
+                                                <input type="hidden" name="idNotaTipo[]" value="6">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1076344913">
+                                                <input type="text" id="4-6" name="nota[]" value="91" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="notaVacia(this.id,this.value)"
+                                                    class="form-control input-sm  nota 499245568_1035 "
+                                                    style="width:50px" maxlength="3" autocomplete="off"
+                                                    readonly="readonly">
+                                            </td>
+
+
+
+                                            <td data-title="7 Trimestre">
+                                                <input type="hidden" name="idEstudianteNota[]" value="nuevo">
+                                                <input type="hidden" name="idNotaTipo[]" value="7">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1076344913">
+                                                <input type="text" id="4-7" name="nota[]" value="" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="promedio(this,'499245568_1035')"
+                                                    onblur="notaVacia(this,'499245568_1035')"
+                                                    class="form-control input-sm nota 499245568_1035" style="width:50px"
+                                                    maxlength="3" autocomplete="off">
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                            <td data-title="Asignatura">
+                                                ARTES PLÁSTICAS Y VISUALES
+                                            </td>
+
+
+                                            <td data-title="Promedio">
+                                                <input type="hidden" name="idEstudianteNota[]" value="2490895789">
+                                                <input type="hidden" name="idNotaTipo[]" value="6">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1076344914">
+                                                <input type="text" id="5-6" name="nota[]" value="67" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="notaVacia(this.id,this.value)"
+                                                    class="form-control input-sm  nota 499245568_1036 "
+                                                    style="width:50px" maxlength="3" autocomplete="off"
+                                                    readonly="readonly">
+                                            </td>
+
+
+
+                                            <td data-title="7 Trimestre">
+                                                <input type="hidden" name="idEstudianteNota[]" value="nuevo">
+                                                <input type="hidden" name="idNotaTipo[]" value="7">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1076344914">
+                                                <input type="text" id="5-7" name="nota[]" value="" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="promedio(this,'499245568_1036')"
+                                                    onblur="notaVacia(this,'499245568_1036')"
+                                                    class="form-control input-sm nota 499245568_1036" style="width:50px"
+                                                    maxlength="3" autocomplete="off">
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                            <td data-title="Asignatura">
+                                                MATEMÁTICA
+                                            </td>
+
+
+                                            <td data-title="Promedio">
+                                                <input type="hidden" name="idEstudianteNota[]" value="2490895793">
+                                                <input type="hidden" name="idNotaTipo[]" value="6">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1076344916">
+                                                <input type="text" id="6-6" name="nota[]" value="64" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="notaVacia(this.id,this.value)"
+                                                    class="form-control input-sm  nota 499245568_1037 "
+                                                    style="width:50px" maxlength="3" autocomplete="off"
+                                                    readonly="readonly">
+                                            </td>
+
+
+
+                                            <td data-title="7 Trimestre">
+                                                <input type="hidden" name="idEstudianteNota[]" value="nuevo">
+                                                <input type="hidden" name="idNotaTipo[]" value="7">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1076344916">
+                                                <input type="text" id="6-7" name="nota[]" value="" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="promedio(this,'499245568_1037')"
+                                                    onblur="notaVacia(this,'499245568_1037')"
+                                                    class="form-control input-sm nota 499245568_1037" style="width:50px"
+                                                    maxlength="3" autocomplete="off">
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                            <td data-title="Asignatura">
+                                                TÉCNICA TECNOLÓGICA ESPECIALIZADA : <span
+                                                    style="color:#43C65E; font-weight:bold"> GASTRONOMÍA </span> </td>
+
+
+                                            <td data-title="Promedio">
+                                                <input type="hidden" name="idEstudianteNota[]" value="2507195239">
+                                                <input type="hidden" name="idNotaTipo[]" value="6">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1092727612">
+                                                <input type="text" id="7-6" name="nota[]" value="67" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="notaVacia(this.id,this.value)"
+                                                    class="form-control input-sm  nota 499245568_1039 "
+                                                    style="width:50px" maxlength="3" autocomplete="off"
+                                                    readonly="readonly">
+                                            </td>
+
+
+
+                                            <td data-title="7 Trimestre">
+                                                <input type="hidden" name="idEstudianteNota[]" value="nuevo">
+                                                <input type="hidden" name="idNotaTipo[]" value="7">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1092727612">
+                                                <input type="text" id="7-7" name="nota[]" value="" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="promedio(this,'499245568_1039')"
+                                                    onblur="notaVacia(this,'499245568_1039')"
+                                                    class="form-control input-sm nota 499245568_1039" style="width:50px"
+                                                    maxlength="3" autocomplete="off">
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                            <td data-title="Asignatura">
+                                                CIENCIAS NATURALES: BIOLOGÍA - GEOGRAFÍA
+                                            </td>
+
+
+                                            <td data-title="Promedio">
+                                                <input type="hidden" name="idEstudianteNota[]" value="2490895797">
+                                                <input type="hidden" name="idNotaTipo[]" value="6">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1076344919">
+                                                <input type="text" id="8-6" name="nota[]" value="59" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="notaVacia(this.id,this.value)"
+                                                    class="form-control input-sm  nota 499245568_1040 "
+                                                    style="width:50px" maxlength="3" autocomplete="off"
+                                                    readonly="readonly">
+                                            </td>
+
+
+
+                                            <td data-title="7 Trimestre">
+                                                <input type="hidden" name="idEstudianteNota[]" value="nuevo">
+                                                <input type="hidden" name="idNotaTipo[]" value="7">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1076344919">
+                                                <input type="text" id="8-7" name="nota[]" value="" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="promedio(this,'499245568_1040')"
+                                                    onblur="notaVacia(this,'499245568_1040')"
+                                                    class="form-control input-sm nota 499245568_1040" style="width:50px"
+                                                    maxlength="3" autocomplete="off">
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                            <td data-title="Asignatura">
+                                                CIENCIAS NATURALES: FÍSICA
+                                            </td>
+
+
+                                            <td data-title="Promedio">
+                                                <input type="hidden" name="idEstudianteNota[]" value="2490895799">
+                                                <input type="hidden" name="idNotaTipo[]" value="6">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1076344921">
+                                                <input type="text" id="9-6" name="nota[]" value="59" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="notaVacia(this.id,this.value)"
+                                                    class="form-control input-sm  nota 499245568_1041 "
+                                                    style="width:50px" maxlength="3" autocomplete="off"
+                                                    readonly="readonly">
+                                            </td>
+
+
+
+                                            <td data-title="7 Trimestre">
+                                                <input type="hidden" name="idEstudianteNota[]" value="nuevo">
+                                                <input type="hidden" name="idNotaTipo[]" value="7">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1076344921">
+                                                <input type="text" id="9-7" name="nota[]" value="" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="promedio(this,'499245568_1041')"
+                                                    onblur="notaVacia(this,'499245568_1041')"
+                                                    class="form-control input-sm nota 499245568_1041" style="width:50px"
+                                                    maxlength="3" autocomplete="off">
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                            <td data-title="Asignatura">
+                                                CIENCIAS NATURALES: QUÍMICA
+                                            </td>
+
+
+                                            <td data-title="Promedio">
+                                                <input type="hidden" name="idEstudianteNota[]" value="2490895803">
+                                                <input type="hidden" name="idNotaTipo[]" value="6">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1076344923">
+                                                <input type="text" id="10-6" name="nota[]" value="59" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="notaVacia(this.id,this.value)"
+                                                    class="form-control input-sm  nota 499245568_1042 "
+                                                    style="width:50px" maxlength="3" autocomplete="off"
+                                                    readonly="readonly">
+                                            </td>
+
+
+
+                                            <td data-title="7 Trimestre">
+                                                <input type="hidden" name="idEstudianteNota[]" value="nuevo">
+                                                <input type="hidden" name="idNotaTipo[]" value="7">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1076344923">
+                                                <input type="text" id="10-7" name="nota[]" value="" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="promedio(this,'499245568_1042')"
+                                                    onblur="notaVacia(this,'499245568_1042')"
+                                                    class="form-control input-sm nota 499245568_1042" style="width:50px"
+                                                    maxlength="3" autocomplete="off">
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                            <td data-title="Asignatura">
+                                                COSMOVISIÓNES, FILOSOFÍA Y SICOLOGÍA
+                                            </td>
+
+
+                                            <td data-title="Promedio">
+                                                <input type="hidden" name="idEstudianteNota[]" value="2490895808">
+                                                <input type="hidden" name="idNotaTipo[]" value="6">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1076344926">
+                                                <input type="text" id="11-6" name="nota[]" value="72" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="notaVacia(this.id,this.value)"
+                                                    class="form-control input-sm  nota 499245568_1043 "
+                                                    style="width:50px" maxlength="3" autocomplete="off"
+                                                    readonly="readonly">
+                                            </td>
+
+
+
+                                            <td data-title="7 Trimestre">
+                                                <input type="hidden" name="idEstudianteNota[]" value="nuevo">
+                                                <input type="hidden" name="idNotaTipo[]" value="7">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1076344926">
+                                                <input type="text" id="11-7" name="nota[]" value="" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="promedio(this,'499245568_1043')"
+                                                    onblur="notaVacia(this,'499245568_1043')"
+                                                    class="form-control input-sm nota 499245568_1043" style="width:50px"
+                                                    maxlength="3" autocomplete="off">
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                            <td data-title="Asignatura">
+                                                VALORES, ESPIRITUALIDAD Y RELIGIONES
+                                            </td>
+
+
+                                            <td data-title="Promedio">
+                                                <input type="hidden" name="idEstudianteNota[]" value="2490895810">
+                                                <input type="hidden" name="idNotaTipo[]" value="6">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1076344927">
+                                                <input type="text" id="12-6" name="nota[]" value="75" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="notaVacia(this.id,this.value)"
+                                                    class="form-control input-sm  nota 499245568_1044 "
+                                                    style="width:50px" maxlength="3" autocomplete="off"
+                                                    readonly="readonly">
+                                            </td>
+
+
+
+                                            <td data-title="7 Trimestre">
+                                                <input type="hidden" name="idEstudianteNota[]" value="nuevo">
+                                                <input type="hidden" name="idNotaTipo[]" value="7">
+                                                <input type="hidden" name="idEstudianteAsignatura[]" value="1076344927">
+                                                <input type="text" id="12-7" name="nota[]" value="" size="2"
+                                                    onkeypress="return validarNota(event,this.id,this.value)"
+                                                    onkeyup="promedio(this,'499245568_1044')"
+                                                    onblur="notaVacia(this,'499245568_1044')"
+                                                    class="form-control input-sm nota 499245568_1044" style="width:50px"
+                                                    maxlength="3" autocomplete="off">
+                                            </td>
+
+
+                                        </tr>
+
+
+
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="col-lg-4">
+
+                            </div>
+                        </div>

@@ -32,8 +32,9 @@ export async function GET(request: Request) {
       SELECT DISTINCT 
         e.id_estudiante,
         e.nombres,
-        e.apellidos,
-        CONCAT(e.nombres, ' ', e.apellidos) as nombre_completo
+        e.apellido_paterno,
+        e.apellido_materno,
+        CONCAT(e.nombres, ' ', e.apellido_paterno, ' ', e.apellido_materno) as nombre_completo
       FROM estudiantes e
       JOIN inscripciones_aula ia ON e.id_estudiante = ia.id_estudiante
       JOIN aulas_profesor ap ON ia.id_aula_profesor = ap.id_aula_profesor
@@ -46,17 +47,61 @@ export async function GET(request: Request) {
       [colegio, nivel, curso, paralelo]
     )
 
-    // Obtener TODAS las materias de la base de datos
-    const materiasQuery = await executeQuery<any[]>(
+    // Determinar materias por curso (1-3: 11 materias; 4+: 13 materias)
+    const cursoInfo = await executeQuery<any[]>(
+      `SELECT nombre FROM cursos WHERE id_curso = ?`,
+      [curso]
+    )
+    const cursoNombre: string = (cursoInfo[0]?.nombre || "").toString()
+    // parseInt("1ro") -> 1, parseInt fallback NaN -> 0
+    const cursoNumero = Number.parseInt(cursoNombre)
+
+    const baseMaterias = [
+      "COM-LEN", // Comunicación y lenguajes
+      "LEN-EXT", // Lengua extranjera
+      "CSOC",    // Ciencias sociales
+      "EFYD",    // Educación física y deportes
+      "MUS",     // Educación musical
+      "ART-PV",  // Artes plásticas y visuales
+      "MAT",     // Matemática
+      "TEC",     // Técnica tecnológica (nombre se ajusta abajo para 1-3)
+      "CN-BIOGEO", // CN: Biología - Geografía
+      "COS-FIL", // Cosmovisiones, Filosofía y Sicología
+      "VAL-REL", // Valores, Espiritualidad y Religiones
+    ] as const
+
+    const extraMaterias = [
+      "CN-FIS", // CN: Física
+      "CN-QUI", // CN: Química
+    ] as const
+
+    const materiasPermitidas = cursoNumero >= 4 ? [...baseMaterias, ...extraMaterias] : [...baseMaterias]
+
+    // Obtener SOLO las materias correspondientes
+    const placeholders = materiasPermitidas.map(() => "?").join(",")
+    const materiasRaw = await executeQuery<any[]>(
       `
       SELECT 
         m.id_materia,
         m.nombre_corto,
         m.nombre_completo
       FROM materias m
+      WHERE m.nombre_corto IN (${placeholders})
       ORDER BY m.nombre_completo
-      `
+      `,
+      [...materiasPermitidas]
     )
+
+    // Ajustar nombre de Técnica para cursos 1-3
+    const materiasQuery = (materiasRaw || []).map((m) => {
+      if (cursoNumero > 0 && cursoNumero <= 3 && m.nombre_corto === "TEC") {
+        return {
+          ...m,
+          nombre_completo: "TÉCNICA TECNOLÓGICA GENERAL",
+        }
+      }
+      return m
+    })
 
     // Obtener notas centralizadas existentes
     const notasQuery = await executeQuery<any[]>(
@@ -135,8 +180,8 @@ export async function POST(request: Request) {
     )
 
     if (!gestionActivaQuery.length) {
-      return NextResponse.json({ 
-        error: "No hay una gestión académica activa. Solo se pueden centralizar notas del año académico actual." 
+      return NextResponse.json({
+        error: "No hay una gestión académica activa. Solo se pueden centralizar notas del año académico actual."
       }, { status: 400 })
     }
 
@@ -153,8 +198,8 @@ export async function POST(request: Request) {
     )
 
     if (aulaGestionQuery.length > 0 && !aulaGestionQuery[0].activa) {
-      return NextResponse.json({ 
-        error: "🔒 Solo se pueden centralizar notas de la gestión académica activa (año actual)" 
+      return NextResponse.json({
+        error: "🔒 Solo se pueden centralizar notas de la gestión académica activa (año actual)"
       }, { status: 403 })
     }
 
@@ -163,8 +208,8 @@ export async function POST(request: Request) {
 
     try {
       // Eliminar solo las notas de las materias que se están actualizando
-      const materiasEnviadas = [...new Set(notas.map(nota => nota.id_materia))]
-      
+      const materiasEnviadas = [...new Set(notas.map((nota: any) => nota.id_materia))]
+
       if (materiasEnviadas.length > 0) {
         const placeholders = materiasEnviadas.map(() => '?').join(',')
         await executeQuery(
@@ -217,10 +262,10 @@ export async function POST(request: Request) {
 
       await executeQuery("COMMIT")
 
-      return NextResponse.json({ 
-        success: true, 
+      return NextResponse.json({
+        success: true,
         message: "Notas centralizadas correctamente",
-        count: notas.length 
+        count: notas.length
       })
     } catch (error) {
       await executeQuery("ROLLBACK")

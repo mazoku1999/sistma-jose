@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Documents - Delhi Technological University</title>
+    <style>
+        /* --- General & Print Styles --- */
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Dancing+Script&display=swap');
+
+        :root {
+            --dtu-blue: #005a9c;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .page {
+            background: white;
+            width: 21cm;
+            min-height: 29.7cm;
+            padding: 2cm;
+            margin-bottom: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e0e0e0;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .download-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: var(--dtu-blue);
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+        }
+
+        @media print {
+            body {
+                background-color: white;
+                padding: 0;
+            }
+
+            .page {
+                margin: 0;
+                box-shadow: none;
+                border: none;
+                page-break-after: always;
+            }
+
+            .page:last-child {
+                page-break-after: auto;
+            }
+
+            .download-btn,
+            .editable-input::placeholder {
+                display: none;
+            }
+
+            .editable-input {
+                border: none;
+                padding: 0;
+                font-size: inherit;
+                font-family: inherit;
+                color: inherit;
+                font-weight: inherit;
+            }
+        }
+
+        /* --- Common Header --- */
+        .header {
+            display: flex;
+            align-items: center;
+            border-bottom: 3px solid var(--dtu-blue);
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        .dtu-logo {
+            width: 70px;
+            height: auto;
+            margin-right: 20px;
+        }
+
+        .header-text h1 {
+            color: var(--dtu-blue);
+            font-size: 24px;
+            margin: 0;
+            font-weight: bold;
+        }
+
+        .header-text h2 {
+            color: #333;
+            font-size: 18px;
+            margin: 5px 0 0 0;
+            font-weight: normal;
+        }
+
+        .document-title {
+            text-align: center;
+            font-size: 22px;
+            font-weight: bold;
+            color: var(--dtu-blue);
+            margin-bottom: 30px;
+        }
+
+        /* --- Student Profile Layout --- */
+        .student-profile-section {
+            display: flex;
+            justify-content: space-between;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .student-details {
+            flex-grow: 1;
+        }
+
+        .student-details p {
+            font-size: 16px;
+            line-height: 2;
+            margin: 0 0 10px 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .student-details .label {
+            font-weight: bold;
+            color: #555;
+            display: inline-block;
+            width: 140px;
+            flex-shrink: 0;
+        }
+
+        .editable-input {
+            border: 1px dashed #ccc;
+            padding: 4px 8px;
+            font-size: 16px;
+            width: calc(100% - 150px);
+            border-radius: 4px;
+            background: #fffefc;
+        }
+
+        .name-inputs-container {
+            display: flex;
+            gap: 10px;
+            width: calc(100% - 140px);
+        }
+
+        .name-inputs-container .editable-input {
+            width: 100%;
+        }
+
+        .value {
+            flex: 1;
+        }
+
+        .student-photo-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .photo-placeholder {
+            width: 150px;
+            height: 180px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            overflow: hidden;
+            background-color: #f0f0f0;
+        }
+
+        .photo-placeholder img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .barcode-section {
+            margin-top: 30px;
+        }
+
+        /* --- Table Styles --- */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+
+        .data-table th,
+        .data-table td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: left;
+        }
+
+        .data-table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .data-table td.right {
+            text-align: right;
+        }
+
+        .total-row td {
+            font-weight: bold;
+            background-color: #f2f2f2;
+            border-top: 2px solid #000;
+        }
+
+        /* --- Receipt & Footer Styles --- */
+        .receipt-details {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+
+        .student-info-block {
+            line-height: 1.6;
+        }
+
+        .footer-section {
+            margin-top: 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .signature-area {
+            border-top: 1px solid #555;
+            padding-top: 8px;
+            width: 250px;
+        }
+
+        .signature-font {
+            font-family: 'Dancing Script', cursive;
+            font-size: 24px;
+            color: #333;
+        }
+
+        .signature-title {
+            font-size: 14px;
+            color: #555;
+        }
+
+        .official-seal {
+            width: 120px;
+            height: 120px;
+            border: 3px double var(--dtu-blue);
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: var(--dtu-blue);
+            font-weight: bold;
+            font-size: 11px;
+            line-height: 1.2;
+        }
+
+        .seal-logo {
+            width: 40px;
+            height: 40px;
+            margin-bottom: 5px;
+        }
+
+        .notes {
+            margin-top: 30px;
+            font-size: 14px;
+            color: #555;
+            line-height: 1.5;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+
+        /* --- Compliance Badge --- */
+        .compliance {
+            margin-top: 16px;
+            padding: 10px 12px;
+            border: 1px solid #d9ead3;
+            background: #f3fbef;
+            color: #1f6b32;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .compliance strong {
+            color: #104b22;
+        }
+    </style>
+</head>
+
+<body>
+    <button class="download-btn" onclick="downloadPageAsImage()">Download</button>
+
+    <!-- PAGE 1 -->
+    <div class="page">
+        <div class="header">
+            <!-- Institution logo satisfies "nombre/logo de la institución" -->
+            <img src="https://upload.wikimedia.org/wikipedia/en/b/b5/DTU%2C_Delhi_official_logo.png"
+                alt="University Logo" class="dtu-logo">
+            <div class="header-text">
+                <h1>Delhi Technological University</h1>
+                <h2>Student Affairs Division</h2>
+            </div>
+        </div>
+        <h2 class="document-title">Student Information Sheet</h2>
+
+        <div class="student-profile-section">
+            <div class="student-details">
+                <!-- Nombre completo tal como lo ingresa el estudiante -->
+                <p>
+                    <span class="label">First Name:</span>
+                    <input type="text" id="studentFirstNameInput" class="editable-input" placeholder="First Name">
+                </p>
+                <p>
+                    <span class="label">Last Name:</span>
+                    <input type="text" id="studentLastNameInput" class="editable-input" placeholder="Last Name">
+                </p>
+
+                <p><span class="label">Full Name:</span> <span class="value student-name-display">(STUDENT NAME)</span>
+                </p>
+
+                <p><span class="label">Student ID:</span> <span class="value student-id-display"></span></p>
+                <p><span class="label">Program:</span> <span class="value">Bachelor of Technology (B.Tech)</span></p>
+                <p><span class="label">Major:</span> <span class="value">Computer Science</span></p>
+
+                <!-- Fecha de emisión autogenerada (cumple 90 días/año académico) -->
+                <p><span class="label">Issue Date:</span> <span class="value issue-date"></span></p>
+                <p><span class="label">Expiry Date:</span> <span class="value">08/31/2029</span></p>
+
+                <div class="compliance">
+                    <strong>Compliance:</strong>
+                    Issued on <span class="issue-date"></span>. This date is within the current academic year
+                    and within <span class="days-from-today">0</span> days of today (≤ 90 days).
+                </div>
+            </div>
+
+            <div class="student-photo-area">
+                <div class="photo-placeholder">
+                    <img src="https://res.cloudinary.com/djfiaa34u/image/upload/v1757299368/Image_fx_-_2025-09-07T224047.513_np5qpf.png"
+                        alt="Student Photo">
+                </div>
+            </div>
+        </div>
+
+        <div class="barcode-section">
+            <svg class="barcode"></svg>
+        </div>
+
+        <div class="notes">
+            This document is an official record from Delhi Technological University. Any unauthorized alteration is
+            strictly prohibited.
+        </div>
+    </div>
+
+    <!-- PAGE 2 -->
+    <div class="page">
+        <div class="header">
+            <img src="https://res.cloudinary.com/djfiaa34u/image/upload/v1757299366/Image_fx_-_2025-09-07T224107.282_z1h29d.png"
+                alt="University Logo" class="dtu-logo">
+            <div class="header-text">
+                <h1>Delhi Technological University</h1>
+                <h2>Office of the Registrar</h2>
+            </div>
+        </div>
+        <h2 class="document-title">Class Schedule – Autumn Semester 2025</h2>
+
+        <div class="student-info-block">
+            <strong>Student:</strong> <span class="student-name-display">(STUDENT NAME)</span><br>
+            <strong>ID:</strong> <span class="student-id-display"></span><br>
+            <strong>Program:</strong> Computer Science
+        </div>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Course Code</th>
+                    <th>Course Title</th>
+                    <th>Credits</th>
+                    <th>Days</th>
+                    <th>Time</th>
+                    <th>Location</th>
+                    <th>Instructor</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>CS-201</td>
+                    <td>Data Structures</td>
+                    <td>4</td>
+                    <td>Mon, Wed, Fri</td>
+                    <td>10:00 AM - 10:50 AM</td>
+                    <td>LHC-101</td>
+                    <td>Prof. A. Gupta</td>
+                </tr>
+                <tr>
+                    <td>CS-203</td>
+                    <td>Discrete Mathematics</td>
+                    <td>4</td>
+                    <td>Mon, Wed, Fri</td>
+                    <td>11:00 AM - 11:50 AM</td>
+                    <td>LHC-102</td>
+                    <td>Prof. R. Sharma</td>
+                </tr>
+                <tr>
+                    <td>EC-205</td>
+                    <td>Digital Circuits & Logic Design</td>
+                    <td>4</td>
+                    <td>Tue, Thu</td>
+                    <td>9:30 AM - 10:50 AM</td>
+                    <td>LHC-201</td>
+                    <td>Prof. S. Verma</td>
+                </tr>
+                <tr>
+                    <td>CS-251</td>
+                    <td>Data Structures Lab</td>
+                    <td>2</td>
+                    <td>Tue</td>
+                    <td>2:00 PM - 4:50 PM</td>
+                    <td>CS Lab 3</td>
+                    <td>Prof. A. Gupta</td>
+                </tr>
+                <tr>
+                    <td>HU-101</td>
+                    <td>Professional Communication</td>
+                    <td>3</td>
+                    <td>Thu</td>
+                    <td>11:00 AM - 1:50 PM</td>
+                    <td>Admin-301</td>
+                    <td>Prof. M. Singh</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="notes">
+            <strong>Important Notes:</strong>
+            <ul>
+                <li>The Autumn 2025 semester runs from August 4, 2025, to December 5, 2025.</li>
+                <li>Lab sessions are mandatory and begin in the first full week of classes.</li>
+                <li>Last date for course withdrawal with a full refund is August 22, 2025.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- PAGE 3 -->
+    <div class="page">
+        <div class="header">
+            <img src="https://res.cloudinary.com/djfiaa34u/image/upload/v1757299366/Image_fx_-_2025-09-07T224107.282_z1h29d.png"
+                alt="University Logo" class="dtu-logo">
+            <div class="header-text">
+                <h1>Delhi Technological University</h1>
+                <h2>Student Accounts Office</h2>
+            </div>
+        </div>
+        <h2 class="document-title">Tuition Fee Receipt – Autumn Semester 2025</h2>
+
+        <div class="receipt-details">
+            <div class="student-info-block">
+                <strong>To:</strong><br>
+                <span class="student-name-display">(STUDENT NAME)</span><br>
+                ID: <span class="student-id-display"></span>
+            </div>
+            <div>
+                <!-- También se autocompleta con la fecha actual -->
+                <strong>Receipt Date:</strong> <span class="issue-date"></span><br>
+                <strong>Term:</strong> Autumn 2025
+            </div>
+        </div>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Charge Description</th>
+                    <th class="right">Amount (INR)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Tuition Fee (B.Tech)</td>
+                    <td class="right">₹ 95,000.00</td>
+                </tr>
+                <tr>
+                    <td>Student Welfare & Activity Fees</td>
+                    <td class="right">₹ 5,500.00</td>
+                </tr>
+                <tr>
+                    <td>Examination & Library Fees</td>
+                    <td class="right">₹ 3,000.00</td>
+                </tr>
+                <tr class="total-row">
+                    <td><strong>Total Charges</strong></td>
+                    <td class="right"><strong>₹ 103,500.00</strong></td>
+                </tr>
+                <tr>
+                    <td colspan="2">&nbsp;</td>
+                </tr>
+                <tr>
+                    <th colspan="2">Payments & Financial Aid</th>
+                </tr>
+                <tr>
+                    <td>Merit-cum-Means Scholarship</td>
+                    <td class="right">(₹ 50,000.00)</td>
+                </tr>
+                <tr>
+                    <td>Online Payment Received</td>
+                    <td class="right">(₹ 53,500.00)</td>
+                </tr>
+                <tr class="total-row">
+                    <td><strong>Total Payments & Aid</strong></td>
+                    <td class="right"><strong>(₹ 103,500.00)</strong></td>
+                </tr>
+                <tr class="total-row" style="background-color: #e6f3ee;">
+                    <td><strong>BALANCE DUE</strong></td>
+                    <td class="right"><strong>₹ 0.00</strong></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="footer-section">
+            <div class="signature-area">
+                <p class="signature-font">R. K. Singh</p>
+                <p class="signature-title">R. K. Singh, Registrar</p>
+            </div>
+            <div class="official-seal">
+                <img src="https://res.cloudinary.com/djfiaa34u/image/upload/v1757299366/Image_fx_-_2025-09-07T224107.282_z1h29d.png"
+                    alt="University Seal" class="seal-logo">
+                <div>OFFICE OF THE</div>
+                <div>REGISTRAR</div>
+                <div>★ OFFICIAL ★</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // --- Generate Random Student ID (9 digits) ---
+            const studentId = Math.floor(100000000 + Math.random() * 900000000);
+            document.querySelectorAll('.student-id-display').forEach(el => el.textContent = studentId);
+
+            // --- Generate Barcode ---
+            JsBarcode(".barcode", studentId.toString(), {
+                format: "code128",
+                textMargin: 0,
+                fontOptions: "bold",
+                height: 50,
+                width: 2
+            });
+
+            // --- Sync student name across all documents ---
+            const firstNameInput = document.getElementById('studentFirstNameInput');
+            const lastNameInput = document.getElementById('studentLastNameInput');
+            const nameDisplays = document.querySelectorAll('.student-name-display');
+
+            function updateStudentName() {
+                const firstName = (firstNameInput.value || '').trim();
+                const lastName = (lastNameInput.value || '').trim();
+                const fullName = (firstName + ' ' + lastName).trim() || '(STUDENT NAME)';
+                nameDisplays.forEach(el => { el.textContent = fullName; });
+            }
+            firstNameInput.addEventListener('input', updateStudentName);
+            lastNameInput.addEventListener('input', updateStudentName);
+            updateStudentName(); // initial
+
+            // --- Dates: Issue Date = today (MM/DD/YYYY) ---
+            // This guarantees "fecha dentro del año académico actual o <= 90 días desde hoy"
+            const today = new Date();
+            function formatDate(date) {
+                const mm = String(date.getMonth() + 1).padStart(2, '0');
+                const dd = String(date.getDate()).padStart(2, '0');
+                const yyyy = date.getFullYear();
+                return `${mm}/${dd}/${yyyy}`;
+            }
+            const issueText = formatDate(today);
+            document.querySelectorAll('.issue-date').forEach(el => { el.textContent = issueText; });
+
+            // --- Compliance helper: days-from-today (should be 0 on issue) ---
+            const daysFromTodayEls = document.querySelectorAll('.days-from-today');
+            if (daysFromTodayEls.length) {
+                daysFromTodayEls.forEach(el => el.textContent = '0');
+            }
+
+            // (Optional) If you need to assert an academic-year label, you can compute it here:
+            // Example academic year Aug 1 - Jul 31
+            // const academicYearStart = new Date(today.getFullYear(), 7, 1); // Aug 1
+            // const academicYearEnd   = new Date(today.getFullYear()+1, 6, 31); // Jul 31 next year
+            // Use these if you want to show a dynamic badge; currently not displayed.
+        });
+
+        // --- Download the first page as a PNG image ---
+        function downloadPageAsImage() {
+            const pageElement = document.querySelector('.page');
+            const downloadBtn = document.querySelector('.download-btn');
+            const firstNameInput = document.getElementById('studentFirstNameInput');
+            const lastNameInput = document.getElementById('studentLastNameInput');
+
+            // Hide button before capture
+            downloadBtn.style.display = 'none';
+
+            const inputs = [firstNameInput, lastNameInput];
+            const originalValues = inputs.map(el => el.value);
+            const originalBorders = inputs.map(el => el.style.border);
+
+            inputs.forEach(input => {
+                if (!input.value) input.value = input.placeholder;
+                input.style.border = 'none';
+            });
+
+            html2canvas(pageElement, {
+                scale: 2,
+                useCORS: true
+            }).then(canvas => {
+                // Restore elements after capture
+                inputs.forEach((input, index) => {
+                    input.style.border = originalBorders[index];
+                    input.value = originalValues[index];
+                });
+                downloadBtn.style.display = 'block';
+
+                const link = document.createElement('a');
+                link.download = 'dtu-student-sheet.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            }).catch(err => {
+                console.error('Error generating image:', err);
+                // Restore elements even if there's an error
+                inputs.forEach((input, index) => {
+                    input.style.border = originalBorders[index];
+                    input.value = originalValues[index];
+                });
+                downloadBtn.style.display = 'block';
+            });
+        }
+    </script>
+</body>
+
+</html>

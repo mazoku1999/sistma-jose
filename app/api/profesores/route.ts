@@ -17,9 +17,11 @@ export async function GET() {
         u.id_usuario,
         p.id_profesor as id,
         u.usuario,
+        u.nombres,
+        u.apellido_paterno,
+        u.apellido_materno,
         u.nombre_completo,
         u.email,
-        u.telefono,
         u.activo,
         DATE_FORMAT(u.fecha_creacion, '%Y-%m-%d') as fecha_registro,
         p.especialidad,
@@ -69,16 +71,20 @@ export async function POST(request: Request) {
 
     const body = await request.json()
     const usuario: string | undefined = body.usuario
-    const nombre_completo: string | undefined = body.nombre_completo
+    const nombres: string | undefined = body.nombres
+    const apellido_paterno: string | undefined = body.apellido_paterno
+    const apellido_materno: string | undefined = body.apellido_materno
     const email: string | undefined = body.email
-    const telefono: string | undefined = body.telefono
+    // telefono eliminado
     const estado: string | undefined = body.estado
     const roles: string[] | undefined = body.roles
     let password: string | undefined = body.password
 
-    if (!usuario || !nombre_completo) {
-      return NextResponse.json({ error: "Usuario y nombre son requeridos" }, { status: 400 })
+    if (!usuario || !nombres || !apellido_paterno || !apellido_materno) {
+      return NextResponse.json({ error: "Usuario, nombres, apellido paterno y apellido materno son requeridos" }, { status: 400 })
     }
+
+    const nombre_completo = `${nombres} ${apellido_paterno} ${apellido_materno}`.trim()
 
     // Verificar si el usuario ya existe
     const existingUser = await executeQuery<any[]>(
@@ -107,14 +113,16 @@ export async function POST(request: Request) {
     try {
       // Crear usuario
       const userResult = await executeQuery<any>(
-        `INSERT INTO usuarios (usuario, password, nombre_completo, email, telefono, activo) 
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO usuarios (usuario, password, nombres, apellido_paterno, apellido_materno, nombre_completo, email, activo) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           usuario,
           hashedPassword,
+          nombres,
+          apellido_paterno,
+          apellido_materno,
           nombre_completo,
           email && email.trim() !== "" ? email : null,
-          telefono || null,
           estado ? estado === "activo" : true,
         ]
       )
@@ -124,32 +132,12 @@ export async function POST(request: Request) {
       // Crear profesor
       const profesorResult = await executeQuery<any>(
         "INSERT INTO profesores (id_usuario, especialidad, puede_centralizar_notas, profesor_area) VALUES (?, ?, ?, ?)",
-        [userId, null, true, false]
+        [userId, body.especialidad || null, body.puede_centralizar_notas ?? true, body.profesor_area ?? false]
       )
 
       const profesorId = profesorResult.insertId
 
-      console.log("Profesor creado - ID Usuario:", userId, "ID Profesor:", profesorId)
-
-      // Verificar que el profesor se creó correctamente
-      const profesorVerificado = await executeQuery<any[]>(
-        "SELECT id_profesor, id_usuario FROM profesores WHERE id_profesor = ?",
-        [profesorId]
-      )
-
-      if (profesorVerificado.length === 0) {
-        throw new Error("Error: El profesor no se creó correctamente en la base de datos")
-      }
-
-      console.log("Profesor verificado:", profesorVerificado[0])
-
-      // Verificar todos los profesores antes del commit
-      const profesoresAntes = await executeQuery<any[]>(
-        "SELECT id_profesor, id_usuario FROM profesores ORDER BY id_profesor"
-      )
-      console.log("Profesores antes del commit:", profesoresAntes)
-
-      // Asignar roles
+      // Asignar roles (por defecto PROFESOR si no se envían)
       const desiredRoles = roles && Array.isArray(roles) && roles.length > 0 ? roles : ["PROFESOR"]
       for (const roleName of desiredRoles) {
         const roleResult = await executeQuery<any[]>(
@@ -164,41 +152,16 @@ export async function POST(request: Request) {
         }
       }
 
-      // Nota: se omiten asignaciones de colegio/materia en este flujo básico
-
       await executeQuery("COMMIT")
 
-      // Obtener el id_profesor correcto después de la transacción
-      const profesorFinal = await executeQuery<any[]>(
-        "SELECT id_profesor FROM profesores WHERE id_usuario = ?",
-        [userId]
-      )
-
-      if (profesorFinal.length === 0) {
-        throw new Error("Error: No se pudo obtener el id_profesor después de crear el profesor")
-      }
-
-      const profesorIdFinal = profesorFinal[0].id_profesor
-      console.log("Profesor final - ID Usuario:", userId, "ID Profesor Final:", profesorIdFinal)
-
-      // Verificación final: verificar que el profesor existe en la base de datos
-      const profesorFinalVerificado = await executeQuery<any[]>(
-        "SELECT p.id_profesor, p.id_usuario, u.nombre_completo FROM profesores p JOIN usuarios u ON p.id_usuario = u.id_usuario WHERE p.id_profesor = ?",
-        [profesorIdFinal]
-      )
-
-      if (profesorFinalVerificado.length === 0) {
-        throw new Error(`Error: El profesor con id_profesor ${profesorIdFinal} no existe en la base de datos`)
-      }
-
-      console.log("Profesor final verificado:", profesorFinalVerificado[0])
-
       return NextResponse.json({
-        id: profesorIdFinal,
+        id: profesorId,
         usuario,
+        nombres,
+        apellido_paterno,
+        apellido_materno,
         nombre_completo,
         email: email || null,
-        message: "Usuario creado correctamente",
         tempPassword: generatedTemp ? password : undefined,
       })
     } catch (error) {

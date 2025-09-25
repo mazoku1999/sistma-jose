@@ -34,9 +34,11 @@ import { useGestionGlobal } from "@/hooks/use-gestion-global"
 interface Profesor {
   id: number
   usuario: string
+  nombres: string
+  apellido_paterno: string
+  apellido_materno: string
   nombre_completo: string
   email: string
-  telefono: string
   estado: "activo" | "inactivo"
   fecha_registro: string
   roles: string[]
@@ -86,11 +88,13 @@ export default function ProfesoresPage() {
   // Form data
   const [formData, setFormData] = useState({
     usuario: "",
-    nombre_completo: "",
+    nombres: "",
+    apellido_paterno: "",
+    apellido_materno: "",
     email: "",
-    telefono: "",
     password: "",
     estado: "activo" as "activo" | "inactivo",
+    role: "PROFESOR" as "PROFESOR" | "ADMIN",
   })
 
   // Asignaciones por colegio (simplificadas)
@@ -154,11 +158,13 @@ export default function ProfesoresPage() {
   const resetForm = () => {
     setFormData({
       usuario: "",
-      nombre_completo: "",
+      nombres: "",
+      apellido_paterno: "",
+      apellido_materno: "",
       email: "",
-      telefono: "",
       password: "",
       estado: "activo",
+      role: "PROFESOR",
     })
     setAsignaciones([])
     setEditingProfesor(null)
@@ -173,11 +179,13 @@ export default function ProfesoresPage() {
       setEditingUserId((profesor as any).id_usuario ?? profesor.id)
       setFormData({
         usuario: profesor.usuario,
-        nombre_completo: profesor.nombre_completo,
+        nombres: profesor.nombres || "",
+        apellido_paterno: profesor.apellido_paterno || "",
+        apellido_materno: profesor.apellido_materno || "",
         email: profesor.email || "",
-        telefono: profesor.telefono || "",
         password: "",
         estado: profesor.estado,
+        role: (profesor.roles && profesor.roles.includes("ADMIN")) ? "ADMIN" : "PROFESOR",
       })
     }
     setOpenDialog(true)
@@ -195,6 +203,10 @@ export default function ProfesoresPage() {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
+  const handleRoleSelect = (value: string) => {
+    setFormData(prev => ({ ...prev, role: (value === "ADMIN" ? "ADMIN" : "PROFESOR") }))
+  }
+
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -205,13 +217,12 @@ export default function ProfesoresPage() {
       let response
       if (editingProfesor) {
         const payload: any = {
-          nombre_completo: formData.nombre_completo.trim(),
-          estado: formData.estado,
+          nombres: formData.nombres.trim(),
+          apellido_paterno: formData.apellido_paterno.trim(),
+          apellido_materno: formData.apellido_materno.trim(),
           email: formData.email.trim(),
-          telefono: formData.telefono.trim(),
-        }
-        if (formData.password && formData.password.trim() !== "") {
-          payload.password = formData.password
+          activo: formData.estado === "activo",
+          roles: [formData.role],
         }
         const targetId = editingUserId ?? (editingProfesor as any).id_usuario ?? editingProfesor.id
         response = await fetch(`/api/profesores/${targetId}`, {
@@ -221,8 +232,8 @@ export default function ProfesoresPage() {
         })
       } else {
         // Validación mínima en creación
-        if (!formData.usuario.trim() || !formData.nombre_completo.trim() || !formData.password.trim()) {
-          toast({ title: "Campos requeridos", description: "Nombre, usuario y contraseña son obligatorios", variant: "destructive" })
+        if (!formData.usuario.trim() || !formData.nombres.trim() || !formData.apellido_paterno.trim() || !formData.apellido_materno.trim() || !formData.password.trim()) {
+          toast({ title: "Campos requeridos", description: "Nombres, apellidos, usuario y contraseña son obligatorios", variant: "destructive" })
           setIsSubmitting(false)
           return
         }
@@ -231,11 +242,13 @@ export default function ProfesoresPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             usuario: formData.usuario.trim(),
-            nombre_completo: formData.nombre_completo.trim(),
+            nombres: formData.nombres.trim(),
+            apellido_paterno: formData.apellido_paterno.trim(),
+            apellido_materno: formData.apellido_materno.trim(),
             email: formData.email.trim(),
-            telefono: formData.telefono.trim(),
             password: formData.password,
             estado: formData.estado,
+            roles: [formData.role],
           }),
         })
       }
@@ -416,7 +429,6 @@ export default function ProfesoresPage() {
                 <TableRow>
                   <TableHead>Usuario</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Teléfono</TableHead>
                   <TableHead>Roles</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
@@ -439,7 +451,6 @@ export default function ProfesoresPage() {
                       </div>
                     </TableCell>
                     <TableCell>{profesor.email}</TableCell>
-                    <TableCell>{profesor.telefono || "—"}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {profesor.roles.map((rol) => (
@@ -531,11 +542,31 @@ export default function ProfesoresPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="nombre_completo">Nombre completo *</Label>
+                <Label htmlFor="nombres">Nombres *</Label>
                 <Input
-                  id="nombre_completo"
-                  name="nombre_completo"
-                  value={formData.nombre_completo}
+                  id="nombres"
+                  name="nombres"
+                  value={formData.nombres}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="apellido_paterno">Apellido paterno *</Label>
+                <Input
+                  id="apellido_paterno"
+                  name="apellido_paterno"
+                  value={formData.apellido_paterno}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="apellido_materno">Apellido materno *</Label>
+                <Input
+                  id="apellido_materno"
+                  name="apellido_materno"
+                  value={formData.apellido_materno}
                   onChange={handleInputChange}
                   required
                 />
@@ -563,16 +594,6 @@ export default function ProfesoresPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="telefono">Teléfono</Label>
-                <Input
-                  id="telefono"
-                  name="telefono"
-                  value={formData.telefono}
-                  onChange={handleInputChange}
-                  placeholder="Ej: 70000000"
-                />
-              </div>
-              <div className="space-y-2">
                 <Label>Estado</Label>
                 <Select
                   value={formData.estado}
@@ -584,6 +605,18 @@ export default function ProfesoresPage() {
                   <SelectContent>
                     <SelectItem value="activo">Activo</SelectItem>
                     <SelectItem value="inactivo">Inactivo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Rol</Label>
+                <Select value={formData.role} onValueChange={handleRoleSelect}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PROFESOR">Profesor</SelectItem>
+                    <SelectItem value="ADMIN">Administrador</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

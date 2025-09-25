@@ -52,7 +52,8 @@ export async function GET(
       SELECT 
         e.id_estudiante as id,
         e.nombres,
-        e.apellidos,
+        e.apellido_paterno,
+        e.apellido_materno,
         ia.fecha_inscripcion
       FROM estudiantes e
       JOIN inscripciones_aula ia ON e.id_estudiante = ia.id_estudiante
@@ -90,10 +91,10 @@ export async function PUT(
       return NextResponse.json({ error: "ID de aula o estudiante no proporcionado" }, { status: 400 })
     }
 
-    const { nombres, apellidos } = await request.json()
+    const { nombres, apellido_paterno, apellido_materno } = await request.json()
 
-    if (!nombres || !apellidos) {
-      return NextResponse.json({ error: "Nombres y apellidos son requeridos" }, { status: 400 })
+    if (!nombres || !apellido_paterno || !apellido_materno) {
+      return NextResponse.json({ error: "Nombres, apellido paterno y apellido materno son requeridos" }, { status: 400 })
     }
 
     if (!session.user.roles.includes("ADMIN")) {
@@ -138,14 +139,15 @@ export async function PUT(
 
     // Actualizar estudiante
     await executeQuery(
-      "UPDATE estudiantes SET nombres = ?, apellidos = ? WHERE id_estudiante = ?",
-      [nombres, apellidos, estudianteId]
+      "UPDATE estudiantes SET nombres = ?, apellido_paterno = ?, apellido_materno = ? WHERE id_estudiante = ?",
+      [nombres, apellido_paterno, apellido_materno, estudianteId]
     )
 
     return NextResponse.json({
       id: estudianteId,
       nombres,
-      apellidos,
+      apellido_paterno,
+      apellido_materno,
     })
   } catch (error) {
     console.error("Error al actualizar estudiante:", error)
