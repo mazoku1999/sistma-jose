@@ -23,8 +23,9 @@ import { useAuth } from "@/lib/auth-provider"
 
 interface Estudiante {
     id_estudiante: number
-    nombres: string
-    apellidos: string
+    nombres?: string
+    apellido_paterno?: string
+    apellido_materno?: string
     nombre_completo: string
 }
 
@@ -123,7 +124,7 @@ export default function CentralPage() {
                 const notasMap: Record<string, NotaCentralizada> = {}
 
                 // Primero, crear entradas con 0 para todas las combinaciones estudiante-materia
-                data.estudiantes?.forEach((estudiante: any) => {
+                data.estudiantes?.forEach((estudiante: Estudiante) => {
                     materiasDelCurso.forEach((materia: any) => {
                         const key = `${estudiante.id_estudiante}-${materia.id}`
                         notasMap[key] = {
@@ -270,6 +271,74 @@ export default function CentralPage() {
             setIsSaving(false)
         }
     }
+
+    const normalizeValue = (value: string | undefined | null) => (value ?? '').toString().trim()
+
+    const deriveNames = (est: Estudiante) => {
+        const nombres = normalizeValue(est.nombres)
+        const apellido_paterno = normalizeValue(est.apellido_paterno)
+        const apellido_materno = normalizeValue(est.apellido_materno)
+
+        if (nombres || apellido_paterno || apellido_materno) {
+            return { nombres, apellido_paterno, apellido_materno }
+        }
+
+        const nombreCompleto = normalizeValue(est.nombre_completo)
+        const parts = nombreCompleto.split(/\s+/).filter(Boolean)
+
+        if (parts.length >= 3) {
+            return {
+                nombres: parts.slice(0, parts.length - 2).join(' '),
+                apellido_paterno: parts[parts.length - 2] || '',
+                apellido_materno: parts[parts.length - 1] || '',
+            }
+        }
+
+        if (parts.length === 2) {
+            return {
+                nombres: parts[0],
+                apellido_paterno: '',
+                apellido_materno: parts[1],
+            }
+        }
+
+        if (parts.length === 1) {
+            return {
+                nombres: nombreCompleto,
+                apellido_paterno: '',
+                apellido_materno: '',
+            }
+        }
+
+        return {
+            nombres: '',
+            apellido_paterno: '',
+            apellido_materno: '',
+        }
+    }
+
+    const compareEstudiantes = (a: Estudiante, b: Estudiante) => {
+        const da = deriveNames(a)
+        const db = deriveNames(b)
+
+        const grupoA = da.apellido_paterno ? 1 : 0
+        const grupoB = db.apellido_paterno ? 1 : 0
+        if (grupoA !== grupoB) return grupoA - grupoB
+
+        const fieldOrder: Array<keyof typeof da> = grupoA === 0
+            ? ['apellido_materno', 'nombres']
+            : ['apellido_paterno', 'apellido_materno', 'nombres']
+
+        for (const field of fieldOrder) {
+            const va = normalizeValue(da[field]).toLocaleLowerCase()
+            const vb = normalizeValue(db[field]).toLocaleLowerCase()
+            const cmp = va.localeCompare(vb, 'es', { sensitivity: 'base' })
+            if (cmp !== 0) return cmp
+        }
+        return 0
+    }
+
+    const sortedEstudiantes = [...estudiantes].sort(compareEstudiantes)
 
     const getNotaColor = (nota: number) => {
         if (nota >= 90) return "text-green-600 bg-green-50"
@@ -547,13 +616,18 @@ export default function CentralPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {estudiantes.map((estudiante) => {
+                                    {sortedEstudiantes.map((estudiante) => {
                                         const promedio = getPromedioEstudiante(estudiante.id_estudiante)
+                                        const { apellido_paterno, apellido_materno, nombres } = deriveNames(estudiante)
 
                                         return (
                                             <TableRow key={estudiante.id_estudiante}>
                                                 <TableCell className="font-medium">
-                                                    {estudiante.nombre_completo}
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm text-muted-foreground">{apellido_paterno || <span className="italic text-muted-foreground">(sin paterno)</span>}</span>
+                                                        <span className="text-sm text-muted-foreground">{apellido_materno}</span>
+                                                        <span className="text-base font-semibold">{nombres}</span>
+                                                    </div>
                                                 </TableCell>
                                                 {materias.map((materia) => {
                                                     const key = `${estudiante.id_estudiante}-${materia.id}`

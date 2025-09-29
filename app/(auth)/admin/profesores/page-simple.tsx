@@ -26,6 +26,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { Loader2, MoreVertical, Plus, Search, UserPlus, School, BookOpen, Users } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Switch } from "@/components/ui/switch"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 
@@ -42,6 +43,8 @@ interface Profesor {
   roles: string[]
   asignaciones: number
   profesor_area?: boolean
+  es_tutor?: boolean
+  puede_centralizar_notas?: boolean
 }
 
 interface Colegio {
@@ -81,6 +84,8 @@ export default function ProfesoresPageSimple() {
     password: "",
     estado: "activo",
     role: "PROFESOR" as "PROFESOR" | "ADMIN",
+    es_tutor: false,
+    puede_centralizar_notas: true,
   })
 
   // Asignaciones por colegio (simplificadas)
@@ -151,6 +156,8 @@ export default function ProfesoresPageSimple() {
       password: "",
       estado: "activo",
       role: "PROFESOR",
+      es_tutor: false,
+      puede_centralizar_notas: true,
     })
     setAsignaciones([])
     setEditingProfesor(null)
@@ -170,6 +177,8 @@ export default function ProfesoresPageSimple() {
         password: "",
         estado: profesor.estado,
         role: (profesor.roles && profesor.roles.includes("ADMIN")) ? "ADMIN" : "PROFESOR",
+        es_tutor: !!profesor.es_tutor,
+        puede_centralizar_notas: profesor.puede_centralizar_notas !== undefined ? !!profesor.puede_centralizar_notas : true,
       })
     }
     setOpenDialog(true)
@@ -253,7 +262,9 @@ export default function ProfesoresPageSimple() {
         password: formData.password,
         estado: formData.estado,
         roles: [formData.role],
-        asignaciones
+        asignaciones,
+        es_tutor: formData.es_tutor,
+        puede_centralizar_notas: formData.puede_centralizar_notas,
       }
 
       let response
@@ -261,7 +272,7 @@ export default function ProfesoresPageSimple() {
         response = await fetch(`/api/profesores/${editingProfesor.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(dataToSend),
+          body: JSON.stringify({ ...dataToSend, es_tutor: formData.es_tutor }),
         })
       } else {
         response = await fetch("/api/profesores", {
@@ -416,6 +427,7 @@ export default function ProfesoresPageSimple() {
                   <TableHead>Profesor</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Rol</TableHead>
+                  <TableHead>Tutor</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Asignaciones</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
@@ -448,6 +460,18 @@ export default function ProfesoresPageSimple() {
                         }
                       >
                         {(profesor.roles || []).includes("ADMIN") ? "Admin" : "Profesor"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={
+                          profesor.es_tutor
+                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                            : "bg-gray-50 text-gray-700 border-gray-200"
+                        }
+                      >
+                        {profesor.es_tutor ? "Tutor" : "No tutor"}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -594,59 +618,95 @@ export default function ProfesoresPageSimple() {
                   <h3 className="text-lg font-medium">Acceso y Roles</h3>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="usuario">Usuario *</Label>
-                    <Input
-                      id="usuario"
-                      name="usuario"
-                      value={formData.usuario}
-                      onChange={handleInputChange}
-                      required
-                      disabled={!!editingProfesor}
+                <section className="rounded-lg border p-4 md:p-6 space-y-4">
+                  <div className="space-y-1">
+                    <h4 className="text-base font-semibold">Credenciales de acceso</h4>
+                    <p className="text-sm text-muted-foreground">Configura usuario y contraseña para el ingreso al sistema.</p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="usuario">Usuario *</Label>
+                      <Input
+                        id="usuario"
+                        name="usuario"
+                        value={formData.usuario}
+                        onChange={handleInputChange}
+                        required
+                        disabled={!!editingProfesor}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="password">
+                        {editingProfesor ? "Nueva contraseña (opcional)" : "Contraseña *"}
+                      </Label>
+                      <Input
+                        id="password"
+                        name="password"
+                        type="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        required={!editingProfesor}
+                        placeholder={editingProfesor ? "Dejar vacío para mantener" : "Contraseña temporal"}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between rounded-md border border-dashed px-4 py-3">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium leading-none">Cuenta activa</p>
+                      <p className="text-xs text-muted-foreground">Desactiva para impedir el acceso del usuario.</p>
+                    </div>
+                    <Switch
+                      id="estado"
+                      checked={formData.estado === "activo"}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, estado: checked ? "activo" : "inactivo" }))}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">
-                      {editingProfesor ? "Nueva contraseña (opcional)" : "Contraseña *"}
-                    </Label>
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      required={!editingProfesor}
-                    />
+                </section>
+
+                <section className="rounded-lg border p-4 md:p-6 space-y-4">
+                  <div className="space-y-1">
+                    <h4 className="text-base font-semibold">Rol y permisos</h4>
+                    <p className="text-sm text-muted-foreground">Asigna el rol principal y habilita permisos adicionales.</p>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Estado</Label>
-                    <Select
-                      value={formData.estado}
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, estado: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="activo">Activo</SelectItem>
-                        <SelectItem value="inactivo">Inactivo</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Rol principal</Label>
+                      <Select value={formData.role} onValueChange={handleRoleSelect}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="PROFESOR">Profesor</SelectItem>
+                          <SelectItem value="ADMIN">Administrador</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Rol</Label>
-                    <Select value={formData.role} onValueChange={handleRoleSelect}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="PROFESOR">Profesor</SelectItem>
-                        <SelectItem value="ADMIN">Administrador</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="flex items-center justify-between rounded-md border border-dashed px-4 py-3">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium leading-none">Profesor tutor</p>
+                        <p className="text-xs text-muted-foreground">Responsable directo de estudiantes y curso.</p>
+                      </div>
+                      <Switch
+                        id="es_tutor"
+                        checked={formData.es_tutor}
+                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, es_tutor: checked }))}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between rounded-md border border-dashed px-4 py-3">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium leading-none">Puede centralizar notas</p>
+                        <p className="text-xs text-muted-foreground">Autoriza subir la centralización institucional.</p>
+                      </div>
+                      <Switch
+                        id="puede_centralizar_notas"
+                        checked={formData.puede_centralizar_notas}
+                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, puede_centralizar_notas: checked }))}
+                      />
+                    </div>
                   </div>
-                </div>
+                </section>
               </div>
             )}
 

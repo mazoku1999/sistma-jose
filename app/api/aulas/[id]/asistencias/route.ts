@@ -2,6 +2,20 @@ import { NextResponse } from "next/server"
 import { executeQuery } from "@/lib/db"
 import { getServerSession } from "@/lib/get-server-session"
 
+const normalizeDate = (value?: string | null) => {
+  if (!value) return ""
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value
+  if (value.includes("T")) {
+    const [datePart] = value.split("T")
+    if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) return datePart
+  }
+  const parsed = new Date(value)
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString().slice(0, 10)
+  }
+  return ""
+}
+
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
@@ -15,7 +29,7 @@ export async function GET(
 
     const aulaId = (await params).id
     const { searchParams } = new URL(request.url)
-    const fecha = searchParams.get("fecha")
+    const fecha = normalizeDate(searchParams.get("fecha"))
     const trimestre = searchParams.get("trimestre") || "1"
 
     if (!fecha) {
@@ -57,7 +71,12 @@ export async function GET(
       [aulaId, fecha]
     )
 
-    return NextResponse.json(asistenciasQuery)
+    const formatted = asistenciasQuery.map((row) => ({
+      ...row,
+      fecha: row.fecha instanceof Date ? row.fecha.toISOString().slice(0, 10) : normalizeDate(row.fecha),
+    }))
+
+    return NextResponse.json(formatted)
   } catch (error) {
     console.error("Error al obtener asistencias:", error)
     return NextResponse.json({ error: "Error al obtener asistencias" }, { status: 500 })
@@ -77,8 +96,9 @@ export async function POST(
 
     const aulaId = (await params).id
     const { fecha, trimestre, asistencias } = await request.json()
+    const normalizedFecha = normalizeDate(fecha)
 
-    if (!fecha || !asistencias || !Array.isArray(asistencias)) {
+    if (!normalizedFecha || !asistencias || !Array.isArray(asistencias)) {
       return NextResponse.json({ error: "Datos incompletos" }, { status: 400 })
     }
 
@@ -114,7 +134,7 @@ export async function POST(
         JOIN inscripciones_aula ia ON ae.id_inscripcion = ia.id_inscripcion
         WHERE ia.id_aula_profesor = ? AND ae.fecha = ?
         `,
-        [aulaId, fecha]
+        [aulaId, normalizedFecha]
       )
 
       // Insertar nuevas asistencias
@@ -122,17 +142,18 @@ export async function POST(
         if (asistencia.tipo_asistencia && ['A', 'F', 'R', 'L'].includes(asistencia.tipo_asistencia)) {
           await executeQuery(
             "INSERT INTO asistencia_estudiante (id_inscripcion, fecha, tipo_asistencia) VALUES (?, ?, ?)",
-            [asistencia.id_inscripcion, fecha, asistencia.tipo_asistencia]
+            [asistencia.id_inscripcion, normalizedFecha, asistencia.tipo_asistencia]
           )
         }
       }
 
       await executeQuery("COMMIT")
 
-      return NextResponse.json({ 
-        success: true, 
+      return NextResponse.json({
+        success: true,
         message: "Asistencias guardadas correctamente",
-        count: asistencias.length 
+        count: asistencias.length,
+        fecha: normalizedFecha,
       })
     } catch (error) {
       await executeQuery("ROLLBACK")

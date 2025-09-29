@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -9,7 +9,6 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/components/ui/use-toast"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Progress } from "@/components/ui/progress"
 import { useTrimestreGlobal } from "@/hooks/use-trimestre-global"
@@ -35,8 +34,9 @@ import { cn } from "@/lib/utils"
 interface Estudiante {
     id: number
     inscripcion_id: number
-    nombres: string
-    apellidos: string
+    nombres?: string
+    apellido_paterno?: string
+    apellido_materno?: string
     nombre_completo: string
 }
 
@@ -66,6 +66,7 @@ export default function NotasPage() {
     const { toast } = useToast()
     const { trimestreGlobal, trimestres } = useTrimestreGlobal()
     const { user } = useAuth()
+    const puedeCentralizar = user?.roles.includes("ADMIN") || !!user?.profesor?.puede_centralizar_notas
 
     const [aula, setAula] = useState<Aula | null>(null)
     const [estudiantes, setEstudiantes] = useState<Estudiante[]>([])
@@ -76,8 +77,6 @@ export default function NotasPage() {
     const [isImporting, setIsImporting] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [hasChanges, setHasChanges] = useState(false)
-    const [isCentralizing, setIsCentralizing] = useState(false)
-    const [showConfirmCentralizar, setShowConfirmCentralizar] = useState(false)
 
 
 
@@ -95,6 +94,51 @@ export default function NotasPage() {
         if (nota >= 70) return "Bueno"
         if (nota >= 60) return "Regular"
         return "Insuficiente"
+    }
+
+    const normalizeValue = (value: string | undefined | null) => (value ?? '').toString().trim()
+
+    const deriveNames = (est: Estudiante) => {
+        const nombres = normalizeValue(est.nombres)
+        const apellido_paterno = normalizeValue(est.apellido_paterno)
+        const apellido_materno = normalizeValue(est.apellido_materno)
+
+        if (nombres || apellido_paterno || apellido_materno) {
+            return { nombres, apellido_paterno, apellido_materno }
+        }
+
+        const nombreCompleto = normalizeValue(est.nombre_completo)
+        const parts = nombreCompleto.split(/\s+/).filter(Boolean)
+
+        if (parts.length >= 3) {
+            return {
+                nombres: parts.slice(0, parts.length - 2).join(' '),
+                apellido_paterno: parts[parts.length - 2] || '',
+                apellido_materno: parts[parts.length - 1] || '',
+            }
+        }
+
+        if (parts.length === 2) {
+            return {
+                nombres: parts[0],
+                apellido_paterno: '',
+                apellido_materno: parts[1],
+            }
+        }
+
+        if (parts.length === 1) {
+            return {
+                nombres: nombreCompleto,
+                apellido_paterno: '',
+                apellido_materno: '',
+            }
+        }
+
+        return {
+            nombres: '',
+            apellido_paterno: '',
+            apellido_materno: '',
+        }
     }
 
     useEffect(() => {
@@ -158,7 +202,7 @@ export default function NotasPage() {
     }
 
     const fetchNotasTodas = async () => {
-        if (!aulaId) return
+        if (!aulaId) return {}
         try {
             const [r1, r2, r3] = await Promise.all([
                 fetch(`/api/aulas/${aulaId}/notas?trimestre=1`),
@@ -167,32 +211,94 @@ export default function NotasPage() {
             ])
             const [d1, d2, d3] = await Promise.all([r1.ok ? r1.json() : [], r2.ok ? r2.json() : [], r3.ok ? r3.json() : []])
 
+            const normalize = (entry: any): Nota => ({
+                id_inscripcion: Number(entry.id_inscripcion),
+                trimestre: Number(entry.trimestre),
+                promedio_final_trimestre: Number(entry.promedio_final_trimestre ?? 0),
+            })
+
             const map1: Record<number, Nota> = {}
             const map2: Record<number, Nota> = {}
             const map3: Record<number, Nota> = {}
 
-            d1.forEach((n: Nota) => { map1[n.id_inscripcion] = n })
-            d2.forEach((n: Nota) => { map2[n.id_inscripcion] = n })
-            d3.forEach((n: Nota) => { map3[n.id_inscripcion] = n })
+            d1.forEach((n: any) => {
+                const normalized = normalize(n)
+                map1[normalized.id_inscripcion] = normalized
+            })
+            d2.forEach((n: any) => {
+                const normalized = normalize(n)
+                map2[normalized.id_inscripcion] = normalized
+            })
+            d3.forEach((n: any) => {
+                const normalized = normalize(n)
+                map3[normalized.id_inscripcion] = normalized
+            })
 
             setNotasPorTrimestre({ 1: map1, 2: map2, 3: map3 })
             // Sincronizar estado editable con el trimestre actual
             if (trimestreGlobal) {
                 const t = parseInt(trimestreGlobal)
-                setNotas({ ...(t === 1 ? map1 : t === 2 ? map2 : map3) })
+                const currentMap = t === 1 ? map1 : t === 2 ? map2 : map3
+                setNotas({ ...currentMap })
+                return currentMap
             }
         } catch (error) {
             console.error("Error al cargar notas:", error)
         }
+        return {}
     }
 
+    const sortedEstudiantes = useMemo(() => {
+        return [...estudiantes].sort((a, b) => {
+            const da = deriveNames(a)
+            const db = deriveNames(b)
+
+            const grupoA = da.apellido_paterno ? 1 : 0
+            const grupoB = db.apellido_paterno ? 1 : 0
+            if (grupoA !== grupoB) return grupoA - grupoB
+
+            const campos = grupoA === 0
+                ? ['apellido_materno', 'nombres']
+                : ['apellido_paterno', 'apellido_materno', 'nombres']
+
+            for (const campo of campos) {
+                const va = normalizeValue(da[campo as keyof typeof da]).toLocaleLowerCase()
+                const vb = normalizeValue(db[campo as keyof typeof db]).toLocaleLowerCase()
+                const cmp = va.localeCompare(vb, 'es', { sensitivity: 'base' })
+                if (cmp !== 0) return cmp
+            }
+
+            return 0
+        })
+    }, [estudiantes])
+
     const handleNotaChange = (inscripcionId: number, valor: string) => {
-        const nota = parseFloat(valor)
-        if (isNaN(nota) || nota < 0 || nota > 100) {
+        if (!trimestreGlobal) return
+
+        const t = parseInt(trimestreGlobal)
+
+        if (valor.trim() === "") {
+            setNotas(prev => {
+                const copy = { ...prev }
+                delete copy[inscripcionId]
+                return copy
+            })
+            setNotasPorTrimestre(prev => {
+                const current = { ...(prev[t] || {}) }
+                delete current[inscripcionId]
+                return { ...prev, [t]: current }
+            })
+            setHasChanges(true)
             return
         }
-        const t = parseInt(trimestreGlobal)
-        const nextNota: Nota = { id_inscripcion: inscripcionId, trimestre: t, promedio_final_trimestre: nota }
+
+        const nota = Number(valor)
+        if (!Number.isFinite(nota)) {
+            return
+        }
+
+        const bounded = Math.max(0, Math.min(100, nota))
+        const nextNota: Nota = { id_inscripcion: inscripcionId, trimestre: t, promedio_final_trimestre: bounded }
         setNotas(prev => ({ ...prev, [inscripcionId]: nextNota }))
         setNotasPorTrimestre(prev => ({
             ...prev,
@@ -203,6 +309,15 @@ export default function NotasPage() {
 
     const handleGuardarNotas = async () => {
         if (!aulaId || !hasChanges || !trimestreGlobal) return
+        if (!puedeCentralizar) {
+            toast({
+                title: "Permiso requerido",
+                description: "No tienes permisos para guardar notas en esta aula.",
+                variant: "destructive",
+            })
+            return
+        }
+
         setIsSaving(true)
         try {
             const notasArray = Object.values(notas).filter(nota =>
@@ -226,7 +341,26 @@ export default function NotasPage() {
                     description: "Notas guardadas correctamente",
                 })
                 setHasChanges(false)
-                fetchNotasTodas()
+                const refreshed = await fetchNotasTodas()
+                if (trimestreGlobal) {
+                    const t = parseInt(trimestreGlobal)
+                    const updated: Record<number, Nota> = {}
+                    notasArray.forEach((nota) => {
+                        updated[nota.id_inscripcion] = {
+                            id_inscripcion: nota.id_inscripcion,
+                            trimestre: t,
+                            promedio_final_trimestre: nota.promedio_final_trimestre,
+                        }
+                    })
+                    setNotas((prev) => ({ ...prev, ...updated }))
+                    setNotasPorTrimestre((prev) => ({
+                        ...prev,
+                        [t]: {
+                            ...(prev[t] || {}),
+                            ...refreshed,
+                        },
+                    }))
+                }
             } else {
                 const error = await response.json()
                 toast({
@@ -255,7 +389,7 @@ export default function NotasPage() {
             .replace(/\s+/g, ' ')
             .trim()
     }
-    const connectors = new Set(['de','del','la','las','los','y','e'])
+    const connectors = new Set(['de', 'del', 'la', 'las', 'los', 'y', 'e'])
     const tokenize = (s: string) => normalizeName(s).split(' ').filter(t => t && !connectors.has(t) && t.length > 1)
     const keySorted = (tokens: string[]) => tokens.slice().sort().join(' ')
 
@@ -286,8 +420,8 @@ export default function NotasPage() {
             const matchMap = new Map<string, { inscripcion_id: number; id: number }>()
             const candidates: { key: string; tokens: string[]; inscripcion_id: number; id: number }[] = []
             for (const est of estudiantes) {
-                const full = `${est.nombres || ''} ${est.apellidos || ''}`
-                const alt = `${est.apellidos || ''} ${est.nombres || ''}`
+                const full = `${est.nombres || ''} ${est.apellido_paterno + " " + est.apellido_materno || ''}`
+                const alt = `${est.apellido_paterno + " " + est.apellido_materno || ''} ${est.nombres || ''}`
                 const t1 = tokenize(full)
                 const t2 = tokenize(alt)
                 const k1 = t1.join(' ')
@@ -354,7 +488,7 @@ export default function NotasPage() {
             }
         } catch (err: any) {
             console.error("Error importando notas:", err)
-            toast({ title: "Error al importar", description: err?.message || "Archivo inválido" , variant: "destructive" })
+            toast({ title: "Error al importar", description: err?.message || "Archivo inválido", variant: "destructive" })
         } finally {
             setIsImporting(false)
             e.target.value = ""
@@ -362,97 +496,11 @@ export default function NotasPage() {
     }
 
     const handleCentralizarNotas = async () => {
-        if (!aulaId || !trimestreGlobal || !aula) return
-
-        // Verificar que no hay cambios sin guardar
-        if (hasChanges) {
-            toast({
-                title: "Cambios sin guardar",
-                description: "Debes guardar las notas antes de centralizarlas",
-                variant: "destructive",
-            })
-            return
-        }
-
-        // Verificar que hay notas para centralizar
-        const notasValidas = Object.values(notas).filter(n => n.promedio_final_trimestre > 0)
-        if (notasValidas.length === 0) {
-            toast({
-                title: "Sin notas",
-                description: "No hay notas para centralizar",
-                variant: "destructive",
-            })
-            return
-        }
-
-        // NUEVA VERIFICACIÓN: Solo permitir centralización en gestión activa
-        if (aula.gestion_activa === false) {
-            toast({
-                title: "🔒 Centralización no permitida",
-                description: "Solo se pueden centralizar notas de la gestión académica activa (año actual)",
-                variant: "destructive",
-            })
-            return
-        }
-
-        setIsCentralizing(true)
-        try {
-            // Obtener información completa del aula para la centralización
-            const aulaResponse = await fetch(`/api/aulas/${aulaId}`)
-            if (!aulaResponse.ok) {
-                throw new Error("No se pudo obtener información del aula")
-            }
-            const aulaData = await aulaResponse.json()
-
-            // Preparar las notas para centralización
-            const notasParaCentralizar = estudiantes.map(estudiante => {
-                const notaEstudiante = notas[estudiante.inscripcion_id]
-                return {
-                    id_estudiante: estudiante.id,
-                    id_materia: aulaData.id_materia,
-                    nota_final: notaEstudiante?.promedio_final_trimestre || 0
-                }
-            }).filter(nota => nota.nota_final > 0)
-
-            const response = await fetch('/api/central/notas', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    colegio: aulaData.id_colegio,
-                    nivel: aulaData.id_nivel,
-                    curso: aulaData.id_curso,
-                    paralelo: aulaData.id_paralelo,
-                    trimestre: parseInt(trimestreGlobal),
-                    notas: notasParaCentralizar
-                })
-            })
-
-            if (response.ok) {
-                const result = await response.json()
-                toast({
-                    title: "Éxito",
-                    description: `${result.count} notas del ${trimestres[trimestreGlobal as keyof typeof trimestres]?.label} centralizadas correctamente`,
-                })
-            } else {
-                const error = await response.json()
-                toast({
-                    title: "Error",
-                    description: error.error || "Error al centralizar las notas",
-                    variant: "destructive",
-                })
-            }
-        } catch (error) {
-            console.error("Error al centralizar notas:", error)
-            toast({
-                title: "Error",
-                description: "Error al centralizar las notas",
-                variant: "destructive",
-            })
-        } finally {
-            setIsCentralizing(false)
-        }
+        // Mantener función para compatibilidad si se requiere manualmente en el futuro
+        toast({
+            title: "Operación automática",
+            description: "Las notas se centralizan automáticamente al guardar.",
+        })
     }
 
     const getEstadisticasNotas = () => {
@@ -488,80 +536,47 @@ export default function NotasPage() {
         )
     }
 
+    const renderNotaCell = (trimestre: number, notaTrimestre: Nota | undefined, editable: boolean, inscripcionId: number) => {
+        const valor = notaTrimestre?.promedio_final_trimestre ?? notas[inscripcionId]?.promedio_final_trimestre
+
+        if (editable) {
+            return (
+                <div className="flex flex-col items-center gap-1">
+                    <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        placeholder="0.0"
+                        value={Number.isFinite(valor) ? valor : ""}
+                        onChange={(e) => handleNotaChange(inscripcionId, e.target.value)}
+                        className="w-20 text-center"
+                    />
+                    <span className="text-[10px] text-muted-foreground">/ 100</span>
+                </div>
+            )
+        }
+
+        const shown = Number.isFinite(valor) && valor > 0 ? valor : ""
+        return (
+            <div className="flex flex-col items-center gap-1">
+                <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    value={shown}
+                    readOnly
+                    disabled
+                    className="w-20 text-center bg-muted"
+                />
+                <span className="text-[10px] text-muted-foreground">/ 100</span>
+            </div>
+        )
+    }
+
     return (
         <div className="space-y-6">
-
-            {/* Modal de confirmación para centralizar */}
-            <Dialog open={showConfirmCentralizar} onOpenChange={setShowConfirmCentralizar}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <Send className="h-5 w-5 text-orange-600" />
-                            Confirmar Centralización
-                        </DialogTitle>
-                        <DialogDescription>
-                            ¿Estás seguro de que deseas centralizar las notas?
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="space-y-4 py-4">
-                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                            <div className="flex items-start gap-3">
-                                <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5" />
-                                <div className="space-y-2">
-                                    <h4 className="font-medium text-orange-800">Información importante</h4>
-                                    <ul className="text-sm text-orange-700 space-y-1">
-                                        <li>• Se centralizarán {stats.conNotas} notas del {trimestres[trimestreGlobal as keyof typeof trimestres]?.label}</li>
-                                        <li>• Esta acción enviará las notas al sistema central</li>
-                                        <li>• Las notas centralizadas podrán ser vistas por otros profesores autorizados</li>
-                                        <li>• Puedes centralizar nuevamente si realizas cambios posteriores</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                            <div className="flex items-center gap-3">
-                                <div className="text-2xl">{trimestres[trimestreGlobal as keyof typeof trimestres]?.icon}</div>
-                                <div>
-                                    <h4 className="font-medium text-blue-800">
-                                        {aula?.nombre_aula} - {aula?.curso} {aula?.paralelo}
-                                    </h4>
-                                    <p className="text-sm text-blue-600">
-                                        {aula?.materia} • {trimestres[trimestreGlobal as keyof typeof trimestres]?.label}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex justify-end gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={() => setShowConfirmCentralizar(false)}
-                            disabled={isCentralizing}
-                        >
-                            Cancelar
-                        </Button>
-                        <Button
-                            onClick={async () => {
-                                setShowConfirmCentralizar(false)
-                                await handleCentralizarNotas()
-                            }}
-                            disabled={isCentralizing}
-                            className="bg-orange-600 hover:bg-orange-700"
-                        >
-                            {isCentralizing ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                                <Send className="mr-2 h-4 w-4" />
-                            )}
-                            Centralizar Notas
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
-
             <div className="flex items-center gap-4">
                 <Button variant="ghost" size="icon" asChild>
                     <Link href={`/aulas/${aulaId}`}>
@@ -595,7 +610,8 @@ export default function NotasPage() {
                         </Button>
                         <Button
                             onClick={handleGuardarNotas}
-                            disabled={!hasChanges || isSaving}
+                            disabled={!hasChanges || isSaving || !puedeCentralizar}
+                            title={!puedeCentralizar ? "Necesitas permiso para guardar notas" : ""}
                         >
                             {isSaving ? (
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -605,20 +621,7 @@ export default function NotasPage() {
                             Guardar Notas
                         </Button>
 
-                        {user?.roles.includes("ADMIN") && (
-                            <Button
-                                onClick={() => setShowConfirmCentralizar(true)}
-                                disabled={hasChanges || isCentralizing || stats.conNotas === 0 || aula?.gestion_activa === false}
-                                variant="outline"
-                                title={aula?.gestion_activa === false ? "Solo se pueden centralizar notas de la gestión activa" : ""}
-                            >
-                                <Send className="mr-2 h-4 w-4" />
-                                Centralizar Notas
-                                {aula?.gestion_activa === false && (
-                                    <span className="ml-2 text-xs">🔒</span>
-                                )}
-                            </Button>
-                        )}
+                        {/* Centralización manual eliminada: el guardado ya centraliza automáticamente */}
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
@@ -713,60 +716,25 @@ export default function NotasPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {estudiantes.map((estudiante, index) => {
-                                            const n1 = notasPorTrimestre[1]?.[estudiante.inscripcion_id]?.promedio_final_trimestre || 0
-                                            const n2 = notasPorTrimestre[2]?.[estudiante.inscripcion_id]?.promedio_final_trimestre || 0
-                                            const n3 = notasPorTrimestre[3]?.[estudiante.inscripcion_id]?.promedio_final_trimestre || 0
-                                            const tActual = parseInt(trimestreGlobal)
-                                            const renderCell = (t: number, valor: number) => {
-                                                const editable = t === tActual
-                                                if (editable) {
-                                                    return (
-                                                        <div className="flex flex-col items-center gap-1">
-                                                            <Input
-                                                                type="number"
-                                                                min="0"
-                                                                max="100"
-                                                                step="0.1"
-                                                                placeholder="0.0"
-                                                                value={valor > 0 ? valor.toString() : ""}
-                                                                onChange={(e) => handleNotaChange(estudiante.inscripcion_id, e.target.value)}
-                                                                className="w-20 text-center"
-                                                            />
-                                                            <span className="text-[10px] text-muted-foreground">/ 100</span>
-                                                        </div>
-                                                    )
-                                                }
-                                                // No editable: mostrar input bloqueado con valor (0 si null/NaN)
-                                                const shown = Number.isFinite(valor) && valor > 0 ? valor : 0
-                                                return (
-                                                    <div className="flex flex-col items-center gap-1">
-                                                        <Input
-                                                            type="number"
-                                                            min="0"
-                                                            max="100"
-                                                            step="0.1"
-                                                            value={shown}
-                                                            readOnly
-                                                            disabled
-                                                            className="w-20 text-center bg-muted"
-                                                        />
-                                                        <span className="text-[10px] text-muted-foreground">/ 100</span>
-                                                    </div>
-                                                )
-                                            }
+                                        {sortedEstudiantes.map((estudiante, index) => {
+                                            const { apellido_paterno, apellido_materno, nombres } = deriveNames(estudiante)
+                                            const n1 = notasPorTrimestre[1]?.[estudiante.inscripcion_id]
+                                            const n2 = notasPorTrimestre[2]?.[estudiante.inscripcion_id]
+                                            const n3 = notasPorTrimestre[3]?.[estudiante.inscripcion_id]
 
                                             return (
                                                 <TableRow key={estudiante.id}>
                                                     <TableCell>{index + 1}</TableCell>
                                                     <TableCell>
-                                                        <div className="flex flex-col">
-                                                            <span className="font-medium">{estudiante.nombre_completo}</span>
-                                                        </div>
+                                                        {[
+                                                            apellido_paterno,
+                                                            apellido_materno,
+                                                            nombres,
+                                                        ].filter(Boolean).join(' ')}
                                                     </TableCell>
-                                                    <TableCell className="text-center">{renderCell(1, n1)}</TableCell>
-                                                    <TableCell className="text-center">{renderCell(2, n2)}</TableCell>
-                                                    <TableCell className="text-center">{renderCell(3, n3)}</TableCell>
+                                                    <TableCell className="text-center">{renderNotaCell(1, n1, trimestreGlobal === "1", estudiante.inscripcion_id)}</TableCell>
+                                                    <TableCell className="text-center">{renderNotaCell(2, n2, trimestreGlobal === "2", estudiante.inscripcion_id)}</TableCell>
+                                                    <TableCell className="text-center">{renderNotaCell(3, n3, trimestreGlobal === "3", estudiante.inscripcion_id)}</TableCell>
                                                 </TableRow>
                                             )
                                         })}

@@ -11,6 +11,11 @@ type User = {
   nombre_completo: string
   usuario: string
   roles: string[]
+  profesor?: {
+    id_profesor: number
+    puede_centralizar_notas: boolean
+    profesor_area: boolean
+  }
 }
 
 type AuthContextType = {
@@ -60,8 +65,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     checkAuth()
     return () => controller.abort()
-  // No revalidar en cada navegación: el middleware protege rutas.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // No revalidar en cada navegación: el middleware protege rutas.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const login = async (username: string, password: string) => {

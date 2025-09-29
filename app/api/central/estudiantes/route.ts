@@ -29,12 +29,19 @@ export async function GET(request: Request) {
     const estudiantes = await executeQuery<any[]>(
       `SELECT DISTINCT 
          e.id_estudiante as id, 
-         CONCAT(e.nombres, ' ', e.apellido_paterno, ' ', e.apellido_materno) AS nombre_completo
+         e.nombres,
+         e.apellido_paterno,
+         e.apellido_materno,
+         CONCAT_WS(' ', e.nombres, e.apellido_paterno, e.apellido_materno) AS nombre_completo
        FROM estudiantes e
        JOIN inscripciones_aula ia ON e.id_estudiante = ia.id_estudiante
        JOIN aulas_profesor ap ON ia.id_aula_profesor = ap.id_aula_profesor
        WHERE ap.id_colegio = ? AND ap.id_nivel = ? AND ap.id_curso = ? AND ap.id_paralelo = ?
-       ORDER BY nombre_completo`,
+       ORDER BY 
+         CASE WHEN TRIM(IFNULL(e.apellido_paterno, '')) = '' THEN 0 ELSE 1 END,
+         CASE WHEN TRIM(IFNULL(e.apellido_paterno, '')) = '' THEN TRIM(e.apellido_materno) ELSE TRIM(e.apellido_paterno) END,
+         CASE WHEN TRIM(IFNULL(e.apellido_paterno, '')) = '' THEN TRIM(e.nombres) ELSE TRIM(e.apellido_materno) END,
+         TRIM(e.nombres)`,
       [colegioId, nivelId, cursoId, paraleloId],
     )
 

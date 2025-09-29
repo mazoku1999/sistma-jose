@@ -24,9 +24,9 @@ export async function GET() {
         u.email,
         u.activo,
         DATE_FORMAT(u.fecha_creacion, '%Y-%m-%d') as fecha_registro,
-        p.especialidad,
         p.puede_centralizar_notas,
-        p.profesor_area
+        p.profesor_area,
+        p.es_tutor
       FROM usuarios u
       JOIN profesores p ON u.id_usuario = p.id_usuario
       ORDER BY u.nombre_completo`
@@ -52,6 +52,8 @@ export async function GET() {
         [profesor.id]
       )
       profesor.aulas_asignadas = aulasCount[0]?.count || 0
+      profesor.puede_centralizar_notas = !!profesor.puede_centralizar_notas
+      profesor.es_tutor = !!profesor.es_tutor
     }
 
     return NextResponse.json(profesores)
@@ -78,6 +80,8 @@ export async function POST(request: Request) {
     // telefono eliminado
     const estado: string | undefined = body.estado
     const roles: string[] | undefined = body.roles
+    const esTutor: boolean = typeof body.es_tutor !== "undefined" ? !!body.es_tutor : false
+    const puedeCentralizar: boolean = typeof body.puede_centralizar_notas !== "undefined" ? !!body.puede_centralizar_notas : true
     let password: string | undefined = body.password
 
     if (!usuario || !nombres || !apellido_paterno || !apellido_materno) {
@@ -131,8 +135,8 @@ export async function POST(request: Request) {
 
       // Crear profesor
       const profesorResult = await executeQuery<any>(
-        "INSERT INTO profesores (id_usuario, especialidad, puede_centralizar_notas, profesor_area) VALUES (?, ?, ?, ?)",
-        [userId, body.especialidad || null, body.puede_centralizar_notas ?? true, body.profesor_area ?? false]
+        "INSERT INTO profesores (id_usuario, puede_centralizar_notas, profesor_area, es_tutor) VALUES (?, ?, ?, ?)",
+        [userId, puedeCentralizar, body.profesor_area ?? false, esTutor]
       )
 
       const profesorId = profesorResult.insertId
@@ -162,6 +166,8 @@ export async function POST(request: Request) {
         apellido_materno,
         nombre_completo,
         email: email || null,
+        puede_centralizar_notas: puedeCentralizar,
+        es_tutor: esTutor,
         tempPassword: generatedTemp ? password : undefined,
       })
     } catch (error) {

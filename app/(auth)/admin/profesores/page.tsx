@@ -26,6 +26,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { Loader2, MoreVertical, Plus, Search, UserPlus, School, BookOpen, Users, UserCheck } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Switch } from "@/components/ui/switch"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import AssignAulaWizard from "./assign-aula-wizard"
@@ -45,6 +46,8 @@ interface Profesor {
   asignaciones: number
   aulas_asignadas?: number
   profesor_area?: boolean
+  es_tutor?: boolean
+  puede_centralizar_notas?: boolean
 }
 
 interface Colegio {
@@ -95,6 +98,8 @@ export default function ProfesoresPage() {
     password: "",
     estado: "activo" as "activo" | "inactivo",
     role: "PROFESOR" as "PROFESOR" | "ADMIN",
+    es_tutor: false,
+    puede_centralizar_notas: true,
   })
 
   // Asignaciones por colegio (simplificadas)
@@ -165,6 +170,8 @@ export default function ProfesoresPage() {
       password: "",
       estado: "activo",
       role: "PROFESOR",
+      es_tutor: false,
+      puede_centralizar_notas: true,
     })
     setAsignaciones([])
     setEditingProfesor(null)
@@ -186,6 +193,8 @@ export default function ProfesoresPage() {
         password: "",
         estado: profesor.estado,
         role: (profesor.roles && profesor.roles.includes("ADMIN")) ? "ADMIN" : "PROFESOR",
+        es_tutor: !!profesor.es_tutor,
+        puede_centralizar_notas: profesor.puede_centralizar_notas !== undefined ? !!profesor.puede_centralizar_notas : true,
       })
     }
     setOpenDialog(true)
@@ -223,6 +232,8 @@ export default function ProfesoresPage() {
           email: formData.email.trim(),
           activo: formData.estado === "activo",
           roles: [formData.role],
+          es_tutor: formData.es_tutor,
+          puede_centralizar_notas: formData.puede_centralizar_notas,
         }
         const targetId = editingUserId ?? (editingProfesor as any).id_usuario ?? editingProfesor.id
         response = await fetch(`/api/profesores/${targetId}`, {
@@ -249,6 +260,8 @@ export default function ProfesoresPage() {
             password: formData.password,
             estado: formData.estado,
             roles: [formData.role],
+            es_tutor: formData.es_tutor,
+            puede_centralizar_notas: formData.puede_centralizar_notas,
           }),
         })
       }
@@ -430,6 +443,7 @@ export default function ProfesoresPage() {
                   <TableHead>Usuario</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Roles</TableHead>
+                  <TableHead>Tutor</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
@@ -467,6 +481,18 @@ export default function ProfesoresPage() {
                           </Badge>
                         ))}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={
+                          profesor.es_tutor
+                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                            : "bg-gray-50 text-gray-700 border-gray-200"
+                        }
+                      >
+                        {profesor.es_tutor ? "Tutor" : "No tutor"}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -535,103 +561,151 @@ export default function ProfesoresPage() {
               {editingProfesor ? "Editar Usuario" : "Nuevo Usuario"}
             </DialogTitle>
             <DialogDescription>
-              Formulario simple: nombre, usuario, contraseña y estado
+              Completa los datos principales del docente, define su acceso y otorga permisos claves.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="nombres">Nombres *</Label>
-                <Input
-                  id="nombres"
-                  name="nombres"
-                  value={formData.nombres}
-                  onChange={handleInputChange}
-                  required
+            <section className="rounded-lg border p-4 md:p-6 space-y-4">
+              <div className="space-y-1">
+                <h3 className="text-base font-semibold">Información personal</h3>
+                <p className="text-sm text-muted-foreground">Completa los datos básicos del docente.</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="nombres">Nombres *</Label>
+                  <Input
+                    id="nombres"
+                    name="nombres"
+                    value={formData.nombres}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="apellido_paterno">Apellido paterno *</Label>
+                  <Input
+                    id="apellido_paterno"
+                    name="apellido_paterno"
+                    value={formData.apellido_paterno}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="apellido_materno">Apellido materno *</Label>
+                  <Input
+                    id="apellido_materno"
+                    name="apellido_materno"
+                    value={formData.apellido_materno}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    placeholder="usuario@colegio.edu"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-lg border p-4 md:p-6 space-y-4">
+              <div className="space-y-1">
+                <h3 className="text-base font-semibold">Acceso a la plataforma</h3>
+                <p className="text-sm text-muted-foreground">Define el usuario y controla el estado de la cuenta.</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="usuario">Usuario *</Label>
+                  <Input
+                    id="usuario"
+                    name="usuario"
+                    value={formData.usuario}
+                    onChange={handleInputChange}
+                    required
+                    disabled={!!editingProfesor}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">{editingProfesor ? "Nueva contraseña (opcional)" : "Contraseña *"}</Label>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    required={!editingProfesor}
+                    placeholder={editingProfesor ? "Dejar vacío para mantener" : "Ingresa una contraseña temporal"}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-between rounded-md border border-dashed px-4 py-3">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium leading-none">Cuenta activa</p>
+                  <p className="text-xs text-muted-foreground">Desactiva para bloquear el acceso del usuario.</p>
+                </div>
+                <Switch
+                  id="estado"
+                  checked={formData.estado === "activo"}
+                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, estado: checked ? "activo" : "inactivo" }))}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="apellido_paterno">Apellido paterno *</Label>
-                <Input
-                  id="apellido_paterno"
-                  name="apellido_paterno"
-                  value={formData.apellido_paterno}
-                  onChange={handleInputChange}
-                  required
-                />
+            </section>
+
+            <section className="rounded-lg border p-4 md:p-6 space-y-4">
+              <div className="space-y-1">
+                <h3 className="text-base font-semibold">Rol y permisos</h3>
+                <p className="text-sm text-muted-foreground">Asigna el rol principal y habilita funciones adicionales.</p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="apellido_materno">Apellido materno *</Label>
-                <Input
-                  id="apellido_materno"
-                  name="apellido_materno"
-                  value={formData.apellido_materno}
-                  onChange={handleInputChange}
-                  required
-                />
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Rol principal</Label>
+                    <Select value={formData.role} onValueChange={handleRoleSelect}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="PROFESOR">Profesor</SelectItem>
+                        <SelectItem value="ADMIN">Administrador</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="flex items-center justify-between rounded-md border border-dashed px-4 py-3">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium leading-none">Profesor tutor</p>
+                      <p className="text-xs text-muted-foreground">Responsable directo del curso y su seguimiento.</p>
+                    </div>
+                    <Switch
+                      id="es_tutor"
+                      checked={formData.es_tutor}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, es_tutor: checked }))}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between rounded-md border border-dashed px-4 py-3">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium leading-none">Puede centralizar notas</p>
+                      <p className="text-xs text-muted-foreground">Autoriza cargar la centralización de notas del curso.</p>
+                    </div>
+                    <Switch
+                      id="puede_centralizar_notas"
+                      checked={formData.puede_centralizar_notas}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, puede_centralizar_notas: checked }))}
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="usuario">Usuario *</Label>
-                <Input
-                  id="usuario"
-                  name="usuario"
-                  value={formData.usuario}
-                  onChange={handleInputChange}
-                  required
-                  disabled={!!editingProfesor}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder="usuario@colegio.edu"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Estado</Label>
-                <Select
-                  value={formData.estado}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, estado: value as "activo" | "inactivo" }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="activo">Activo</SelectItem>
-                    <SelectItem value="inactivo">Inactivo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Rol</Label>
-                <Select value={formData.role} onValueChange={handleRoleSelect}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="PROFESOR">Profesor</SelectItem>
-                    <SelectItem value="ADMIN">Administrador</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">{editingProfesor ? "Nueva contraseña (opcional)" : "Contraseña *"}</Label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  required={!editingProfesor}
-                />
-              </div>
-            </div>
+            </section>
+
             <div className="flex justify-end gap-2 pt-4 border-t">
               <Button type="button" variant="outline" onClick={handleCloseDialog}>Cancelar</Button>
               <Button type="submit" disabled={isSubmitting}>

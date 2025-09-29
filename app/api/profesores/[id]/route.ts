@@ -29,9 +29,9 @@ export async function GET(
         u.email,
         u.activo,
         DATE_FORMAT(u.fecha_creacion, '%Y-%m-%d') as fecha_registro,
-        p.especialidad,
         p.puede_centralizar_notas,
-        p.profesor_area
+        p.profesor_area,
+        p.es_tutor
       FROM usuarios u
       JOIN profesores p ON u.id_usuario = p.id_usuario
       WHERE u.id_usuario = ?`,
@@ -54,7 +54,9 @@ export async function GET(
     const profesorData = {
       ...profesor[0],
       roles: roles.map(r => r.nombre),
-      estado: profesor[0].activo ? "activo" : "inactivo"
+      estado: profesor[0].activo ? "activo" : "inactivo",
+      puede_centralizar_notas: !!profesor[0].puede_centralizar_notas,
+      es_tutor: !!profesor[0].es_tutor
     }
 
     return NextResponse.json(profesorData)
@@ -100,9 +102,9 @@ export async function PUT(
     // Actualizar banderas de profesor
     const profUpdates: string[] = []
     const profParams: any[] = []
-    if (typeof body.especialidad !== "undefined") { profUpdates.push("especialidad = ?"); profParams.push(body.especialidad || null) }
     if (typeof body.puede_centralizar_notas !== "undefined") { profUpdates.push("puede_centralizar_notas = ?"); profParams.push(!!body.puede_centralizar_notas) }
     if (typeof body.profesor_area !== "undefined") { profUpdates.push("profesor_area = ?"); profParams.push(!!body.profesor_area) }
+    if (typeof body.es_tutor !== "undefined") { profUpdates.push("es_tutor = ?"); profParams.push(!!body.es_tutor) }
     if (profUpdates.length > 0) {
       await executeQuery(`UPDATE profesores SET ${profUpdates.join(', ')} WHERE id_usuario = ?`, [...profParams, id])
     }

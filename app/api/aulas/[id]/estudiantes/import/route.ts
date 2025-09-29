@@ -21,38 +21,43 @@ export async function POST(
       return NextResponse.json({ error: "Formato inválido" }, { status: 400 })
     }
 
-    let remaining = Math.max(0, parseInt(capacidadRestante || '0', 10) || 0)
+    const capacidadParsed = capacidadRestante !== undefined && capacidadRestante !== null && capacidadRestante !== ''
+      ? Number.parseInt(capacidadRestante, 10)
+      : Number.NaN
+    let remaining = Number.isNaN(capacidadParsed) ? estudiantes.length : Math.max(0, capacidadParsed)
     let createdNewStudents = 0
     let reusedExistingStudents = 0
     let skippedByCapacity = 0
+    let addedToAula = 0
     const errors: string[] = []
 
     for (const estudiante of estudiantes) {
-      // Validar datos (acepta antiguos y nuevos encabezados)
-      const nombresRaw = (estudiante.Nombres || estudiante.NOMBRES || '').toString().trim()
+      const nombresRaw = (estudiante.Nombres || estudiante.NOMBRES || '')
+      const paternoRaw = (estudiante.ApellidoPaterno || estudiante['Apellido Paterno'] || estudiante.apellido_paterno || estudiante.APELLIDOPATERNO || estudiante['APELLIDO PATERNO'] || '').toString().trim()
+      const maternoRaw = (estudiante.ApellidoMaterno || estudiante['Apellido Materno'] || estudiante.apellido_materno || estudiante.APELLIDOMATERNO || estudiante['APELLIDO MATERNO'] || '').toString().trim()
       const apellidosRaw = (estudiante.Apellidos || estudiante.APELLIDOS || '').toString().trim()
-      const paternoRaw = (estudiante.ApellidoPaterno || estudiante['Apellido Paterno'] || '').toString().trim()
-      const maternoRaw = (estudiante.ApellidoMaterno || estudiante['Apellido Materno'] || '').toString().trim()
 
-      if (!nombresRaw || (!apellidosRaw && (!paternoRaw || !maternoRaw))) {
-        errors.push(`Estudiante sin nombres o apellidos completos`)
+      const nombres = nombresRaw.toString().trim()
+
+      if (!nombres) {
+        errors.push(`Estudiante sin nombres`)
         continue
       }
 
-      const nombres = nombresRaw
       let apellido_paterno = paternoRaw
       let apellido_materno = maternoRaw
 
-      // Si solo viene "Apellidos", intentar dividir por espacio
       if (!apellido_paterno || !apellido_materno) {
         const parts = apellidosRaw.split(/\s+/).filter(Boolean)
         if (parts.length >= 2) {
-          apellido_paterno = apellido_paterno || parts[0]
-          apellido_materno = apellido_materno || parts.slice(1).join(' ')
-        } else {
-          errors.push(`Apellidos incompletos: ${apellidosRaw}`)
-          continue
+          if (!apellido_paterno) apellido_paterno = parts[0]
+          if (!apellido_materno) apellido_materno = parts.slice(1).join(' ')
         }
+      }
+
+      if (!apellido_paterno && !apellido_materno) {
+        errors.push(`Apellidos incompletos para ${nombres}`)
+        continue
       }
 
       try {
@@ -73,7 +78,7 @@ export async function POST(
           // Crear nuevo estudiante
           const insertResult = await executeQuery<any>(
             "INSERT INTO estudiantes (nombres, apellido_paterno, apellido_materno) VALUES (?, ?, ?)",
-            [nombres, apellido_paterno, apellido_materno]
+            [nombres, apellido_paterno || null, apellido_materno || null]
           )
           studentId = insertResult.insertId
           createdNewStudents += 1
@@ -91,6 +96,7 @@ export async function POST(
             [aulaId, studentId]
           )
           remaining -= 1
+          addedToAula += 1
         }
       } catch (error) {
         console.error(`Error al procesar estudiante ${nombres} ${apellido_paterno} ${apellido_materno}:`, error)
@@ -104,6 +110,7 @@ export async function POST(
       reusedExistingStudents,
       skippedByCapacity,
       remainingCapacity: remaining,
+      imported: addedToAula,
       errors,
     })
   } catch (error) {

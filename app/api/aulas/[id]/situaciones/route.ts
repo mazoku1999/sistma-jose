@@ -43,13 +43,17 @@ export async function GET(request: Request, { params }: { params: { id: string }
     // Get situaciones
     const situaciones = await executeQuery<any[]>(
       `SELECT e.id_estudiante as id, 
-              CONCAT(e.nombres, ' ', e.apellidos) as nombre_completo,
+              CONCAT(e.nombres, ' ', TRIM(CONCAT_WS(' ', NULLIF(e.apellido_paterno, ''), NULLIF(e.apellido_materno, '')))) as nombre_completo,
               COALESCE(sit.estado, 'E') as situacion
        FROM estudiantes e
        JOIN inscripciones_aula ia ON e.id_estudiante = ia.id_estudiante
        LEFT JOIN situacion_estudiante_trimestre sit ON ia.id_inscripcion = sit.id_inscripcion AND sit.trimestre = ?
        WHERE ia.id_aula_profesor = ?
-       ORDER BY e.apellidos, e.nombres`,
+       ORDER BY 
+         CASE WHEN TRIM(IFNULL(e.apellido_paterno, '')) = '' THEN 0 ELSE 1 END,
+         CASE WHEN TRIM(IFNULL(e.apellido_paterno, '')) = '' THEN TRIM(e.apellido_materno) ELSE TRIM(e.apellido_paterno) END,
+         CASE WHEN TRIM(IFNULL(e.apellido_paterno, '')) = '' THEN TRIM(e.nombres) ELSE TRIM(e.apellido_materno) END,
+         TRIM(e.nombres)`,
       [trimestre, id],
     )
 

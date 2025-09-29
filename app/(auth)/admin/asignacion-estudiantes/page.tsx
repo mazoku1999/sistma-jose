@@ -36,7 +36,13 @@ type Aula = {
     inscritos: number
 }
 
-type Estudiante = { id: number; nombre_completo: string }
+type Estudiante = {
+    id: number
+    nombre_completo: string
+    nombres?: string
+    apellido_paterno?: string
+    apellido_materno?: string
+}
 
 /** Utils **/
 function useDebounce<T>(value: T, delay = 300) {
@@ -216,10 +222,79 @@ function AssignScreen({
 
 function InscritosPanel({ inscritos, loading, selectedInscritos, toggleInscrito, selectAllInscritos, clearInscritosSelection, handleRemove }: any) {
     const [confirmOpen, setConfirmOpen] = useState(false)
+
+    const normalizeValue = (value: string | undefined | null) => (value ?? '').toString().trim()
+
+    const deriveNames = (est: Estudiante | any) => {
+        const nombres = normalizeValue(est.nombres)
+        const apellido_paterno = normalizeValue(est.apellido_paterno)
+        const apellido_materno = normalizeValue(est.apellido_materno)
+
+        if (nombres || apellido_paterno || apellido_materno) {
+            return { nombres, apellido_paterno, apellido_materno }
+        }
+
+        const nombreCompleto = normalizeValue(est.nombre_completo)
+        const parts = nombreCompleto.split(/\s+/).filter(Boolean)
+
+        if (parts.length >= 3) {
+            return {
+                nombres: parts.slice(0, parts.length - 2).join(' '),
+                apellido_paterno: parts[parts.length - 2] || '',
+                apellido_materno: parts[parts.length - 1] || '',
+            }
+        }
+
+        if (parts.length === 2) {
+            return {
+                nombres: parts[0],
+                apellido_paterno: '',
+                apellido_materno: parts[1],
+            }
+        }
+
+        if (parts.length === 1) {
+            return {
+                nombres: nombreCompleto,
+                apellido_paterno: '',
+                apellido_materno: '',
+            }
+        }
+
+        return {
+            nombres: '',
+            apellido_paterno: '',
+            apellido_materno: '',
+        }
+    }
+
+    const compareFields = (fields: Array<'apellido_paterno' | 'apellido_materno' | 'nombres'>) => (a: any, b: any) => {
+        for (const field of fields) {
+            const va = normalizeValue(a[field]).toLocaleLowerCase()
+            const vb = normalizeValue(b[field]).toLocaleLowerCase()
+            const cmp = va.localeCompare(vb, 'es', { sensitivity: 'base' })
+            if (cmp !== 0) return cmp
+        }
+        return 0
+    }
+
+    const sortRows = (rows: Estudiante[]) => {
+        const mapped = rows.map((row) => ({ id: row.id, ...deriveNames(row) }))
+        const soloMaterno = mapped.filter(r => !r.apellido_paterno)
+        const conPaterno = mapped.filter(r => r.apellido_paterno)
+
+        soloMaterno.sort(compareFields(['apellido_materno', 'nombres']))
+        conPaterno.sort(compareFields(['apellido_paterno', 'apellido_materno', 'nombres']))
+
+        return [...soloMaterno, ...conPaterno]
+    }
+
+    const sortedRows = sortRows(inscritos)
+
     return (
         <>
             <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={selectAllInscritos} disabled={inscritos.length === 0}>Seleccionar todos</Button>
+                <Button variant="outline" size="sm" onClick={selectAllInscritos} disabled={sortedRows.length === 0}>Seleccionar todos</Button>
                 <Button variant="ghost" size="sm" onClick={clearInscritosSelection} disabled={selectedInscritos.length === 0}>Limpiar selección</Button>
                 <Badge variant="secondary" className="text-[10px]">Seleccionados: {selectedInscritos.length}</Badge>
                 <div className="ml-auto">
@@ -229,19 +304,38 @@ function InscritosPanel({ inscritos, loading, selectedInscritos, toggleInscrito,
 
             {loading ? (
                 <div className="space-y-2 mt-2">{Array.from({ length: 6 }).map((_, i) => (<Skeleton key={i} className="h-10 w-full" />))}</div>
-            ) : inscritos.length === 0 ? (
+            ) : sortedRows.length === 0 ? (
                 <div className="text-sm text-muted-foreground mt-2">No hay estudiantes inscritos</div>
             ) : (
-                <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1 mt-2">
-                    {inscritos.map((e: Estudiante) => (
-                        <div key={e.id} className="flex items-center justify-between rounded border p-2 hover:bg-muted/40">
-                            <div className="flex items-center gap-2 min-w-0">
-                                <Checkbox checked={selectedInscritos.includes(e.id)} onCheckedChange={() => toggleInscrito(e.id)} aria-label={`Seleccionar ${e.nombre_completo}`} />
-                                <div className="text-sm truncate" title={e.nombre_completo}>{e.nombre_completo}</div>
-                            </div>
-                            <Button variant="outline" size="sm" onClick={() => handleRemove([e.id])}>Remover</Button>
-                        </div>
-                    ))}
+                <div className="rounded-md border mt-3">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-12">#</TableHead>
+                                <TableHead>Apellido paterno</TableHead>
+                                <TableHead>Apellido materno</TableHead>
+                                <TableHead>Nombres</TableHead>
+                                <TableHead className="w-32 text-center">Seleccionar</TableHead>
+                                <TableHead className="w-24" />
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {sortedRows.map((row: any, index: number) => (
+                                <TableRow key={row.id}>
+                                    <TableCell className="text-muted-foreground">{index + 1}</TableCell>
+                                    <TableCell>{row.apellido_paterno || <span className="text-muted-foreground italic">(sin paterno)</span>}</TableCell>
+                                    <TableCell>{row.apellido_materno}</TableCell>
+                                    <TableCell>{row.nombres}</TableCell>
+                                    <TableCell className="text-center">
+                                        <Checkbox checked={selectedInscritos.includes(row.id)} onCheckedChange={() => toggleInscrito(row.id)} aria-label={`Seleccionar ${row.nombres}`} />
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="outline" size="sm" onClick={() => handleRemove([row.id])}>Remover</Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
                 </div>
             )}
 
@@ -332,7 +426,13 @@ export default function AsignacionEstudiantesAdminPage() {
         setInscritosLoading(true)
         try {
             const data = await fetchJSON<any[]>(`/api/aulas/${selectedAula.id}/estudiantes`)
-            setInscritos(data.map((e: any) => ({ id: e.id, nombre_completo: e.nombre_completo })) as Estudiante[])
+            setInscritos(data.map((e: any) => ({
+                id: e.id,
+                nombre_completo: e.nombre_completo,
+                nombres: e.nombres,
+                apellido_paterno: e.apellido_paterno,
+                apellido_materno: e.apellido_materno,
+            })) as Estudiante[])
         } catch (e: any) {
             toast({ title: "Error al cargar inscritos", description: e.message, variant: "destructive" })
             setInscritos([])
@@ -427,9 +527,15 @@ export default function AsignacionEstudiantesAdminPage() {
         if (!nuevoNombres.trim() || !nuevoApellidos.trim()) { toast({ title: "Completa los campos", variant: "destructive" }); return }
         setCreating(true)
         try {
-            const est = await fetchJSON<{ id: number; nombre_completo: string }>(`/api/aulas/${selectedAula.id}/estudiantes`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nombres: nuevoNombres.trim(), apellidos: nuevoApellidos.trim() }) })
+            const est = await fetchJSON<{ id: number; nombre_completo: string; nombres?: string; apellido_paterno?: string; apellido_materno?: string }>(`/api/aulas/${selectedAula.id}/estudiantes`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nombres: nuevoNombres.trim(), apellidos: nuevoApellidos.trim() }) })
             toast({ title: "Estudiante creado y asignado" })
-            setInscritos((prev) => [{ id: est.id, nombre_completo: est.nombre_completo }, ...prev])
+            setInscritos((prev) => [{
+                id: est.id,
+                nombre_completo: est.nombre_completo,
+                nombres: est.nombres ?? nuevoNombres.trim(),
+                apellido_paterno: est.apellido_paterno ?? '',
+                apellido_materno: est.apellido_materno ?? nuevoApellidos.trim(),
+            }, ...prev])
             setSelectedAula((prev) => (prev ? { ...prev, inscritos: prev.inscritos + 1 } : prev))
             setCreateOpen(false); setNuevoNombres(""); setNuevoApellidos("")
         } catch (e: any) {
@@ -441,7 +547,14 @@ export default function AsignacionEstudiantesAdminPage() {
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [importingExcel, setImportingExcel] = useState(false)
     const [importOpen, setImportOpen] = useState(false)
-    const [importRows, setImportRows] = useState<{ Nombres: string; Apellidos: string }[]>([])
+    type ImportRow = {
+        Nombres: string
+        ApellidoPaterno?: string
+        ApellidoMaterno?: string
+        Apellidos?: string
+    }
+
+    const [importRows, setImportRows] = useState<ImportRow[]>([])
     const [importFilter, setImportFilter] = useState("")
 
     const onImportClick = () => fileInputRef.current?.click()
@@ -455,37 +568,24 @@ export default function AsignacionEstudiantesAdminPage() {
             const workbook = XLSX.read(new Uint8Array(data), { type: 'array' })
             const sheet = workbook.Sheets[workbook.SheetNames[0]]
 
-            // Intentar detectar columnas de nombres y apellidos de forma flexible
+            // Leer columnas fijas: C (paterno), D (materno), E (nombres) a partir de fila 12
             const rows: any[] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', blankrows: false })
-            let headerRow = -1, colN = -1, colA = -1
-            for (let i = 0; i < rows.length; i++) {
+            const startRow = 11
+            const colPaterno = 2
+            const colMaterno = 3
+            const colNombres = 4
+
+            const out: ImportRow[] = []
+            for (let i = startRow; i < rows.length; i++) {
                 const r = rows[i] as any[]
-                for (let j = 0; j < r.length; j++) {
-                    const cell = (r[j] || '').toString().toLowerCase()
-                    if (cell.includes('nombre') && colN === -1) { colN = j; headerRow = i }
-                    if (cell.includes('apellido') && colA === -1) { colA = j; if (headerRow === -1) headerRow = i }
-                }
-                if (colN !== -1 && colA !== -1) break
-            }
-            const out: { Nombres: string; Apellidos: string }[] = []
-            if (headerRow !== -1 && colN !== -1 && colA !== -1) {
-                for (let i = headerRow + 1; i < rows.length; i++) {
-                    const r = rows[i] as any[]
-                    const nombres = (r[colN] || '').toString().trim()
-                    const apellidos = (r[colA] || '').toString().trim()
-                    if (nombres && apellidos) out.push({ Nombres: nombres, Apellidos: apellidos })
-                }
-            } else {
-                // Fallback: objects
-                const objRows: any[] = XLSX.utils.sheet_to_json(sheet)
-                objRows.forEach((row) => {
-                    const keys = Object.keys(row)
-                    const kN = keys.find(k => k.toLowerCase().includes('nombre'))
-                    const kA = keys.find(k => k.toLowerCase().includes('apellido'))
-                    const nombres = kN ? String(row[kN]).trim() : ''
-                    const apellidos = kA ? String(row[kA]).trim() : ''
-                    if (nombres && apellidos) out.push({ Nombres: nombres, Apellidos: apellidos })
-                })
+                if (!Array.isArray(r)) continue
+
+                const apellidoPaterno = (r[colPaterno] || '').toString().trim()
+                const apellidoMaterno = (r[colMaterno] || '').toString().trim()
+                const nombres = (r[colNombres] || '').toString().trim()
+
+                if (!apellidoPaterno && !apellidoMaterno && !nombres) continue
+                out.push({ Nombres: nombres, ApellidoPaterno: apellidoPaterno, ApellidoMaterno: apellidoMaterno })
             }
 
             if (out.length === 0) {
@@ -505,9 +605,31 @@ export default function AsignacionEstudiantesAdminPage() {
         }
     }
 
+    const normalizeValue = (value: string | undefined | null) => (value ?? '').toString().trim()
+    const apellidoPaterno = (row: ImportRow) => normalizeValue(row.ApellidoPaterno)
+    const apellidoMaterno = (row: ImportRow) => normalizeValue(row.ApellidoMaterno)
+
     const filteredImportRows = importRows.filter(r =>
-        (r.Nombres + ' ' + r.Apellidos).toLowerCase().includes(importFilter.toLowerCase())
+        `${apellidoPaterno(r)} ${apellidoMaterno(r)} ${normalizeValue(r.Nombres)}`.toLowerCase().includes(importFilter.toLowerCase())
     )
+
+    const compareBy = (fields: Array<'ApellidoPaterno' | 'ApellidoMaterno' | 'Nombres'>) => (a: ImportRow, b: ImportRow) => {
+        for (const field of fields) {
+            const va = normalizeValue(a[field]).toLocaleLowerCase()
+            const vb = normalizeValue(b[field]).toLocaleLowerCase()
+            const cmp = va.localeCompare(vb, 'es', { sensitivity: 'base' })
+            if (cmp !== 0) return cmp
+        }
+        return 0
+    }
+
+    const soloMaterno = filteredImportRows.filter(r => !apellidoPaterno(r))
+    const conPaterno = filteredImportRows.filter(r => apellidoPaterno(r))
+
+    soloMaterno.sort(compareBy(['ApellidoMaterno', 'Nombres']))
+    conPaterno.sort(compareBy(['ApellidoPaterno', 'ApellidoMaterno', 'Nombres']))
+
+    const sortedFilteredRows = [...soloMaterno, ...conPaterno]
 
     const removeImportRow = (index: number) => {
         setImportRows(prev => prev.filter((_, i) => i !== index))
@@ -517,7 +639,11 @@ export default function AsignacionEstudiantesAdminPage() {
         if (!selectedAula) return
         if (willImportCount === 0) { toast({ title: 'Nada para importar', description: 'Revisa duplicados o cupo', variant: 'destructive' }); return }
         // Construir filas válidas y con cupo
-        const rowsToSend = validCandidates.slice(0, willImportCount)
+        const rowsToSend = validCandidates.slice(0, willImportCount).map(r => ({
+            ApellidoPaterno: apellidoPaterno(r),
+            ApellidoMaterno: apellidoMaterno(r),
+            Nombres: r.Nombres
+        }))
         try {
             setImportingExcel(true)
             const res = await fetch(`/api/aulas/${selectedAula.id}/estudiantes/import`, {
@@ -528,7 +654,7 @@ export default function AsignacionEstudiantesAdminPage() {
                 const extras = r?.skippedByCapacity ? `, sin cupo: ${r.skippedByCapacity}` : ''
                 const created = r?.createdNewStudents ? `, nuevos: ${r.createdNewStudents}` : ''
                 const reused = r?.reusedExistingStudents ? `, existentes: ${r.reusedExistingStudents}` : ''
-                toast({ title: 'Importación completa', description: `${r.imported} importados${extras}${created}${reused}` })
+                toast({ title: 'Importación completa', description: `${r.imported ?? 0} importados${extras}${created}${reused}` })
                 setImportOpen(false); setImportRows([]); setImportFilter("")
                 // refrescar listas
                 loadInscritos(); loadCandidatos()
@@ -544,7 +670,7 @@ export default function AsignacionEstudiantesAdminPage() {
 
     // Estadísticas de previsualización: duplicados y cupo
     const normalize = (s: string) => s.toString().trim().toLowerCase().replace(/\s+/g, ' ')
-    const fullName = (r: { Nombres: string; Apellidos: string }) => normalize(`${r.Nombres} ${r.Apellidos}`)
+    const fullName = (r: ImportRow) => normalize(`${apellidoPaterno(r)} ${apellidoMaterno(r)} ${r.Nombres}`)
     const existingSet = new Set(inscritos.map(e => normalize(e.nombre_completo)))
     const countsMap = importRows.reduce<Record<string, number>>((acc, r) => {
         const k = fullName(r); acc[k] = (acc[k] || 0) + 1; return acc
@@ -656,14 +782,15 @@ export default function AsignacionEstudiantesAdminPage() {
                                             <TableHeader>
                                                 <TableRow>
                                                     <TableHead className="w-16">#</TableHead>
+                                                    <TableHead>Apellido paterno</TableHead>
+                                                    <TableHead>Apellido materno</TableHead>
                                                     <TableHead>Nombres</TableHead>
-                                                    <TableHead>Apellidos</TableHead>
                                                     <TableHead>Estado</TableHead>
                                                     <TableHead className="w-28 text-right">Quitar</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {filteredImportRows.map((row, idx) => {
+                                                {sortedFilteredRows.map((row, idx) => {
                                                     // Obtener índice real en importRows
                                                     const realIndex = importRows.findIndex(r => r === row) !== -1 ? importRows.findIndex(r => r === row) : idx
                                                     const nameKey = fullName(row)
@@ -677,8 +804,9 @@ export default function AsignacionEstudiantesAdminPage() {
                                                     return (
                                                         <TableRow key={idx}>
                                                             <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                                                            <TableCell className="font-medium">{apellidoPaterno(row) || <span className="text-muted-foreground italic">(sin paterno)</span>}</TableCell>
+                                                            <TableCell className="font-medium">{apellidoMaterno(row)}</TableCell>
                                                             <TableCell className="font-medium">{row.Nombres}</TableCell>
-                                                            <TableCell className="font-medium">{row.Apellidos}</TableCell>
                                                             <TableCell>
                                                                 {status === 'ok' && <Badge className="bg-green-100 text-green-700 border-green-200">Listo</Badge>}
                                                                 {status === 'inscrito' && <Badge className="bg-red-100 text-red-700 border-red-200">Ya inscrito</Badge>}

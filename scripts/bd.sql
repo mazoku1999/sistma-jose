@@ -39,9 +39,9 @@ CREATE TABLE IF NOT EXISTS usuario_roles (
 CREATE TABLE IF NOT EXISTS profesores (
   id_profesor INT AUTO_INCREMENT PRIMARY KEY,
   id_usuario INT NOT NULL UNIQUE,
-  especialidad VARCHAR(100),
   puede_centralizar_notas BOOLEAN DEFAULT FALSE,
   profesor_area BOOLEAN DEFAULT FALSE,
+  es_tutor BOOLEAN DEFAULT FALSE,
   fecha_ingreso DATE,
   FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE CASCADE
 );
@@ -50,8 +50,8 @@ CREATE TABLE IF NOT EXISTS profesores (
 CREATE TABLE IF NOT EXISTS estudiantes (
   id_estudiante INT AUTO_INCREMENT PRIMARY KEY,
   nombres VARCHAR(50) NOT NULL,
-  apellido_paterno VARCHAR(50) NOT NULL,
-  apellido_materno VARCHAR(50) NOT NULL,
+  apellido_paterno VARCHAR(50),
+  apellido_materno VARCHAR(50),
   fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -220,8 +220,8 @@ FROM usuarios u, roles r
 WHERE u.usuario = 'profesor' AND r.nombre = 'PROFESOR';
 
 -- Insertar profesor
-INSERT INTO profesores (id_usuario, especialidad, puede_centralizar_notas, profesor_area, fecha_ingreso) 
-SELECT u.id_usuario, 'Matemáticas', TRUE, FALSE, CURRENT_DATE
+INSERT INTO profesores (id_usuario, puede_centralizar_notas, profesor_area, es_tutor, fecha_ingreso) 
+SELECT u.id_usuario, TRUE, FALSE, FALSE, CURRENT_DATE
 FROM usuarios u 
 WHERE u.usuario = 'profesor';
 
@@ -325,6 +325,12 @@ CREATE INDEX idx_aulas_activas ON aulas_profesor(activa, id_gestion);
 
 -- Agregar el campo profesor_area a la tabla profesores existente
 -- ALTER TABLE profesores ADD COLUMN profesor_area BOOLEAN DEFAULT FALSE;
+
+-- Agregar el campo es_tutor a la tabla profesores existente
+-- ALTER TABLE profesores ADD COLUMN es_tutor BOOLEAN DEFAULT FALSE;
+
+-- (Opcional) Eliminar el campo especialidad de la tabla profesores existente si ya no se utiliza
+-- ALTER TABLE profesores DROP COLUMN especialidad;
 
 -- Actualizar el profesor de ejemplo para que no sea profesor de área
 -- UPDATE profesores SET profesor_area = FALSE WHERE id_usuario = 2;

@@ -28,12 +28,16 @@ export async function GET(
         e.nombres,
         e.apellido_paterno,
         e.apellido_materno,
-        CONCAT(e.nombres, ' ', e.apellido_paterno, ' ', e.apellido_materno) as nombre_completo,
+        CONCAT_WS(' ', e.nombres, e.apellido_paterno, e.apellido_materno) as nombre_completo,
         DATE_FORMAT(e.fecha_registro, '%Y-%m-%d') as fecha_registro
       FROM estudiantes e
       JOIN inscripciones_aula ia ON e.id_estudiante = ia.id_estudiante
       WHERE ia.id_aula_profesor = ?
-      ORDER BY nombre_completo
+      ORDER BY 
+        CASE WHEN TRIM(IFNULL(e.apellido_paterno, '')) = '' THEN 0 ELSE 1 END,
+        CASE WHEN TRIM(IFNULL(e.apellido_paterno, '')) = '' THEN TRIM(e.apellido_materno) ELSE TRIM(e.apellido_paterno) END,
+        CASE WHEN TRIM(IFNULL(e.apellido_paterno, '')) = '' THEN TRIM(e.nombres) ELSE TRIM(e.apellido_materno) END,
+        TRIM(e.nombres)
     `,
       [aulaId]
     )

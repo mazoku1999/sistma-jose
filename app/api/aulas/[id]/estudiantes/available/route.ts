@@ -19,13 +19,18 @@ export async function GET(
         if (search) { paramsSearch.push(`%${search}%`, `%${search}%`, `%${search}%`) }
 
         const estudiantes = await executeQuery<any[]>(
-            `SELECT e.id_estudiante as id, CONCAT(e.nombres,' ',e.apellido_paterno,' ',e.apellido_materno) as nombre_completo
+            `SELECT e.id_estudiante as id, e.nombres, e.apellido_paterno, e.apellido_materno,
+       CONCAT_WS(' ', e.nombres, e.apellido_paterno, e.apellido_materno) as nombre_completo
        FROM estudiantes e
        WHERE e.id_estudiante NOT IN (
          SELECT ia.id_estudiante FROM inscripciones_aula ia WHERE ia.id_aula_profesor = ?
        )
        ${whereSearch}
-       ORDER BY nombre_completo
+       ORDER BY 
+         CASE WHEN TRIM(IFNULL(e.apellido_paterno, '')) = '' THEN 0 ELSE 1 END,
+         CASE WHEN TRIM(IFNULL(e.apellido_paterno, '')) = '' THEN TRIM(e.apellido_materno) ELSE TRIM(e.apellido_paterno) END,
+         CASE WHEN TRIM(IFNULL(e.apellido_paterno, '')) = '' THEN TRIM(e.nombres) ELSE TRIM(e.apellido_materno) END,
+         TRIM(e.nombres)
       `,
             [aulaId, ...paramsSearch]
         )

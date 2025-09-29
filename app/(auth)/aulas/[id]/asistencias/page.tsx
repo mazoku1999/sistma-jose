@@ -33,8 +33,9 @@ import { cn } from "@/lib/utils"
 interface Estudiante {
   id: number
   inscripcion_id: number
-  nombres: string
-  apellidos: string
+  nombres?: string
+  apellido_paterno?: string
+  apellido_materno?: string
   nombre_completo: string
 }
 
@@ -61,6 +62,74 @@ const tiposAsistencia = {
   'L': { label: 'Licencia', color: 'bg-blue-100 text-blue-800 border-blue-200', icon: FileText }
 }
 
+const normalizeValue = (value: string | undefined | null) => (value ?? '').toString().trim()
+
+const deriveNames = (est: Estudiante) => {
+  const nombres = normalizeValue(est.nombres)
+  const apellido_paterno = normalizeValue(est.apellido_paterno)
+  const apellido_materno = normalizeValue(est.apellido_materno)
+
+  if (nombres || apellido_paterno || apellido_materno) {
+    return { nombres, apellido_paterno, apellido_materno }
+  }
+
+  const nombreCompleto = normalizeValue(est.nombre_completo)
+  const parts = nombreCompleto.split(/\s+/).filter(Boolean)
+
+  if (parts.length >= 3) {
+    return {
+      nombres: parts.slice(0, parts.length - 2).join(' '),
+      apellido_paterno: parts[parts.length - 2] || '',
+      apellido_materno: parts[parts.length - 1] || '',
+    }
+  }
+
+  if (parts.length === 2) {
+    return {
+      nombres: parts[0],
+      apellido_paterno: '',
+      apellido_materno: parts[1],
+    }
+  }
+
+  if (parts.length === 1) {
+    return {
+      nombres: nombreCompleto,
+      apellido_paterno: '',
+      apellido_materno: '',
+    }
+  }
+
+  return {
+    nombres: '',
+    apellido_paterno: '',
+    apellido_materno: '',
+  }
+}
+
+const sortEstudiantes = (rows: Estudiante[]) => {
+  return [...rows].sort((a, b) => {
+    const da = deriveNames(a)
+    const db = deriveNames(b)
+
+    const grupoA = da.apellido_paterno ? 1 : 0
+    const grupoB = db.apellido_paterno ? 1 : 0
+    if (grupoA !== grupoB) return grupoA - grupoB
+
+    const campos = grupoA === 0
+      ? ['apellido_materno', 'nombres']
+      : ['apellido_paterno', 'apellido_materno', 'nombres']
+
+    for (const campo of campos) {
+      const va = normalizeValue(da[campo as keyof typeof da]).toLocaleLowerCase()
+      const vb = normalizeValue(db[campo as keyof typeof db]).toLocaleLowerCase()
+      const cmp = va.localeCompare(vb, 'es', { sensitivity: 'base' })
+      if (cmp !== 0) return cmp
+    }
+
+    return 0
+  })
+}
 
 
 export default function AsistenciasPage() {
@@ -127,27 +196,15 @@ export default function AsistenciasPage() {
 
   const fetchEstudiantes = async () => {
     if (!aulaId) return
-
     setIsLoading(true)
     try {
       const response = await fetch(`/api/aulas/${aulaId}/estudiantes`)
       if (response.ok) {
         const data = await response.json()
         setEstudiantes(data)
-      } else {
-        toast({
-          title: "Error",
-          description: "No se pudieron cargar los estudiantes",
-          variant: "destructive",
-        })
       }
     } catch (error) {
       console.error("Error al cargar estudiantes:", error)
-      toast({
-        title: "Error",
-        description: "Error al cargar los estudiantes",
-        variant: "destructive",
-      })
     } finally {
       setIsLoading(false)
     }
@@ -408,10 +465,11 @@ export default function AsistenciasPage() {
                       <TableRow key={e.id}>
                         <TableCell>{idx + 1}</TableCell>
                         <TableCell>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{e.nombre_completo}</span>
-                            <span className="text-xs text-muted-foreground">ID: {e.id}</span>
-                          </div>
+                          {[
+                            deriveNames(e).apellido_paterno,
+                            deriveNames(e).apellido_materno,
+                            deriveNames(e).nombres,
+                          ].filter(Boolean).join(' ')}
                         </TableCell>
                         {fechas.map((f) => {
                           const a = porFecha[f]?.[e.inscripcion_id]
@@ -460,7 +518,6 @@ export default function AsistenciasPage() {
           </CardContent>
         </Card>
       </>
-      )
 
       {/* Indicador de cambios no guardados */}
       {hasChanges && (
