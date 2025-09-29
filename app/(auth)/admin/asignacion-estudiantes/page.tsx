@@ -167,7 +167,7 @@ function AssignScreen({
 }: any) {
     const [inscritosFilter, setInscritosFilter] = useState("")
     const filteredInscritos = useMemo(() =>
-        inscritos.filter((e: Estudiante) => e.nombre_completo.toLowerCase().includes(inscritosFilter.toLowerCase())),
+        inscritos.filter((e: Estudiante) => (e.nombre_completo ?? '').toString().toLowerCase().includes(inscritosFilter.toLowerCase())),
         [inscritos, inscritosFilter]
     )
     return (
@@ -384,7 +384,8 @@ export default function AsignacionEstudiantesAdminPage() {
     // Create student
     const [createOpen, setCreateOpen] = useState(false)
     const [nuevoNombres, setNuevoNombres] = useState("")
-    const [nuevoApellidos, setNuevoApellidos] = useState("")
+    const [nuevoApellidoPaterno, setNuevoApellidoPaterno] = useState("")
+    const [nuevoApellidoMaterno, setNuevoApellidoMaterno] = useState("")
     const [creating, setCreating] = useState(false)
 
     // Derived
@@ -524,20 +525,38 @@ export default function AsignacionEstudiantesAdminPage() {
 
     const handleCreateStudent = async () => {
         if (!selectedAula) return
-        if (!nuevoNombres.trim() || !nuevoApellidos.trim()) { toast({ title: "Completa los campos", variant: "destructive" }); return }
+        if (!nuevoNombres.trim() || !nuevoApellidoPaterno.trim() || !nuevoApellidoMaterno.trim()) {
+            toast({ title: "Completa nombres y apellidos", variant: "destructive" })
+            return
+        }
         setCreating(true)
         try {
-            const est = await fetchJSON<{ id: number; nombre_completo: string; nombres?: string; apellido_paterno?: string; apellido_materno?: string }>(`/api/aulas/${selectedAula.id}/estudiantes`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nombres: nuevoNombres.trim(), apellidos: nuevoApellidos.trim() }) })
+            const payload = {
+                nombres: nuevoNombres.trim(),
+                apellido_paterno: nuevoApellidoPaterno.trim(),
+                apellido_materno: nuevoApellidoMaterno.trim(),
+            }
+            const est = await fetchJSON<{ id: number; nombre_completo: string; nombres?: string; apellido_paterno?: string; apellido_materno?: string }>(
+                `/api/aulas/${selectedAula.id}/estudiantes`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                },
+            )
             toast({ title: "Estudiante creado y asignado" })
             setInscritos((prev) => [{
                 id: est.id,
                 nombre_completo: est.nombre_completo,
-                nombres: est.nombres ?? nuevoNombres.trim(),
-                apellido_paterno: est.apellido_paterno ?? '',
-                apellido_materno: est.apellido_materno ?? nuevoApellidos.trim(),
+                nombres: est.nombres ?? payload.nombres,
+                apellido_paterno: est.apellido_paterno ?? payload.apellido_paterno,
+                apellido_materno: est.apellido_materno ?? payload.apellido_materno,
             }, ...prev])
             setSelectedAula((prev) => (prev ? { ...prev, inscritos: prev.inscritos + 1 } : prev))
-            setCreateOpen(false); setNuevoNombres(""); setNuevoApellidos("")
+            setCreateOpen(false)
+            setNuevoNombres("")
+            setNuevoApellidoPaterno("")
+            setNuevoApellidoMaterno("")
         } catch (e: any) {
             toast({ title: "Error al crear estudiante", description: e.message, variant: "destructive" })
         } finally { setCreating(false) }
@@ -669,7 +688,7 @@ export default function AsignacionEstudiantesAdminPage() {
     }
 
     // Estadísticas de previsualización: duplicados y cupo
-    const normalize = (s: string) => s.toString().trim().toLowerCase().replace(/\s+/g, ' ')
+    const normalize = (s: string | undefined | null) => (s ?? '').toString().trim().toLowerCase().replace(/\s+/g, ' ')
     const fullName = (r: ImportRow) => normalize(`${apellidoPaterno(r)} ${apellidoMaterno(r)} ${r.Nombres}`)
     const existingSet = new Set(inscritos.map(e => normalize(e.nombre_completo)))
     const countsMap = importRows.reduce<Record<string, number>>((acc, r) => {
@@ -732,9 +751,23 @@ export default function AsignacionEstudiantesAdminPage() {
                             <Label htmlFor="nombres">Nombres</Label>
                             <Input id="nombres" value={nuevoNombres} onChange={(e) => setNuevoNombres(e.target.value)} />
                         </div>
-                        <div>
-                            <Label htmlFor="apellidos">Apellidos</Label>
-                            <Input id="apellidos" value={nuevoApellidos} onChange={(e) => setNuevoApellidos(e.target.value)} />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <Label htmlFor="apellido_paterno">Apellido paterno</Label>
+                                <Input
+                                    id="apellido_paterno"
+                                    value={nuevoApellidoPaterno}
+                                    onChange={(e) => setNuevoApellidoPaterno(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="apellido_materno">Apellido materno</Label>
+                                <Input
+                                    id="apellido_materno"
+                                    value={nuevoApellidoMaterno}
+                                    onChange={(e) => setNuevoApellidoMaterno(e.target.value)}
+                                />
+                            </div>
                         </div>
                         <div className="flex justify-end gap-2 pt-2">
                             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
