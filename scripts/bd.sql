@@ -134,6 +134,11 @@ CREATE TABLE IF NOT EXISTS notas_aula_profesor (
   id_nota_aula_profesor INT AUTO_INCREMENT PRIMARY KEY,
   id_inscripcion INT NOT NULL,
   trimestre INT NOT NULL CHECK (trimestre BETWEEN 1 AND 3),
+  nota_ser DECIMAL(5,2) DEFAULT 0,
+  nota_saber DECIMAL(5,2) DEFAULT 0,
+  nota_hacer DECIMAL(5,2) DEFAULT 0,
+  nota_decidir DECIMAL(5,2) DEFAULT 0,
+  nota_autoevaluacion DECIMAL(5,2) DEFAULT 0,
   promedio_final_trimestre DECIMAL(5,2) NOT NULL,
   fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (id_inscripcion) REFERENCES inscripciones_aula(id_inscripcion) ON DELETE CASCADE,
@@ -200,12 +205,12 @@ INSERT INTO roles (nombre, descripcion) VALUES
 ('PROFESOR', 'Profesor con acceso a aulas y notas');
 
 -- Insertar usuario administrador (password: admin123)
-INSERT INTO usuarios (usuario, password, nombres, apellido_paterno, apellido_materno, nombre_completo, activo) VALUES 
-('admin', '$2b$10$WnF./ztE.2asPXhhFBN/1.ttDlaQja3eRgJFtUFt0AO7IscFXwzEa', 'Administrador', 'Del', 'Sistema', 'Administrador del Sistema', TRUE);
+INSERT INTO usuarios (usuario, password, nombres, apellido_paterno, apellido_materno, nombre_completo, activo, email) VALUES 
+('admin', '$2b$10$WnF./ztE.2asPXhhFBN/1.ttDlaQja3eRgJFtUFt0AO7IscFXwzEa', 'Administrador', 'Del', 'Sistema', 'Administrador del Sistema', TRUE, 'admin@admin.com');
 
 -- Insertar usuario profesor (password: admin123)
-INSERT INTO usuarios (usuario, password, nombres, apellido_paterno, apellido_materno, nombre_completo, activo) VALUES 
-('profesor', '$2b$10$WnF./ztE.2asPXhhFBN/1.ttDlaQja3eRgJFtUFt0AO7IscFXwzEa', 'Profesor', 'Ejemplo', 'Demo', 'Profesor Ejemplo Demo', TRUE);
+INSERT INTO usuarios (usuario, password, nombres, apellido_paterno, apellido_materno, nombre_completo, activo, email) VALUES 
+('profesor', '$2b$10$WnF./ztE.2asPXhhFBN/1.ttDlaQja3eRgJFtUFt0AO7IscFXwzEa', 'Profesor', 'Ejemplo', 'Demo', 'Profesor Ejemplo Demo', TRUE, 'profesor@profesor.com');
 
 -- Asignar rol de administrador al usuario admin
 INSERT INTO usuario_roles (id_usuario, id_rol) 
@@ -296,6 +301,14 @@ ALTER TABLE inscripciones_aula ADD FOREIGN KEY (id_gestion) REFERENCES gestiones
 -- Modificar tabla de notas para incluir gestión
 ALTER TABLE notas_aula_profesor ADD COLUMN id_gestion INT NOT NULL DEFAULT 1;
 ALTER TABLE notas_aula_profesor ADD FOREIGN KEY (id_gestion) REFERENCES gestiones_academicas(id_gestion) ON DELETE CASCADE;
+
+-- Agregar columnas de evaluación integral a la tabla de notas existente
+-- ALTER TABLE notas_aula_profesor
+--   ADD COLUMN nota_ser DECIMAL(5,2) DEFAULT 0,
+--   ADD COLUMN nota_saber DECIMAL(5,2) DEFAULT 0,
+--   ADD COLUMN nota_hacer DECIMAL(5,2) DEFAULT 0,
+--   ADD COLUMN nota_decidir DECIMAL(5,2) DEFAULT 0,
+--   ADD COLUMN nota_autoevaluacion DECIMAL(5,2) DEFAULT 0;
 
 -- Modificar tabla de asistencia para incluir gestión
 ALTER TABLE asistencia_estudiante ADD COLUMN id_gestion INT NOT NULL DEFAULT 1;

@@ -537,7 +537,9 @@ export default function NotasPage() {
     }
 
     const renderNotaCell = (trimestre: number, notaTrimestre: Nota | undefined, editable: boolean, inscripcionId: number) => {
-        const valor = notaTrimestre?.promedio_final_trimestre ?? notas[inscripcionId]?.promedio_final_trimestre
+        const valor = editable
+            ? notas[inscripcionId]?.promedio_final_trimestre ?? notaTrimestre?.promedio_final_trimestre ?? 0
+            : notaTrimestre?.promedio_final_trimestre ?? 0
 
         if (editable) {
             return (
@@ -557,7 +559,7 @@ export default function NotasPage() {
             )
         }
 
-        const shown = Number.isFinite(valor) && valor > 0 ? valor : ""
+        const shown = Number.isFinite(valor) ? valor : 0
         return (
             <div className="flex flex-col items-center gap-1">
                 <Input
