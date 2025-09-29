@@ -515,8 +515,8 @@ export default function NotasPage() {
 
         const suma = notasValidas.reduce((acc, nota) => acc + nota.promedio_final_trimestre, 0)
         const promedio = suma / notasValidas.length
-        const aprobados = notasValidas.filter(n => n.promedio_final_trimestre >= 60).length
-        const reprobados = notasValidas.filter(n => n.promedio_final_trimestre < 60).length
+        const aprobados = notasValidas.filter(n => n.promedio_final_trimestre > 50).length
+        const reprobados = notasValidas.filter(n => n.promedio_final_trimestre <= 50).length
 
         return { total, conNotas, sinNotas, promedio, aprobados, reprobados }
     }
@@ -682,7 +682,7 @@ export default function NotasPage() {
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold text-green-600">{stats.aprobados}</div>
-                                <p className="text-xs text-muted-foreground">≥ 60 pts</p>
+                                <p className="text-xs text-muted-foreground">&gt; 50 pts</p>
                             </CardContent>
                         </Card>
 
@@ -693,7 +693,7 @@ export default function NotasPage() {
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold text-red-600">{stats.reprobados}</div>
-                                <p className="text-xs text-muted-foreground">&lt; 60 pts</p>
+                                <p className="text-xs text-muted-foreground">≤ 50 pts</p>
                             </CardContent>
                         </Card>
                     </div>
@@ -758,26 +758,22 @@ export default function NotasPage() {
                             <CardTitle className="text-lg">Escala de Calificación</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 bg-green-500 rounded"></div>
-                                    <span className="text-sm">90-100: Excelente</span>
+                                    <div className="w-4 h-4 rounded bg-red-500"></div>
+                                    <span className="text-sm">1-50: En Desarrollo (ED)</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 bg-blue-500 rounded"></div>
-                                    <span className="text-sm">80-89: Muy Bueno</span>
+                                    <div className="w-4 h-4 rounded bg-orange-500"></div>
+                                    <span className="text-sm">51-68: Desarrollo Aceptable (DA)</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 bg-yellow-500 rounded"></div>
-                                    <span className="text-sm">70-79: Bueno</span>
+                                    <div className="w-4 h-4 rounded bg-blue-500"></div>
+                                    <span className="text-sm">69-84: Desarrollo Óptimo (DO)</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 bg-orange-500 rounded"></div>
-                                    <span className="text-sm">60-69: Regular</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 bg-red-500 rounded"></div>
-                                    <span className="text-sm">0-59: Insuficiente</span>
+                                    <div className="w-4 h-4 rounded bg-green-500"></div>
+                                    <span className="text-sm">85-100: Desarrollo Pleno (DP)</span>
                                 </div>
                             </div>
                         </CardContent>
