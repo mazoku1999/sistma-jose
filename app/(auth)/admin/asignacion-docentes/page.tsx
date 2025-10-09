@@ -1,13 +1,17 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Loader2, Search, UserCheck } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Loader2, Search, UserCheck, Edit2, Trash2, ChevronDown, ChevronUp } from "lucide-react"
 import AssignAulaWizard from "../profesores/assign-aula-wizard"
+import EditAsignacionModal from "./edit-asignacion-modal"
 import { useGestionGlobal } from "@/hooks/use-gestion-global"
+import { useToast } from "@/components/ui/use-toast"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 
 interface Profesor {
     id: number
@@ -17,8 +21,30 @@ interface Profesor {
     aulas_asignadas?: number
 }
 
+interface Asignacion {
+    id: number
+    nombre_aula: string
+    materia: string
+    materia_corta: string
+    colegio: string
+    nivel: string
+    curso: string
+    paralelo: string
+    estudiantes_inscritos: number
+    max_estudiantes: number
+    activa: boolean
+    id_profesor: number
+    id_materia: number
+    id_colegio: number
+    id_nivel: number
+    id_curso: number
+    id_paralelo: number
+    gestion_nombre: string
+}
+
 export default function AsignacionDocentesPage() {
     const { gestionGlobal } = useGestionGlobal()
+    const { toast } = useToast()
     const [profesores, setProfesores] = useState<Profesor[]>([])
     const [filtered, setFiltered] = useState<Profesor[]>([])
     const [search, setSearch] = useState("")
@@ -26,6 +52,16 @@ export default function AsignacionDocentesPage() {
 
     const [selectedProfesor, setSelectedProfesor] = useState<Profesor | null>(null)
     const [openWizard, setOpenWizard] = useState(false)
+    const [expandedProfesor, setExpandedProfesor] = useState<number | null>(null)
+    const [asignaciones, setAsignaciones] = useState<Record<number, Asignacion[]>>({})
+    const [loadingAsignaciones, setLoadingAsignaciones] = useState<number | null>(null)
+
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+    const [asignacionToDelete, setAsignacionToDelete] = useState<Asignacion | null>(null)
+    const [isDeleting, setIsDeleting] = useState(false)
+
+    const [editModalOpen, setEditModalOpen] = useState(false)
+    const [asignacionToEdit, setAsignacionToEdit] = useState<Asignacion | null>(null)
 
     useEffect(() => {
         const fetchProfesores = async () => {
@@ -60,6 +96,91 @@ export default function AsignacionDocentesPage() {
         setOpenWizard(true)
     }
 
+    const toggleExpanded = async (profesorId: number) => {
+        if (expandedProfesor === profesorId) {
+            setExpandedProfesor(null)
+        } else {
+            setExpandedProfesor(profesorId)
+            // Cargar asignaciones si no están cargadas
+            if (!asignaciones[profesorId]) {
+                await fetchAsignaciones(profesorId)
+            }
+        }
+    }
+
+    const fetchAsignaciones = async (profesorId: number) => {
+        setLoadingAsignaciones(profesorId)
+        try {
+            const res = await fetch(`/api/profesores/${profesorId}/aulas?gestion=${gestionGlobal}`)
+            if (res.ok) {
+                const data = await res.json()
+                setAsignaciones(prev => ({
+                    ...prev,
+                    [profesorId]: data.asignaciones || []
+                }))
+            }
+        } catch (error) {
+            console.error("Error al cargar asignaciones:", error)
+            toast({
+                title: "Error",
+                description: "No se pudieron cargar las asignaciones",
+                variant: "destructive"
+            })
+        } finally {
+            setLoadingAsignaciones(null)
+        }
+    }
+
+    const handleEdit = (asignacion: Asignacion) => {
+        setAsignacionToEdit(asignacion)
+        setEditModalOpen(true)
+    }
+
+    const handleDeleteClick = (asignacion: Asignacion) => {
+        setAsignacionToDelete(asignacion)
+        setDeleteDialogOpen(true)
+    }
+
+    const handleDeleteConfirm = async () => {
+        if (!asignacionToDelete) return
+
+        setIsDeleting(true)
+        try {
+            const res = await fetch(`/api/aulas/${asignacionToDelete.id}`, {
+                method: "DELETE"
+            })
+
+            if (res.ok) {
+                toast({
+                    title: "Asignación eliminada",
+                    description: "La asignación ha sido eliminada exitosamente"
+                })
+
+                // Recargar asignaciones del profesor
+                if (expandedProfesor) {
+                    await fetchAsignaciones(expandedProfesor)
+                }
+            } else {
+                const error = await res.json()
+                toast({
+                    title: "Error",
+                    description: error.error || "No se pudo eliminar la asignación",
+                    variant: "destructive"
+                })
+            }
+        } catch (error) {
+            toast({
+                title: "Error",
+                description: "Error de conexión",
+                variant: "destructive"
+            })
+        } finally {
+            setIsDeleting(false)
+            setDeleteDialogOpen(false)
+            setAsignacionToDelete(null)
+        }
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -89,31 +210,123 @@ export default function AsignacionDocentesPage() {
                             <Loader2 className="h-8 w-8 animate-spin" />
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {filtered.map((p) => (
-                                <Card key={p.id} className="p-4 overflow-hidden">
-                                    <div className="min-w-0">
-                                        <div className="font-medium truncate">{p.nombre_completo}</div>
-                                        <div className="text-xs text-muted-foreground truncate">@{p.usuario} · {p.email}</div>
-                                        <div className="text-xs text-muted-foreground mt-1 truncate">
-                                            Aulas asignadas: {p.aulas_asignadas || 0}
-                                        </div>
-                                    </div>
-                                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
-                                        <Button className="w-full" size="sm" variant="outline" asChild>
-                                            <a href={`/admin/asignacion-estudiantes`}>
-                                                Gestionar estudiantes
-                                            </a>
-                                        </Button>
-                                        <Button className="w-full" size="sm" onClick={() => handleAssign(p)}>
-                                            <UserCheck className="h-4 w-4 mr-1" />
-                                            Asignar
-                                        </Button>
-                                    </div>
-                                </Card>
-                            ))}
+                        <div className="space-y-4">
+                            {filtered.map((p) => {
+                                const isExpanded = expandedProfesor === p.id
+                                const profesorAsignaciones = asignaciones[p.id] || []
+                                const isLoadingAsigs = loadingAsignaciones === p.id
+                                // Usar el conteo del servidor o el conteo local si ya se cargaron
+                                const aulasCount = profesorAsignaciones.length > 0 ? profesorAsignaciones.length : (p.aulas_asignadas || 0)
+
+                                return (
+                                    <Card key={p.id} className="overflow-hidden">
+                                        <CardContent className="p-4">
+                                            <div className="flex items-start justify-between gap-4">
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="font-medium truncate">{p.nombre_completo}</div>
+                                                        <Badge variant="secondary" className="shrink-0">
+                                                            {aulasCount} {aulasCount === 1 ? 'aula' : 'aulas'}
+                                                        </Badge>
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground truncate mt-1">
+                                                        @{p.usuario} · {p.email}
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-2 shrink-0">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => toggleExpanded(p.id)}
+                                                    >
+                                                        {isExpanded ? (
+                                                            <ChevronUp className="h-4 w-4" />
+                                                        ) : (
+                                                            <ChevronDown className="h-4 w-4" />
+                                                        )}
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => handleAssign(p)}
+                                                    >
+                                                        <UserCheck className="h-4 w-4 mr-1" />
+                                                        Nueva Asignación
+                                                    </Button>
+                                                </div>
+                                            </div>
+
+                                            {isExpanded && (
+                                                <div className="mt-4 border-t pt-4">
+                                                    {isLoadingAsigs ? (
+                                                        <div className="flex justify-center py-8">
+                                                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                                        </div>
+                                                    ) : profesorAsignaciones.length === 0 ? (
+                                                        <div className="text-center py-8 text-muted-foreground text-sm">
+                                                            No hay asignaciones para este profesor en la gestión actual
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-2">
+                                                            <h4 className="text-sm font-semibold mb-3">Asignaciones actuales:</h4>
+                                                            {profesorAsignaciones.map((asig) => (
+                                                                <Card key={asig.id} className="p-3">
+                                                                    <div className="flex items-start justify-between gap-3">
+                                                                        <div className="min-w-0 flex-1">
+                                                                            <div className="font-medium text-sm truncate">
+                                                                                {asig.nombre_aula}
+                                                                            </div>
+                                                                            <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                                                                                <div className="flex flex-wrap gap-2">
+                                                                                    <Badge variant="outline" className="text-xs">
+                                                                                        {asig.materia_corta}
+                                                                                    </Badge>
+                                                                                    <Badge variant="outline" className="text-xs">
+                                                                                        {asig.curso} {asig.paralelo}
+                                                                                    </Badge>
+                                                                                    <Badge variant="outline" className="text-xs">
+                                                                                        {asig.nivel}
+                                                                                    </Badge>
+                                                                                    <Badge variant="outline" className="text-xs">
+                                                                                        {asig.colegio}
+                                                                                    </Badge>
+                                                                                </div>
+                                                                                <div className="mt-1">
+                                                                                    Estudiantes: {asig.estudiantes_inscritos} / {asig.max_estudiantes}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="flex gap-1 shrink-0">
+                                                                            <Button
+                                                                                size="sm"
+                                                                                variant="ghost"
+                                                                                onClick={() => handleEdit(asig)}
+                                                                                title="Editar asignación"
+                                                                            >
+                                                                                <Edit2 className="h-3.5 w-3.5" />
+                                                                            </Button>
+                                                                            <Button
+                                                                                size="sm"
+                                                                                variant="ghost"
+                                                                                onClick={() => handleDeleteClick(asig)}
+                                                                                title="Eliminar asignación"
+                                                                                className="text-destructive hover:text-destructive"
+                                                                            >
+                                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                                            </Button>
+                                                                        </div>
+                                                                    </div>
+                                                                </Card>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                )
+                            })}
                             {filtered.length === 0 && (
-                                <div className="col-span-full text-center text-sm text-muted-foreground py-10">
+                                <div className="text-center text-sm text-muted-foreground py-10">
                                     No se encontraron usuarios con la búsqueda.
                                 </div>
                             )}
@@ -126,12 +339,62 @@ export default function AsignacionDocentesPage() {
                 <AssignAulaWizard
                     isOpen={openWizard}
                     onClose={() => setOpenWizard(false)}
-                    onSuccess={() => setOpenWizard(false)}
+                    onSuccess={() => {
+                        setOpenWizard(false)
+                        // Recargar asignaciones si el profesor está expandido
+                        if (expandedProfesor === selectedProfesor.id) {
+                            fetchAsignaciones(selectedProfesor.id)
+                        }
+                    }}
                     currentGestionId={gestionGlobal}
                     profesorId={selectedProfesor.id}
                     profesorName={selectedProfesor.nombre_completo}
                 />
             )}
+
+            <EditAsignacionModal
+                isOpen={editModalOpen}
+                onClose={() => {
+                    setEditModalOpen(false)
+                    setAsignacionToEdit(null)
+                }}
+                onSuccess={() => {
+                    // Recargar asignaciones del profesor
+                    if (expandedProfesor) {
+                        fetchAsignaciones(expandedProfesor)
+                    }
+                }}
+                asignacion={asignacionToEdit}
+            />
+
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Eliminar asignación?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Esta acción eliminará la asignación del aula "{asignacionToDelete?.nombre_aula}".
+                            Los estudiantes inscritos en esta aula no serán eliminados, pero perderán la vinculación con esta aula.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDeleteConfirm}
+                            disabled={isDeleting}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {isDeleting ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Eliminando...
+                                </>
+                            ) : (
+                                "Eliminar"
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 }

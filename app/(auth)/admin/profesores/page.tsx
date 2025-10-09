@@ -95,7 +95,6 @@ export default function ProfesoresPage() {
     apellido_paterno: "",
     apellido_materno: "",
     email: "",
-    password: "",
     estado: "activo" as "activo" | "inactivo",
     role: "PROFESOR" as "PROFESOR" | "ADMIN",
     es_tutor: false,
@@ -167,7 +166,6 @@ export default function ProfesoresPage() {
       apellido_paterno: "",
       apellido_materno: "",
       email: "",
-      password: "",
       estado: "activo",
       role: "PROFESOR",
       es_tutor: false,
@@ -190,7 +188,6 @@ export default function ProfesoresPage() {
         apellido_paterno: profesor.apellido_paterno || "",
         apellido_materno: profesor.apellido_materno || "",
         email: profesor.email || "",
-        password: "",
         estado: profesor.estado,
         role: (profesor.roles && profesor.roles.includes("ADMIN")) ? "ADMIN" : "PROFESOR",
         es_tutor: !!profesor.es_tutor,
@@ -243,8 +240,8 @@ export default function ProfesoresPage() {
         })
       } else {
         // Validación mínima en creación
-        if (!formData.usuario.trim() || !formData.nombres.trim() || !formData.apellido_paterno.trim() || !formData.apellido_materno.trim() || !formData.password.trim()) {
-          toast({ title: "Campos requeridos", description: "Nombres, apellidos, usuario y contraseña son obligatorios", variant: "destructive" })
+        if (!formData.usuario.trim() || !formData.nombres.trim() || !formData.apellido_paterno.trim() || !formData.apellido_materno.trim() || !formData.email.trim()) {
+          toast({ title: "Campos requeridos", description: "Nombres, apellidos, usuario y email son obligatorios", variant: "destructive" })
           setIsSubmitting(false)
           return
         }
@@ -257,7 +254,6 @@ export default function ProfesoresPage() {
             apellido_paterno: formData.apellido_paterno.trim(),
             apellido_materno: formData.apellido_materno.trim(),
             email: formData.email.trim(),
-            password: formData.password,
             estado: formData.estado,
             roles: [formData.role],
             es_tutor: formData.es_tutor,
@@ -267,17 +263,33 @@ export default function ProfesoresPage() {
       }
 
       if (response.ok) {
-        // Intentar leer JSON pero no bloquear el toast si no hay cuerpo
+        // Leer la respuesta para obtener información del email
+        let responseData = null
         try {
           if (response.headers.get("content-type")?.includes("application/json")) {
-            await response.json().catch(() => null)
+            responseData = await response.json()
           }
         } catch { }
 
-        toast({
-          title: "Éxito",
-          description: editingProfesor ? "Usuario actualizado" : "Usuario creado",
-        })
+        // Mostrar mensaje según el estado del email
+        if (responseData?.emailEnviado) {
+          toast({
+            title: "Usuario creado exitosamente",
+            description: `Las credenciales han sido enviadas a ${formData.email}`,
+          })
+        } else if (responseData?.emailError) {
+          toast({
+            title: "Usuario creado",
+            description: `Usuario creado pero error al enviar email: ${responseData.emailError}`,
+            variant: "destructive",
+          })
+        } else {
+          toast({
+            title: "Éxito",
+            description: editingProfesor ? "Usuario actualizado" : "Usuario creado",
+          })
+        }
+
         handleCloseDialog()
         fetchProfesores()
       } else {
@@ -602,17 +614,6 @@ export default function ProfesoresPage() {
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    placeholder="usuario@colegio.edu"
-                  />
-                </div>
               </div>
             </section>
 
@@ -634,16 +635,19 @@ export default function ProfesoresPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password">{editingProfesor ? "Nueva contraseña (opcional)" : "Contraseña *"}</Label>
+                  <Label htmlFor="email">Email *</Label>
                   <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    value={formData.password}
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
                     onChange={handleInputChange}
-                    required={!editingProfesor}
-                    placeholder={editingProfesor ? "Dejar vacío para mantener" : "Ingresa una contraseña temporal"}
+                    required
+                    placeholder="correo@ejemplo.com"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Las credenciales se enviarán automáticamente a este email
+                  </p>
                 </div>
               </div>
               <div className="flex items-center justify-between rounded-md border border-dashed px-4 py-3">

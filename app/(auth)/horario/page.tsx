@@ -38,7 +38,6 @@ export default function HorarioPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [horarios, setHorarios] = useState<Horario[]>([])
   const [aulas, setAulas] = useState<{ id: number; nombre: string }[]>([])
-  const [selectedDay, setSelectedDay] = useState<string>("all")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [formData, setFormData] = useState({
     dia: "1",
@@ -159,27 +158,151 @@ export default function HorarioPage() {
     return days[day]
   }
 
-  const filteredHorarios =
-    selectedDay === "all" ? horarios : horarios.filter((h) => h.dia === Number.parseInt(selectedDay))
+  // Función helper para formatear horas (quitar segundos)
+  const formatTime = (time: string) => {
+    if (time.includes(':')) {
+      const [hours, minutes] = time.split(':')
+      return `${hours}:${minutes}`
+    }
+    return time
+  }
 
-  const groupedByDay = filteredHorarios.reduce(
-    (acc, horario) => {
-      const day = horario.dia
-      if (!acc[day]) {
-        acc[day] = []
+  // Función para generar la tabla de horario dinámicamente
+  const generateScheduleTable = () => {
+    const days = [1, 2, 3, 4, 5, 6] // Lunes a Sábado
+    const dayNames = ["", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO"]
+
+    // Obtener todos los horarios únicos ordenados por hora
+    const allHorarios = horarios.sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio))
+
+    // Crear slots de tiempo basados en los horarios reales
+    const timeSlots = []
+    const processedTimes = new Set()
+
+    allHorarios.forEach(horario => {
+      const startFormatted = formatTime(horario.hora_inicio)
+      const endFormatted = formatTime(horario.hora_fin)
+      const timeKey = `${startFormatted}-${endFormatted}`
+
+      if (!processedTimes.has(timeKey)) {
+        processedTimes.add(timeKey)
+        timeSlots.push({
+          start: startFormatted,
+          end: endFormatted,
+          period: `${startFormatted} - ${endFormatted}`
+        })
       }
-      acc[day].push(horario)
-      return acc
-    },
-    {} as Record<number, Horario[]>,
-  )
-
-  // Ordenar por día y hora
-  Object.keys(groupedByDay).forEach((day) => {
-    groupedByDay[Number.parseInt(day)].sort((a, b) => {
-      return a.hora_inicio.localeCompare(b.hora_inicio)
     })
-  })
+
+
+    // Ordenar slots por hora
+    timeSlots.sort((a, b) => a.start.localeCompare(b.start))
+
+    return (
+      <div className="w-full">
+        <table className="w-full border-collapse border border-gray-300 table-fixed">
+          <thead>
+            <tr className="bg-gray-50">
+              <th className="border border-gray-300 p-1 text-center font-medium text-xs w-20">DÍA</th>
+              {dayNames.slice(1).map((dayName, index) => (
+                <th key={index} className="border border-gray-300 p-1 text-center font-medium text-xs">
+                  {dayName}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {timeSlots.map((slot, index) => {
+              return (
+                <tr key={index}>
+                  <td className="border border-gray-300 p-1 text-center font-medium bg-gray-50 text-xs w-20">
+                    <div className="flex flex-col items-center">
+                      <div className="text-xs font-bold">{slot.start}</div>
+                      <div className="text-xs">{String.fromCharCode(65 + index)}</div>
+                      <div className="text-xs font-bold">{slot.end}</div>
+                    </div>
+                  </td>
+                  {days.map((day) => {
+                    const dayHorarios = horarios.filter(h => h.dia === day)
+                    const matchingHorario = dayHorarios.find(h => {
+                      const hStart = formatTime(h.hora_inicio)
+                      const hEnd = formatTime(h.hora_fin)
+                      return hStart === slot.start && hEnd === slot.end
+                    })
+
+                    return (
+                      <td key={day} className="border border-gray-300 p-0.5 text-center">
+                        {matchingHorario ? (
+                          <div className="p-1 rounded bg-blue-100 border border-blue-200 relative group">
+                            <div className="font-medium text-xs text-blue-800 line-clamp-2" title={matchingHorario.nombre_aula}>
+                              {matchingHorario.nombre_aula}
+                            </div>
+                            <div className="text-xs text-blue-600">
+                              {formatTime(matchingHorario.hora_inicio)}-{formatTime(matchingHorario.hora_fin)}
+                            </div>
+                            {matchingHorario.materia && (
+                              <div className="text-xs text-blue-500 font-medium line-clamp-2" title={matchingHorario.materia}>
+                                {matchingHorario.materia}
+                              </div>
+                            )}
+                            {/* Botón de eliminar */}
+                            <button
+                              onClick={() => handleDelete(matchingHorario.id)}
+                              className="absolute -top-1 -right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Eliminar clase"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="text-gray-300 text-xs">
+                            Libre
+                          </div>
+                        )}
+                      </td>
+                    )
+                  })}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+
+      </div>
+    )
+  }
+
+  // Función para exportar horario a Excel
+  const handleExport = async () => {
+    try {
+      const response = await fetch('/api/exportar-horario', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.style.display = 'none'
+        a.href = url
+        a.download = `horario-${new Date().toISOString().split('T')[0]}.xlsx`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+      } else {
+        const errorData = await response.json()
+        console.error('Error al exportar horario:', errorData)
+        alert(`Error al exportar horario: ${errorData.error || 'Error desconocido'}`)
+      }
+    } catch (error) {
+      console.error('Error al exportar horario:', error)
+      alert('Error al exportar horario. Por favor, inténtalo de nuevo.')
+    }
+  }
 
   if (isLoading) {
     return (
@@ -231,7 +354,6 @@ export default function HorarioPage() {
                       <SelectItem value="4">Jueves</SelectItem>
                       <SelectItem value="5">Viernes</SelectItem>
                       <SelectItem value="6">Sábado</SelectItem>
-                      <SelectItem value="0">Domingo</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -295,7 +417,7 @@ export default function HorarioPage() {
               </form>
             </DialogContent>
           </Dialog>
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleExport}>
             <Download className="mr-2 h-4 w-4" />
             Exportar
           </Button>
@@ -304,39 +426,18 @@ export default function HorarioPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Filtrar horario</CardTitle>
-            <Select value={selectedDay} onValueChange={setSelectedDay}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Seleccionar día" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los días</SelectItem>
-                <SelectItem value="1">Lunes</SelectItem>
-                <SelectItem value="2">Martes</SelectItem>
-                <SelectItem value="3">Miércoles</SelectItem>
-                <SelectItem value="4">Jueves</SelectItem>
-                <SelectItem value="5">Viernes</SelectItem>
-                <SelectItem value="6">Sábado</SelectItem>
-                <SelectItem value="0">Domingo</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <CardTitle>Mi Horario Semanal</CardTitle>
           <CardDescription>
-            {selectedDay === "all"
-              ? "Mostrando el horario completo de la semana"
-              : `Mostrando el horario del ${getDayName(Number.parseInt(selectedDay))}`}
+            Horario completo de clases de lunes a sábado
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {Object.keys(groupedByDay).length === 0 ? (
+          {horarios.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12">
               <Calendar className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
               <h3 className="text-lg font-medium mb-2">No hay clases programadas</h3>
               <p className="text-muted-foreground text-center mb-4">
-                {selectedDay === "all"
-                  ? "No tienes clases programadas en tu horario"
-                  : `No tienes clases programadas para el ${getDayName(Number.parseInt(selectedDay))}`}
+                No tienes clases programadas en tu horario
               </p>
               <Button onClick={() => setIsDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
@@ -344,57 +445,7 @@ export default function HorarioPage() {
               </Button>
             </div>
           ) : (
-            <div className="space-y-6">
-              {Object.keys(groupedByDay)
-                .map(Number)
-                .sort((a, b) => a - b)
-                .map((day) => (
-                  <div key={day} className="space-y-4">
-                    <h3 className="text-lg font-medium flex items-center">
-                      <Calendar className="mr-2 h-5 w-5 text-primary" />
-                      {getDayName(day)}
-                    </h3>
-                    <div className="space-y-3">
-                      {groupedByDay[day].map((horario) => (
-                        <div
-                          key={horario.id}
-                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-lg border"
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="bg-primary/10 rounded-full p-2 mt-1">
-                              <Clock className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <h4 className="font-medium">{horario.nombre_aula}</h4>
-                                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                                  {horario.hora_inicio} - {horario.hora_fin}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-muted-foreground">
-                                {horario.materia} - {horario.curso} {horario.paralelo}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 sm:ml-auto">
-                            <Button variant="outline" size="sm" className="h-8 w-8 p-0">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                              onClick={() => handleDelete(horario.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-            </div>
+            generateScheduleTable()
           )}
         </CardContent>
       </Card>

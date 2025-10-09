@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { executeQuery } from "@/lib/db"
 import { getServerSession } from "@/lib/get-server-session"
+import { enviarCredencialesProfesor } from "@/lib/email-utils"
 import bcrypt from "bcrypt"
 
 export async function GET() {
@@ -82,33 +83,29 @@ export async function POST(request: Request) {
     const roles: string[] | undefined = body.roles
     const esTutor: boolean = typeof body.es_tutor !== "undefined" ? !!body.es_tutor : false
     const puedeCentralizar: boolean = typeof body.puede_centralizar_notas !== "undefined" ? !!body.puede_centralizar_notas : true
-    let password: string | undefined = body.password
 
     if (!usuario || !nombres || !apellido_paterno || !apellido_materno) {
       return NextResponse.json({ error: "Usuario, nombres, apellido paterno y apellido materno son requeridos" }, { status: 400 })
+    }
+
+    if (!email || email.trim() === "") {
+      return NextResponse.json({ error: "El email es requerido para enviar las credenciales" }, { status: 400 })
     }
 
     const nombre_completo = `${nombres} ${apellido_paterno} ${apellido_materno}`.trim()
 
     // Verificar si el usuario ya existe
     const existingUser = await executeQuery<any[]>(
-      email && email.trim() !== ""
-        ? "SELECT id_usuario FROM usuarios WHERE usuario = ? OR email = ?"
-        : "SELECT id_usuario FROM usuarios WHERE usuario = ?",
-      email && email.trim() !== "" ? [usuario, email] : [usuario]
+      "SELECT id_usuario FROM usuarios WHERE usuario = ? OR email = ?",
+      [usuario, email]
     )
 
     if (existingUser.length > 0) {
       return NextResponse.json({ error: "El usuario o email ya existe" }, { status: 400 })
     }
 
-    // Generar contraseña temporal si no se envía
-    let generatedTemp = false
-    if (!password || password.trim() === "") {
-      const tmp = Math.random().toString(36).slice(-10)
-      password = tmp
-      generatedTemp = true
-    }
+    // Generar contraseña automática siempre
+    const password = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10).toUpperCase()
     const hashedPassword = await bcrypt.hash(password, 10)
 
     // Iniciar transacción
@@ -158,6 +155,25 @@ export async function POST(request: Request) {
 
       await executeQuery("COMMIT")
 
+      // Enviar credenciales por email automáticamente
+      let emailEnviado = false
+      let emailError = null
+
+      try {
+        const emailResult = await enviarCredencialesProfesor({
+          nombreCompleto: nombre_completo,
+          usuario,
+          password,
+          email
+        })
+
+        emailEnviado = emailResult.success
+        emailError = emailResult.error
+      } catch (error) {
+        console.error("Error al enviar email:", error)
+        emailError = error instanceof Error ? error.message : "Error desconocido"
+      }
+
       return NextResponse.json({
         id: profesorId,
         usuario,
@@ -165,10 +181,12 @@ export async function POST(request: Request) {
         apellido_paterno,
         apellido_materno,
         nombre_completo,
-        email: email || null,
+        email: email,
         puede_centralizar_notas: puedeCentralizar,
         es_tutor: esTutor,
-        tempPassword: generatedTemp ? password : undefined,
+        password: password,
+        emailEnviado,
+        emailError
       })
     } catch (error) {
       await executeQuery("ROLLBACK")

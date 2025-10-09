@@ -17,8 +17,8 @@ export async function GET(
     const { searchParams } = new URL(request.url)
     const trimestre = searchParams.get("trimestre") || "1"
 
-    // Obtener el ID del profesor
-    const profesorQuery = await executeQuery<any[]>("SELECT id_profesor FROM profesores WHERE id_usuario = ?", [
+    // Obtener el ID del profesor y si es tutor
+    const profesorQuery = await executeQuery<any[]>("SELECT id_profesor, es_tutor FROM profesores WHERE id_usuario = ?", [
       session.user.id,
     ])
 
@@ -27,6 +27,7 @@ export async function GET(
     }
 
     const profesorId = profesorQuery[0].id_profesor
+    const esTutor = !!profesorQuery[0].es_tutor
 
     // Verificar que el aula pertenece al profesor
     const aulaQuery = await executeQuery<any[]>(
@@ -38,12 +39,17 @@ export async function GET(
       return NextResponse.json({ error: "Aula no encontrada" }, { status: 404 })
     }
 
-    // Obtener notas para el trimestre específico
+    // Obtener notas para el trimestre específico con todas las dimensiones
     const notasQuery = await executeQuery<any[]>(
       `
       SELECT 
         nap.id_inscripcion,
         nap.trimestre,
+        nap.nota_ser,
+        nap.nota_saber,
+        nap.nota_hacer,
+        nap.nota_decidir,
+        nap.nota_autoevaluacion,
         nap.promedio_final_trimestre
       FROM notas_aula_profesor nap
       JOIN inscripciones_aula ia ON nap.id_inscripcion = ia.id_inscripcion
@@ -82,8 +88,8 @@ export async function POST(
       return NextResponse.json({ error: "Trimestre inválido" }, { status: 400 })
     }
 
-    // Obtener el ID del profesor
-    const profesorQuery = await executeQuery<any[]>("SELECT id_profesor FROM profesores WHERE id_usuario = ?", [
+    // Obtener el ID del profesor y si es tutor
+    const profesorQuery = await executeQuery<any[]>("SELECT id_profesor, es_tutor FROM profesores WHERE id_usuario = ?", [
       session.user.id,
     ])
 
@@ -92,6 +98,7 @@ export async function POST(
     }
 
     const profesorId = profesorQuery[0].id_profesor
+    const esTutor = !!profesorQuery[0].es_tutor
 
     // Verificar que el aula pertenece al profesor
     const aulaQuery = await executeQuery<any[]>(
@@ -107,20 +114,40 @@ export async function POST(
     await executeQuery("START TRANSACTION")
 
     try {
-      // Eliminar notas existentes para este trimestre
-      await executeQuery(
-        `
-        DELETE nap FROM notas_aula_profesor nap
-        JOIN inscripciones_aula ia ON nap.id_inscripcion = ia.id_inscripcion
-        WHERE ia.id_aula_profesor = ? AND nap.trimestre = ?
-        `,
-        [aulaId, trimestre]
-      )
-
-      // Insertar nuevas notas
+      // Actualizar o insertar notas con lógica diferenciada por rol (UPSERT)
       for (const nota of notas) {
-        // Validar que la nota esté entre 0 y 100
-        if (nota.promedio_final_trimestre >= 0 && nota.promedio_final_trimestre <= 100) {
+        let nota_ser, nota_saber, nota_hacer, nota_decidir, nota_autoevaluacion, promedio_final_trimestre
+
+        if (esTutor) {
+          // TUTOR: Usar las dimensiones individuales y calcular suma
+          nota_ser = typeof nota.nota_ser === 'number' ? nota.nota_ser : 0
+          nota_saber = typeof nota.nota_saber === 'number' ? nota.nota_saber : 0
+          nota_hacer = typeof nota.nota_hacer === 'number' ? nota.nota_hacer : 0
+          nota_decidir = typeof nota.nota_decidir === 'number' ? nota.nota_decidir : 0
+          nota_autoevaluacion = typeof nota.nota_autoevaluacion === 'number' ? nota.nota_autoevaluacion : 0
+
+          // Calcular el puntaje trimestral como SUMA de las 5 dimensiones
+          promedio_final_trimestre = nota_ser + nota_saber + nota_hacer + nota_decidir + nota_autoevaluacion
+        } else {
+          // NO TUTOR: Solo usar el puntaje final, dimensiones en 0
+          nota_ser = 0
+          nota_saber = 0
+          nota_hacer = 0
+          nota_decidir = 0
+          nota_autoevaluacion = 0
+          promedio_final_trimestre = typeof nota.promedio_final_trimestre === 'number' ? nota.promedio_final_trimestre : 0
+        }
+
+        // Validar según el rol
+        const esValido = esTutor
+          ? (nota_ser >= 0 && nota_ser <= 100 &&
+            nota_saber >= 0 && nota_saber <= 100 &&
+            nota_hacer >= 0 && nota_hacer <= 100 &&
+            nota_decidir >= 0 && nota_decidir <= 100 &&
+            nota_autoevaluacion >= 0 && nota_autoevaluacion <= 100)
+          : (promedio_final_trimestre >= 0 && promedio_final_trimestre <= 100)
+
+        if (esValido) {
           // Verificar que la inscripción existe y pertenece al aula
           const inscripcionQuery = await executeQuery<any[]>(
             "SELECT id_inscripcion FROM inscripciones_aula WHERE id_inscripcion = ? AND id_aula_profesor = ?",
@@ -129,8 +156,18 @@ export async function POST(
 
           if (inscripcionQuery.length > 0) {
             await executeQuery(
-              "INSERT INTO notas_aula_profesor (id_inscripcion, trimestre, promedio_final_trimestre) VALUES (?, ?, ?)",
-              [nota.id_inscripcion, trimestre, nota.promedio_final_trimestre]
+              `INSERT INTO notas_aula_profesor 
+              (id_inscripcion, trimestre, nota_ser, nota_saber, nota_hacer, nota_decidir, nota_autoevaluacion, promedio_final_trimestre) 
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+              ON DUPLICATE KEY UPDATE
+              nota_ser = VALUES(nota_ser),
+              nota_saber = VALUES(nota_saber),
+              nota_hacer = VALUES(nota_hacer),
+              nota_decidir = VALUES(nota_decidir),
+              nota_autoevaluacion = VALUES(nota_autoevaluacion),
+              promedio_final_trimestre = VALUES(promedio_final_trimestre),
+              fecha_registro = CURRENT_TIMESTAMP`,
+              [nota.id_inscripcion, trimestre, nota_ser, nota_saber, nota_hacer, nota_decidir, nota_autoevaluacion, promedio_final_trimestre]
             )
           }
         }
@@ -175,10 +212,10 @@ export async function POST(
                 notaPorInscripcion[n.id_inscripcion] = n.promedio_final_trimestre
               }
 
-              // Solo considerar notas > 0 para centralizar
+              // Solo considerar notas > 0 para centralizar (ahora el máximo es 500)
               const estudiantesANormalizar = inscToEst
                 .map((r) => ({ id_estudiante: r.id_estudiante, nota_final: notaPorInscripcion[r.id_inscripcion] }))
-                .filter((r) => typeof r.nota_final === 'number' && r.nota_final > 0 && r.nota_final <= 100)
+                .filter((r) => typeof r.nota_final === 'number' && r.nota_final > 0 && r.nota_final <= 500)
 
               if (estudiantesANormalizar.length > 0) {
                 const estudiantesIds = estudiantesANormalizar.map((r) => r.id_estudiante)

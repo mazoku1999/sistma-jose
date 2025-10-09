@@ -17,8 +17,6 @@ import {
   Settings,
   User,
   BarChart3,
-  Bell,
-  HelpCircle,
   Search,
   School,
   GraduationCap,
@@ -26,13 +24,10 @@ import {
   BookMarked,
   FileText,
   ChevronDown,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  Lightbulb,
   PlusCircle,
   ChevronRight,
-  X,
+  Award,
+  Clock,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -78,89 +73,20 @@ interface TeacherLayoutProps {
   children: React.ReactNode
 }
 
-interface Notification {
-  id: number
-  title: string
-  message: string
-  time: string
-  type: "info" | "warning" | "success" | "error"
-  read: boolean
-}
 
-interface QuickAction {
-  id: number
-  label: string
-  icon: React.ElementType
-  href: string
-}
 
 export function TeacherLayout({ children }: TeacherLayoutProps) {
   const { user, logout } = useAuth()
   const pathname = usePathname()
   const router = useRouter()
-  const [notifications, setNotifications] = useState<Notification[]>([])
-  const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
-  const [quickActions, setQuickActions] = useState<QuickAction[]>([])
   const [aulas, setAulas] = useState<{ id: number; nombre: string }[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [pendingPath, setPendingPath] = useState<string | null>(null)
 
   useEffect(() => {
-    // Cargar notificaciones desde la API
-    const fetchNotifications = async () => {
-      try {
-        // En un sistema real, esto vendría de una API
-        // Por ahora, simulamos algunas notificaciones
-        const baseNotifications: Notification[] = [
-          {
-            id: 2,
-            title: "Reunión de profesores",
-            message: "Recordatorio: Reunión de profesores mañana a las 15:00",
-            time: "Hace 1 hora",
-            type: "info",
-            read: false,
-          },
-        ]
 
-        // Solo agregar notificación de centralización para administradores
-        if (user?.roles.includes("ADMIN")) {
-          baseNotifications.unshift({
-            id: 1,
-            title: "Centralización pendiente",
-            message: "Tiene notas pendientes por centralizar en 3ro B",
-            time: "Hace 10 minutos",
-            type: "warning",
-            read: false,
-          })
-        }
-
-        setNotifications(baseNotifications)
-      } catch (error) {
-        console.error("Error al cargar notificaciones:", error)
-      }
-    }
-
-    // Cargar acciones rápidas
-    const fetchQuickActions = async () => {
-      try {
-        const actions = [
-          { id: 1, label: "Registrar asistencia", icon: Clock, href: "/asistencia/registrar" },
-          { id: 2, label: "Ingresar notas", icon: ClipboardList, href: "/notas/ingresar" },
-          { id: 3, label: "Ver horario de hoy", icon: Calendar, href: "/horario" },
-        ]
-
-        // Solo agregar centralización para administradores
-        if (user?.roles.includes("ADMIN")) {
-          actions.push({ id: 4, label: "Centralizar notas", icon: FileSpreadsheet, href: "/admin/central" })
-        }
-
-        setQuickActions(actions)
-      } catch (error) {
-        console.error("Error al cargar acciones rápidas:", error)
-      }
-    }
 
     // Cargar aulas del profesor
     const fetchAulas = async () => {
@@ -183,8 +109,6 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
       setIsLoading(false)
     }
 
-    fetchNotifications()
-    fetchQuickActions()
     fetchAulas()
   }, [user])
 
@@ -204,33 +128,6 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
       .toUpperCase()
   }
 
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case "warning":
-        return <AlertCircle className="h-5 w-5 text-amber-500" />
-      case "success":
-        return <CheckCircle2 className="h-5 w-5 text-green-500" />
-      case "error":
-        return <AlertCircle className="h-5 w-5 text-red-500" />
-      case "info":
-      default:
-        return <Bell className="h-5 w-5 text-blue-500" />
-    }
-  }
-
-  const markAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, read: true })))
-  }
-
-  const markAsRead = (id: number) => {
-    setNotifications(notifications.map((n) => (n.id === id ? { ...n, read: true } : n)))
-  }
-
-  const removeNotification = (id: number) => {
-    setNotifications(notifications.filter((n) => n.id !== id))
-  }
-
-  const unreadCount = notifications.filter((n) => !n.read).length
 
   const helpTopics = [
     {
@@ -349,14 +246,6 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
 
 
 
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild isActive={pathname.startsWith("/mis-notas")} tooltip="Promedios">
-                        <Link href="/mis-notas">
-                          <ClipboardList className="h-4 w-4" />
-                          <span>Promedios</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
 
                     <SidebarMenuItem>
                       <SidebarMenuButton asChild isActive={pathname.startsWith("/horario")} tooltip="Mi Horario">
@@ -376,23 +265,43 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
                 <SidebarGroupLabel>Reportes</SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild isActive={pathname.startsWith("/reportes")} tooltip="Reportes">
-                        <Link href="/reportes">
+                    <Collapsible>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton tooltip="Reportes">
                           <FileText className="h-4 w-4" />
                           <span>Reportes</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild isActive={pathname.startsWith("/estadisticas")} tooltip="Estadísticas">
-                        <Link href="/estadisticas">
-                          <BarChart3 className="h-4 w-4" />
-                          <span>Estadísticas</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
+                          <ChevronRight className="ml-auto h-4 w-4" />
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenuSub>
+                          <SidebarMenuSubItem>
+                            <SidebarMenuSubButton asChild isActive={pathname === "/reportes"}>
+                              <Link href="/reportes">
+                                <BarChart3 className="h-4 w-4" />
+                                <span>Reporte General</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                          <SidebarMenuSubItem>
+                            <SidebarMenuSubButton asChild isActive={pathname === "/reportes/mejores-estudiantes"}>
+                              <Link href="/reportes/mejores-estudiantes">
+                                <Award className="h-4 w-4" />
+                                <span>Mejores Estudiantes</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                          <SidebarMenuSubItem>
+                            <SidebarMenuSubButton asChild isActive={pathname === "/reportes/asistencia"}>
+                              <Link href="/reportes/asistencia">
+                                <Clock className="h-4 w-4" />
+                                <span>Control de Asistencia</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    </Collapsible>
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
@@ -485,105 +394,33 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
             )}
           </SidebarContent>
 
-          <SidebarFooter className="border-t py-4">
-            <div className="flex items-center gap-3 px-2 mb-4">
-              <Avatar>
-                <AvatarFallback className="bg-primary text-primary-foreground">{getInitials()}</AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col">
-                <span className="text-sm font-medium">{user?.nombre_completo}</span>
-                <span className="text-xs text-muted-foreground">{user?.usuario}</span>
-              </div>
+          <SidebarFooter className="border-t p-3">
+            {/* User Profile Section */}
+            <div className="mb-3">
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-3 h-auto p-3 hover:bg-muted/50 rounded-lg"
+                onClick={() => router.push("/perfil")}
+              >
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">
+                    {getInitials()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col items-start text-left min-w-0 flex-1">
+                  <span className="text-sm font-medium truncate w-full">{user?.nombre_completo}</span>
+                  <span className="text-xs text-muted-foreground truncate w-full">{user?.usuario}</span>
+                </div>
+              </Button>
             </div>
-            <div className="grid grid-cols-3 gap-1 px-2">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setSearchOpen(true)}>
-                      <Search className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Buscar</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
 
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setHelpOpen(true)}>
-                      <HelpCircle className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Ayuda</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="icon" className="h-9 w-9 relative">
-                    <Bell className="h-4 w-4" />
-                    {unreadCount > 0 && (
-                      <Badge
-                        variant="destructive"
-                        className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px]"
-                      >
-                        {unreadCount}
-                      </Badge>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-0" align="end">
-                  <div className="flex items-center justify-between p-3 border-b">
-                    <h3 className="font-medium">Notificaciones</h3>
-                    <Button variant="ghost" size="sm" onClick={markAllAsRead}>
-                      Marcar todas como leídas
-                    </Button>
-                  </div>
-                  <div className="max-h-80 overflow-auto">
-                    {notifications.length > 0 ? (
-                      notifications.map((notification) => (
-                        <div
-                          key={notification.id}
-                          className={cn(
-                            "flex gap-3 p-3 border-b last:border-0 hover:bg-muted/50 relative",
-                            !notification.read && "bg-muted/30",
-                          )}
-                        >
-                          <div className="flex-shrink-0 mt-1">{getNotificationIcon(notification.type)}</div>
-                          <div className="flex-1">
-                            <h4 className="text-sm font-medium">{notification.title}</h4>
-                            <p className="text-xs text-muted-foreground">{notification.message}</p>
-                            <p className="text-xs text-muted-foreground mt-1">{notification.time}</p>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 absolute top-2 right-2 opacity-50 hover:opacity-100"
-                            onClick={() => removeNotification(notification.id)}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-4 text-center text-muted-foreground">No tienes notificaciones</div>
-                    )}
-                  </div>
-                  {notifications.length > 0 && (
-                    <div className="p-3 border-t">
-                      <Button variant="outline" size="sm" className="w-full">
-                        Ver todas las notificaciones
-                      </Button>
-                    </div>
-                  )}
-                </PopoverContent>
-              </Popover>
-
-              <ThemeToggle />
-            </div>
-            <SidebarSeparator className="my-2" />
+            {/* Controls Section */}
             <div className="px-2">
-              <Button variant="outline" className="w-full justify-start gap-2" onClick={() => logout()}>
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-2"
+                onClick={() => logout()}
+              >
                 <LogOut className="h-4 w-4" />
                 Cerrar sesión
               </Button>
@@ -610,15 +447,11 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
                           ? "Mis Aulas"
                           : pathname.startsWith("/admin/central")
                             ? "Central de Notas"
-                            : pathname.startsWith("/mis-notas")
-                              ? "Promedios"
-                              : pathname.startsWith("/horario")
-                                ? "Mi Horario"
-                                : pathname.startsWith("/reportes")
-                                  ? "Reportes"
-                                  : pathname.startsWith("/estadisticas")
-                                    ? "Estadísticas"
-                                    : ""}
+                            : pathname.startsWith("/horario")
+                              ? "Mi Horario"
+                              : pathname.startsWith("/reportes")
+                                ? "Reportes"
+                                : ""}
                       </span>
                     </>
                   )}
@@ -627,37 +460,15 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
             </div>
 
             <div className="flex items-center gap-2">
-              {/* Selectores globales (solo ADMIN) */}
-              {isAdmin && (
+              {/* Selectores globales (solo ADMIN) - COMENTADO */}
+              {/* {isAdmin && (
                 <div className="flex items-center gap-2 mr-2">
                   <GestionSelectorGlobal variant="compact" showLabel={false} />
                   <TrimestreSelector variant="compact" showLabel={false} />
                 </div>
-              )}
+              )} */}
 
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1">
-                    <Lightbulb className="h-4 w-4 text-amber-500" />
-                    <span className="hidden sm:inline">Acciones rápidas</span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-64 p-0" align="end">
-                  <div className="p-3 border-b">
-                    <h3 className="font-medium">Acciones rápidas</h3>
-                  </div>
-                  <div className="p-2">
-                    {quickActions.map((action) => (
-                      <Button key={action.id} variant="ghost" className="w-full justify-start gap-2 mb-1" asChild>
-                        <Link href={action.href}>
-                          <action.icon className="h-4 w-4" />
-                          {action.label}
-                        </Link>
-                      </Button>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
+              <ThemeToggle />
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -727,21 +538,6 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
                       >
                         <BookOpen className="mr-2 h-4 w-4" />
                         <span>{aula.nombre}</span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                  <CommandGroup heading="Acciones rápidas">
-                    {quickActions.map((action) => (
-                      <CommandItem
-                        key={action.id}
-                        onSelect={() => {
-                          setPendingPath(action.href)
-                          router.push(action.href)
-                          setSearchOpen(false)
-                        }}
-                      >
-                        <action.icon className="mr-2 h-4 w-4" />
-                        <span>{action.label}</span>
                       </CommandItem>
                     ))}
                   </CommandGroup>
