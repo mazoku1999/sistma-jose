@@ -263,18 +263,6 @@ export async function POST(request: NextRequest) {
             worksheet.getCell(`Z${rowNumber}`).value = numeroALiteral(promedio)
         })
 
-        // Ajustar ancho de columnas automáticamente
-        worksheet.columns.forEach((column: any) => {
-            let maxLength = 0
-            column.eachCell({ includeEmpty: true }, (cell: any) => {
-                const columnLength = cell.value ? cell.value.toString().length : 10
-                if (columnLength > maxLength) {
-                    maxLength = columnLength
-                }
-            })
-            column.width = Math.min(maxLength + 2, 50) // Máximo 50 caracteres
-        })
-
         const buffer = await workbook.xlsx.writeBuffer()
 
         return new NextResponse(buffer, {

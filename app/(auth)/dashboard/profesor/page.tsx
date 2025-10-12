@@ -134,12 +134,12 @@ export default function ProfesorDashboardPage() {
                             Mis Aulas
                         </Link>
                     </Button>
-                    <Button variant="outline" asChild>
+                    {/* <Button variant="outline" asChild>
                         <Link href="/horario">
                             <Calendar className="mr-2 h-4 w-4" />
                             Mi Horario
                         </Link>
-                    </Button>
+                    </Button> */}
                 </div>
             </div>
 

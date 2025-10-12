@@ -606,6 +606,7 @@ export default function CentralPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
+                                        <TableHead className="text-center min-w-[50px]">N°</TableHead>
                                         <TableHead className="min-w-[200px]">Estudiante</TableHead>
                                         {materias.map((materia) => (
                                             <TableHead key={materia.id} className="text-center min-w-[100px]">
@@ -616,12 +617,15 @@ export default function CentralPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {sortedEstudiantes.map((estudiante) => {
+                                    {sortedEstudiantes.map((estudiante, index) => {
                                         const promedio = getPromedioEstudiante(estudiante.id_estudiante)
                                         const { apellido_paterno, apellido_materno, nombres } = deriveNames(estudiante)
 
                                         return (
                                             <TableRow key={estudiante.id_estudiante}>
+                                                <TableCell className="text-center font-medium">
+                                                    {index + 1}
+                                                </TableCell>
                                                 <TableCell className="font-medium">
                                                     <div className="flex flex-col">
                                                         <span className="text-sm text-muted-foreground">{apellido_paterno || <span className="italic text-muted-foreground">(sin paterno)</span>}</span>

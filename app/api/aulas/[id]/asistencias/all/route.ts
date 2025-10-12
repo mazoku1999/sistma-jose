@@ -51,7 +51,13 @@ export async function GET(
             [aulaId]
         )
 
-        return NextResponse.json(asistenciasQuery)
+        // Asegurar que las fechas se devuelvan como strings
+        const formattedAsistencias = asistenciasQuery.map(row => ({
+            ...row,
+            fecha: row.fecha instanceof Date ? row.fecha.toISOString().slice(0, 10) : row.fecha
+        }))
+
+        return NextResponse.json(formattedAsistencias)
     } catch (error) {
         console.error("Error al obtener asistencias (all):", error)
         return NextResponse.json({ error: "Error al obtener asistencias" }, { status: 500 })

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -63,6 +63,49 @@ const tiposAsistencia = {
 }
 
 const normalizeValue = (value: string | undefined | null) => (value ?? '').toString().trim()
+
+// Helper function to safely create dates
+const safeCreateDate = (dateString: string): Date => {
+  if (!dateString) return new Date()
+
+  let date: Date
+
+  if (dateString.includes('T')) {
+    // Already has time component
+    date = new Date(dateString)
+  } else {
+    // Add time component to avoid timezone issues
+    date = new Date(dateString + 'T00:00:00')
+  }
+
+  // Check if date is valid
+  if (isNaN(date.getTime())) {
+    console.warn('Invalid date string:', dateString)
+    return new Date() // Return current date if invalid
+  }
+
+  return date
+}
+
+// Helper function to safely format dates
+const safeFormatDate = (dateString: string, formatString: string = 'dd/MM/yyyy') => {
+  if (!dateString) return ''
+
+  const date = safeCreateDate(dateString)
+
+  if (isNaN(date.getTime())) {
+    console.warn('Invalid date in safeFormatDate:', dateString)
+    return dateString // Return original string if invalid
+  }
+
+  const formatted = date.toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  })
+
+  return formatted
+}
 
 const deriveNames = (est: Estudiante) => {
   const nombres = normalizeValue(est.nombres)
@@ -230,7 +273,7 @@ export default function AsistenciasPage() {
       ...prev,
       [inscripcionId]: {
         id_inscripcion: inscripcionId,
-        fecha: format(fechaSeleccionada, 'yyyy-MM-dd'),
+        fecha: fechaSeleccionada.toISOString().slice(0, 10),
         tipo_asistencia: tipo
       }
     }))
@@ -250,7 +293,7 @@ export default function AsistenciasPage() {
           id_inscripcion: a.id_inscripcion,
           tipo_asistencia: a.tipo_asistencia,
         }))
-        const trimestre = getTrimestreByDate(new Date(f))
+        const trimestre = getTrimestreByDate(safeCreateDate(f))
         const response = await fetch(`/api/aulas/${aulaId}/asistencias`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -278,7 +321,7 @@ export default function AsistenciasPage() {
   }
 
   const marcarTodosPresentes = () => {
-    const today = format(new Date(), 'yyyy-MM-dd')
+    const today = new Date().toISOString().slice(0, 10)
     const filas = estudiantes.map(est => ({ id_inscripcion: est.inscripcion_id, fecha: today, tipo_asistencia: 'A' as const }))
     // Reemplazar asistencias de hoy
     setAsistenciasAll(prev => {
@@ -288,17 +331,20 @@ export default function AsistenciasPage() {
     setHasChanges(true)
   }
 
-  const getEstadisticasAsistencia = () => {
+  const stats = useMemo(() => {
     const total = estudiantes.length
-    const presentes = Object.values(asistencias).filter(a => a.tipo_asistencia === 'A').length
-    const faltas = Object.values(asistencias).filter(a => a.tipo_asistencia === 'F').length
-    const retrasos = Object.values(asistencias).filter(a => a.tipo_asistencia === 'R').length
-    const licencias = Object.values(asistencias).filter(a => a.tipo_asistencia === 'L').length
+
+    // Calcular estadísticas basándose en todas las asistencias de hoy
+    const today = new Date().toISOString().slice(0, 10)
+    const asistenciasHoy = asistenciasAll.filter(a => a.fecha === today)
+
+    const presentes = asistenciasHoy.filter(a => a.tipo_asistencia === 'A').length
+    const faltas = asistenciasHoy.filter(a => a.tipo_asistencia === 'F').length
+    const retrasos = asistenciasHoy.filter(a => a.tipo_asistencia === 'R').length
+    const licencias = asistenciasHoy.filter(a => a.tipo_asistencia === 'L').length
 
     return { total, presentes, faltas, retrasos, licencias }
-  }
-
-  const stats = getEstadisticasAsistencia()
+  }, [estudiantes.length, asistenciasAll])
 
   // Trimestre por fecha (1: Feb-May, 2: Jun-Sep, 3: Oct-Jan)
   const getTrimestreByDate = (d: Date) => {
@@ -333,7 +379,7 @@ export default function AsistenciasPage() {
         <div className="flex-1">
           <h1 className="text-3xl font-bold tracking-tight">Registro de Asistencia</h1>
           <p className="text-muted-foreground">
-            {aula?.nombre_aula} - {aula?.curso} {aula?.paralelo}
+            {aula?.nombre_aula}
           </p>
         </div>
 
@@ -344,7 +390,7 @@ export default function AsistenciasPage() {
         {/* Controles básicos */}
         <div className="flex justify-between gap-2">
           <Button variant="outline" onClick={() => {
-            const today = format(new Date(), 'yyyy-MM-dd')
+            const today = new Date().toISOString().slice(0, 10)
             if (!asistenciasAll.find(a => a.fecha === today)) {
               setAsistenciasAll(prev => [...prev, ...estudiantes.map(s => ({ id_inscripcion: s.inscripcion_id, fecha: today, tipo_asistencia: 'A' as const }))])
               setHasChanges(true)
@@ -442,10 +488,10 @@ export default function AsistenciasPage() {
                   <TableRow>
                     <TableHead>#</TableHead>
                     <TableHead>Estudiante</TableHead>
-                    {Array.from(new Set(asistenciasAll.map(a => a.fecha))).map((f) => (
+                    {Array.from(new Set(asistenciasAll.map(a => a.fecha).filter(f => f && f.trim()))).map((f) => (
                       <TableHead key={f} className="text-center">
                         <div className="flex items-center justify-center gap-2">
-                          <span>{format(new Date(f), 'dd/MM/yyyy')}</span>
+                          <span>{safeFormatDate(f, 'dd/MM/yyyy')}</span>
                           <Button variant="ghost" size="icon" onClick={() => {
                             setAsistenciasAll(prev => prev.filter(a => a.fecha !== f))
                             setHasChanges(true)
@@ -473,8 +519,8 @@ export default function AsistenciasPage() {
                         </TableCell>
                         {fechas.map((f) => {
                           const a = porFecha[f]?.[e.inscripcion_id]
-                          const hoy = format(new Date(), 'yyyy-MM-dd') === f
-                          const trimestreCol = getTrimestreByDate(new Date(f))
+                          const hoy = new Date().toISOString().slice(0, 10) === f
+                          const trimestreCol = getTrimestreByDate(safeCreateDate(f))
                           const editable = hoy || (trimestreCol === getTrimestreByDate(new Date()))
                           const valor = a?.tipo_asistencia || ''
                           return (

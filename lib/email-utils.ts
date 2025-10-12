@@ -1,10 +1,26 @@
-// Configuración del servicio de email
-const EMAIL_API_URL = process.env.EMAIL_API_URL || "https://smtp.maileroo.com/send"
-const EMAIL_API_KEY = process.env.EMAIL_API_KEY || "10bd9d8dd6176faf1db4268086623b7571a43a496cee700a2fd5fba72c81fc82"
+import nodemailer from 'nodemailer'
 
-console.log("🔧 Configuración del servicio de email:")
-console.log("- EMAIL_API_URL:", EMAIL_API_URL)
-console.log("- EMAIL_API_KEY:", EMAIL_API_KEY ? "✅ Definida" : "❌ No definida")
+// Configuración del servicio de email Gmail SMTP
+// Variables de entorno requeridas:
+// GMAIL_USER=contacto.memories1@gmail.com
+// GMAIL_APP_PASSWORD=ubce yyqk sefe gsos
+// 
+// Crear archivo .env.local en la raíz del proyecto con estas variables
+const GMAIL_USER = process.env.GMAIL_USER || "contacto.memories1@gmail.com"
+const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD || "ubce yyqk sefe gsos"
+
+console.log("🔧 Configuración del servicio de email Gmail SMTP:")
+console.log("- GMAIL_USER:", GMAIL_USER)
+console.log("- GMAIL_APP_PASSWORD:", GMAIL_APP_PASSWORD ? "✅ Definida" : "❌ No definida")
+
+// Crear transporter de nodemailer para Gmail
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: GMAIL_USER,
+    pass: GMAIL_APP_PASSWORD
+  }
+})
 
 interface CredentialsEmailData {
   nombreCompleto: string
@@ -84,35 +100,30 @@ export async function enviarCredencialesProfesor(data: CredentialsEmailData): Pr
       </html>
     `
 
-    const form = new FormData()
-    form.append('from', 'Sistema Escolar <sistema@3247def9e3910d36.maileroo.org>')
-    form.append('to', email)
-    form.append('subject', subject)
-    form.append('html', html)
-
     console.log('Enviando email a:', email)
-    console.log('Usando URL:', EMAIL_API_URL)
+    console.log('Usando Gmail SMTP')
 
     try {
-      const response = await fetch(EMAIL_API_URL, {
-        method: 'POST',
-        headers: {
-          'X-API-Key': EMAIL_API_KEY
-        },
-        body: form
+      // Verificar la conexión del transporter
+      await transporter.verify()
+      console.log('✅ Conexión SMTP verificada correctamente')
+
+      // Enviar el email usando nodemailer
+      const info = await transporter.sendMail({
+        from: `Sistema Escolar <${GMAIL_USER}>`,
+        to: email,
+        subject: subject,
+        html: html
       })
 
-      if (response.ok) {
-        console.log('Email enviado exitosamente')
-        return { success: true }
-      } else {
-        const errorText = await response.text()
-        console.error('Error al enviar credenciales:', response.status, errorText)
-        return { success: false, error: `Error ${response.status}: ${errorText}` }
-      }
+      console.log('✅ Email enviado exitosamente:', info.messageId)
+      return { success: true }
     } catch (error) {
-      console.error('Error de conexión:', error)
-      return { success: false, error: error instanceof Error ? error.message : 'Error de conexión' }
+      console.error('❌ Error al enviar credenciales:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error de conexión SMTP'
+      }
     }
 
   } catch (error) {

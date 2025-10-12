@@ -28,6 +28,7 @@ import {
   ChevronRight,
   Award,
   Clock,
+  TrendingUp,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -247,14 +248,14 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
 
 
 
-                    <SidebarMenuItem>
+                    {/* <SidebarMenuItem>
                       <SidebarMenuButton asChild isActive={pathname.startsWith("/horario")} tooltip="Mi Horario">
                         <Link href="/horario">
                           <Calendar className="h-4 w-4" />
                           <span>Mi Horario</span>
                         </Link>
                       </SidebarMenuButton>
-                    </SidebarMenuItem>
+                    </SidebarMenuItem> */}
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
@@ -387,6 +388,57 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
                           <span>Central de Notas</span>
                         </Link>
                       </SidebarMenuButton>
+                    </SidebarMenuItem>
+
+                    <SidebarMenuItem>
+                      <Collapsible>
+                        <CollapsibleTrigger asChild>
+                          <SidebarMenuButton
+                            isActive={pathname.startsWith("/admin/reportes")}
+                            tooltip="Reportes administrativos"
+                          >
+                            <BarChart3 className="h-4 w-4" />
+                            <span>Reportes</span>
+                            <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                          </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <SidebarMenuSub>
+                            <SidebarMenuSubItem>
+                              <SidebarMenuSubButton asChild>
+                                <Link href="/admin/reportes/mejores-estudiantes">
+                                  <Award className="h-4 w-4" />
+                                  <span>Mejores Estudiantes</span>
+                                </Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                            <SidebarMenuSubItem>
+                              <SidebarMenuSubButton asChild>
+                                <Link href="/admin/reportes/asistencia-general">
+                                  <Clock className="h-4 w-4" />
+                                  <span>Asistencia General</span>
+                                </Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                            <SidebarMenuSubItem>
+                              <SidebarMenuSubButton asChild>
+                                <Link href="/admin/reportes/rendimiento-materias">
+                                  <TrendingUp className="h-4 w-4" />
+                                  <span>Rendimiento por Materias</span>
+                                </Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                            <SidebarMenuSubItem>
+                              <SidebarMenuSubButton asChild>
+                                <Link href="/admin/reportes/estadisticas-generales">
+                                  <BarChart3 className="h-4 w-4" />
+                                  <span>Estadísticas Generales</span>
+                                </Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      </Collapsible>
                     </SidebarMenuItem>
                   </SidebarMenu>
                 </SidebarGroupContent>

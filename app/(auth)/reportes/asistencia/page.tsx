@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Clock, Users, BookOpen, CheckCircle, XCircle, AlertTriangle, Loader2, AlertCircle, Calendar, CalendarDays } from "lucide-react"
+import { Clock, Users, BookOpen, CheckCircle, XCircle, AlertTriangle, Loader2, AlertCircle, Calendar, CalendarDays, Timer, FileText, Download } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 
@@ -17,6 +17,8 @@ interface ReporteAsistencia {
     total_clases: number
     asistencias: number
     faltas: number
+    retrasos: number
+    licencias: number
     porcentaje_asistencia: number
 }
 
@@ -105,29 +107,37 @@ const ControlAsistenciaPage = () => {
         return 0
     }
 
-    const getDateRange = (periodo: string) => {
-        const today = new Date()
-        const startOfWeek = new Date(today)
-        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+    const exportToPDF = async () => {
+        try {
+            const params = new URLSearchParams()
+            if (selectedAula !== "all") {
+                params.append("aula", selectedAula)
+            }
+            if (selectedPeriodo !== "todo") {
+                params.append("periodo", selectedPeriodo)
+            }
+            params.append("export", "pdf")
 
-        switch (periodo) {
-            case 'semana':
-                const dayOfWeek = today.getDay()
-                const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1) // Ajuste para lunes
-                startOfWeek.setDate(diff)
-                return {
-                    inicio: startOfWeek.toISOString().split('T')[0],
-                    fin: today.toISOString().split('T')[0]
-                }
-            case 'mes':
-                return {
-                    inicio: startOfMonth.toISOString().split('T')[0],
-                    fin: today.toISOString().split('T')[0]
-                }
-            default:
-                return null
+            const response = await fetch(`/api/asistencia?${params.toString()}`)
+            if (response.ok) {
+                const blob = await response.blob()
+                const url = window.URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `reporte-asistencia-${selectedPeriodo === "todo" ? "año-lectivo" : `${selectedPeriodo}er-trimestre`}-${new Date().toISOString().split('T')[0]}.pdf`
+                document.body.appendChild(a)
+                a.click()
+                window.URL.revokeObjectURL(url)
+                document.body.removeChild(a)
+            } else {
+                setError("Error al exportar el reporte")
+            }
+        } catch (error) {
+            console.error("Error al exportar PDF:", error)
+            setError("Error al exportar el reporte")
         }
     }
+
 
     if (isLoading) {
         return (
@@ -149,7 +159,7 @@ const ControlAsistenciaPage = () => {
                         Seguimiento de asistencia por estudiante
                         {selectedPeriodo !== "todo" && (
                             <span className="ml-2 text-blue-600 font-medium">
-                                • {selectedPeriodo === "semana" ? "Esta semana" : "Este mes"}
+                                • {selectedPeriodo === "1" ? "1er Trimestre" : selectedPeriodo === "2" ? "2do Trimestre" : selectedPeriodo === "3" ? "3er Trimestre" : ""}
                             </span>
                         )}
                     </p>
@@ -177,23 +187,39 @@ const ControlAsistenciaPage = () => {
                             <SelectItem value="todo">
                                 <div className="flex items-center gap-2">
                                     <Calendar className="h-4 w-4" />
-                                    Todo el período
+                                    Año Lectivo
                                 </div>
                             </SelectItem>
-                            <SelectItem value="semana">
+                            <SelectItem value="1">
                                 <div className="flex items-center gap-2">
                                     <CalendarDays className="h-4 w-4" />
-                                    Esta semana
+                                    1er Trimestre
                                 </div>
                             </SelectItem>
-                            <SelectItem value="mes">
+                            <SelectItem value="2">
                                 <div className="flex items-center gap-2">
                                     <Calendar className="h-4 w-4" />
-                                    Este mes
+                                    2do Trimestre
+                                </div>
+                            </SelectItem>
+                            <SelectItem value="3">
+                                <div className="flex items-center gap-2">
+                                    <Calendar className="h-4 w-4" />
+                                    3er Trimestre
                                 </div>
                             </SelectItem>
                         </SelectContent>
                     </Select>
+
+                    <Button
+                        onClick={exportToPDF}
+                        variant="outline"
+                        className="flex items-center gap-2"
+                        disabled={reporteAsistencia.length === 0}
+                    >
+                        <Download className="h-4 w-4" />
+                        Exportar PDF
+                    </Button>
                 </div>
             </div>
 
@@ -222,7 +248,7 @@ const ControlAsistenciaPage = () => {
                             <div className="flex items-center gap-2">
                                 <CalendarDays className="h-5 w-5 text-blue-600" />
                                 <span className="font-medium text-blue-900">
-                                    Mostrando datos de: {selectedPeriodo === "semana" ? "Esta semana" : "Este mes"}
+                                    Mostrando datos de: {selectedPeriodo === "1" ? "1er Trimestre" : selectedPeriodo === "2" ? "2do Trimestre" : selectedPeriodo === "3" ? "3er Trimestre" : "Año Lectivo"}
                                 </span>
                                 <Badge variant="secondary" className="ml-2">
                                     {selectedAula !== "all" ? `Aula: ${aulas.find(a => a.id.toString() === selectedAula)?.nombre || selectedAula}` : "Todas las aulas"}
@@ -232,7 +258,7 @@ const ControlAsistenciaPage = () => {
                     )}
 
                     {/* KPIs - Estadísticas principales */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
                         {/* Total de estudiantes */}
                         <Card>
                             <CardContent className="p-6">
@@ -277,6 +303,38 @@ const ControlAsistenciaPage = () => {
                                         <p className="text-xs text-muted-foreground mt-1">Registros</p>
                                     </div>
                                     <XCircle className="h-8 w-8 text-red-600 opacity-80" />
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Total de retrasos */}
+                        <Card>
+                            <CardContent className="p-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-medium text-muted-foreground">Total Retrasos</p>
+                                        <p className="text-3xl font-bold text-orange-600 mt-2">
+                                            {reporteAsistencia.reduce((sum, a) => sum + safeToNumber(a.retrasos), 0)}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground mt-1">Registros</p>
+                                    </div>
+                                    <Timer className="h-8 w-8 text-orange-600 opacity-80" />
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Total de licencias */}
+                        <Card>
+                            <CardContent className="p-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-medium text-muted-foreground">Total Licencias</p>
+                                        <p className="text-3xl font-bold text-purple-600 mt-2">
+                                            {reporteAsistencia.reduce((sum, a) => sum + safeToNumber(a.licencias), 0)}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground mt-1">Registros</p>
+                                    </div>
+                                    <FileText className="h-8 w-8 text-purple-600 opacity-80" />
                                 </div>
                             </CardContent>
                         </Card>
@@ -374,7 +432,7 @@ const ControlAsistenciaPage = () => {
                                 Control de Asistencia por Estudiante
                                 {selectedPeriodo !== "todo" && (
                                     <Badge variant="outline" className="ml-2">
-                                        {selectedPeriodo === "semana" ? "Esta semana" : "Este mes"}
+                                        {selectedPeriodo === "1" ? "1er Trimestre" : selectedPeriodo === "2" ? "2do Trimestre" : selectedPeriodo === "3" ? "3er Trimestre" : ""}
                                     </Badge>
                                 )}
                             </CardTitle>
@@ -395,7 +453,7 @@ const ControlAsistenciaPage = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-6">
+                                        <div className="flex items-center gap-4">
                                             <div className="text-center">
                                                 <div className="text-lg font-bold text-green-600">{asistencia.asistencias}</div>
                                                 <div className="text-xs text-muted-foreground">Asistencias</div>
@@ -403,6 +461,14 @@ const ControlAsistenciaPage = () => {
                                             <div className="text-center">
                                                 <div className="text-lg font-bold text-red-600">{asistencia.faltas}</div>
                                                 <div className="text-xs text-muted-foreground">Faltas</div>
+                                            </div>
+                                            <div className="text-center">
+                                                <div className="text-lg font-bold text-orange-600">{asistencia.retrasos}</div>
+                                                <div className="text-xs text-muted-foreground">Retrasos</div>
+                                            </div>
+                                            <div className="text-center">
+                                                <div className="text-lg font-bold text-purple-600">{asistencia.licencias}</div>
+                                                <div className="text-xs text-muted-foreground">Licencias</div>
                                             </div>
                                             <div className="text-center">
                                                 <div className="text-lg font-bold text-blue-600">{asistencia.total_clases}</div>
