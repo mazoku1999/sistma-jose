@@ -11,7 +11,7 @@ export async function GET() {
     }
 
     const materias = await executeQuery<any[]>(
-      "SELECT id_materia as id, nombre_corto, nombre_completo FROM materias ORDER BY nombre_completo",
+      "SELECT id_materia as id, nombre_corto, nombre_completo FROM materias ORDER BY id_materia",
     )
 
     return NextResponse.json(materias)

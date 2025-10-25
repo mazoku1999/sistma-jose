@@ -40,12 +40,14 @@ interface EstadisticasGenerales {
     total_colegios: number
     promedio_general_colegio: number
     porcentaje_aprobacion_general: number
+    porcentaje_reprobacion_general: number
     promedio_asistencia_general: number
     estudiantes_por_nivel: Array<{
         nivel: string
         total_estudiantes: number
         promedio_general: number
         porcentaje_aprobacion: number
+        porcentaje_reprobacion: number
     }>
     profesores_por_colegio: Array<{
         colegio: string
@@ -55,15 +57,26 @@ interface EstadisticasGenerales {
     }>
     materias_mas_demandadas: Array<{
         materia: string
+        nivel: string
         total_aulas: number
         total_estudiantes: number
         promedio_general: number
     }>
     rendimiento_por_trimestre: Array<{
         trimestre: number
+        nivel: string
         promedio_general: number
         porcentaje_aprobacion: number
+        porcentaje_reprobacion: number
         total_estudiantes: number
+    }>
+    rendimiento_curso_materia: Array<{
+        curso: string
+        materia: string
+        total_estudiantes: number
+        promedio_general: number
+        porcentaje_aprobacion: number
+        porcentaje_reprobacion: number
     }>
 }
 
@@ -73,22 +86,37 @@ export default function EstadisticasGeneralesPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState("")
     const [selectedColegio, setSelectedColegio] = useState("all")
+    const [selectedNivel, setSelectedNivel] = useState("all")
+    const [selectedProfesor, setSelectedProfesor] = useState("all")
+    const [selectedCurso, setSelectedCurso] = useState("all")
+    const [selectedMateria, setSelectedMateria] = useState("all")
     const [colegios, setColegios] = useState<{ id: number; nombre: string }[]>([])
+    const [niveles, setNiveles] = useState<{ id: number; nombre: string }[]>([])
+    const [profesores, setProfesores] = useState<{ id: number; nombre_completo: string }[]>([])
+    const [cursos, setCursos] = useState<{ id: number; nombre: string }[]>([])
+    const [materias, setMaterias] = useState<{ id: number; nombre_corto: string }[]>([])
 
     useEffect(() => {
         fetchData()
         fetchSelectOptions()
-    }, [selectedColegio, gestionActual])
+    }, [selectedColegio, selectedNivel, selectedProfesor, selectedCurso, selectedMateria, gestionActual])
 
     const fetchSelectOptions = async () => {
         try {
-            const response = await fetch("/api/colegios")
-            if (response.ok) {
-                const data = await response.json()
-                setColegios(data)
-            }
+            const [colegiosRes, nivelesRes, profesoresRes, cursosRes, materiasRes] = await Promise.all([
+                fetch("/api/colegios"),
+                fetch("/api/niveles"),
+                fetch("/api/profesores"),
+                fetch("/api/cursos"),
+                fetch("/api/materias")
+            ])
+            if (colegiosRes.ok) setColegios(await colegiosRes.json())
+            if (nivelesRes.ok) setNiveles(await nivelesRes.json())
+            if (profesoresRes.ok) setProfesores(await profesoresRes.json())
+            if (cursosRes.ok) setCursos(await cursosRes.json())
+            if (materiasRes.ok) setMaterias(await materiasRes.json())
         } catch (error) {
-            console.error("Error al cargar colegios:", error)
+            console.error("Error al cargar opciones:", error)
         }
     }
 
@@ -98,6 +126,10 @@ export default function EstadisticasGeneralesPage() {
         try {
             const params = new URLSearchParams()
             if (selectedColegio !== "all") params.append("colegio", selectedColegio)
+            if (selectedNivel !== "all") params.append("nivel", selectedNivel)
+            if (selectedProfesor !== "all") params.append("profesor", selectedProfesor)
+            if (selectedCurso !== "all") params.append("curso", selectedCurso)
+            if (selectedMateria !== "all") params.append("materia", selectedMateria)
             if (gestionActual) params.append("gestion", gestionActual.id_gestion.toString())
 
             const response = await fetch(`/api/admin/reportes/estadisticas-generales?${params}`)
@@ -119,6 +151,10 @@ export default function EstadisticasGeneralesPage() {
         try {
             const params = new URLSearchParams()
             if (selectedColegio !== "all") params.append("colegio", selectedColegio)
+            if (selectedNivel !== "all") params.append("nivel", selectedNivel)
+            if (selectedProfesor !== "all") params.append("profesor", selectedProfesor)
+            if (selectedCurso !== "all") params.append("curso", selectedCurso)
+            if (selectedMateria !== "all") params.append("materia", selectedMateria)
             if (gestionActual) params.append("gestion", gestionActual.id_gestion.toString())
 
             const response = await fetch(`/api/admin/reportes/estadisticas-generales/export?${params}`)
@@ -160,10 +196,10 @@ export default function EstadisticasGeneralesPage() {
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
                         <BarChart3 className="h-8 w-8 text-purple-600" />
-                        Estadísticas Generales del Colegio
+                        Estadísticas Generales
                     </h1>
                     <p className="text-muted-foreground">
-                        Resumen estadístico completo del sistema educativo
+                        Total de estudiantes, rendimiento por curso y materia
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -182,20 +218,85 @@ export default function EstadisticasGeneralesPage() {
             <Card>
                 <CardHeader>
                     <CardTitle className="text-lg">Filtros</CardTitle>
+                    <CardDescription>Filtra las estadísticas por diferentes criterios</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                         <div>
                             <label className="text-sm font-medium mb-2 block">Colegio</label>
                             <Select value={selectedColegio} onValueChange={setSelectedColegio}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Seleccionar colegio" />
+                                    <SelectValue placeholder="Todos" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">Todos los colegios</SelectItem>
+                                    <SelectItem value="all">Todos</SelectItem>
                                     {colegios.map((colegio) => (
                                         <SelectItem key={colegio.id} value={colegio.id.toString()}>
                                             {colegio.nombre}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium mb-2 block">Nivel</label>
+                            <Select value={selectedNivel} onValueChange={setSelectedNivel}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Todos" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Todos</SelectItem>
+                                    {niveles.map((nivel) => (
+                                        <SelectItem key={nivel.id} value={nivel.id.toString()}>
+                                            {nivel.nombre}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium mb-2 block">Curso</label>
+                            <Select value={selectedCurso} onValueChange={setSelectedCurso}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Todos" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Todos</SelectItem>
+                                    {cursos.map((curso) => (
+                                        <SelectItem key={curso.id} value={curso.id.toString()}>
+                                            {curso.nombre}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium mb-2 block">Profesor</label>
+                            <Select value={selectedProfesor} onValueChange={setSelectedProfesor}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Todos" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Todos</SelectItem>
+                                    {profesores.map((profesor) => (
+                                        <SelectItem key={profesor.id} value={profesor.id.toString()}>
+                                            {profesor.nombre_completo}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium mb-2 block">Materia</label>
+                            <Select value={selectedMateria} onValueChange={setSelectedMateria}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Todas" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Todas</SelectItem>
+                                    {materias.map((materia) => (
+                                        <SelectItem key={materia.id} value={materia.id.toString()}>
+                                            {materia.nombre_corto}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -231,50 +332,14 @@ export default function EstadisticasGeneralesPage() {
                             <CardContent className="p-6">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-sm font-medium text-muted-foreground">Total Estudiantes</p>
-                                        <p className="text-2xl font-bold">{estadisticas.total_estudiantes}</p>
+                                        <p className="text-sm font-medium text-muted-foreground">Estudiantes Totales</p>
+                                        <p className="text-3xl font-bold">{estadisticas.total_estudiantes}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">en el colegio</p>
                                     </div>
-                                    <Users className="h-8 w-8 text-blue-600" />
+                                    <Users className="h-10 w-10 text-blue-600" />
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card>
-                            <CardContent className="p-6">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm font-medium text-muted-foreground">Total Profesores</p>
-                                        <p className="text-2xl font-bold">{estadisticas.total_profesores}</p>
-                                    </div>
-                                    <GraduationCap className="h-8 w-8 text-green-600" />
-                                </div>
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardContent className="p-6">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm font-medium text-muted-foreground">Total Aulas</p>
-                                        <p className="text-2xl font-bold">{estadisticas.total_aulas}</p>
-                                    </div>
-                                    <BookOpen className="h-8 w-8 text-purple-600" />
-                                </div>
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardContent className="p-6">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm font-medium text-muted-foreground">Total Materias</p>
-                                        <p className="text-2xl font-bold">{estadisticas.total_materias}</p>
-                                    </div>
-                                    <BookMarked className="h-8 w-8 text-orange-600" />
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
-
-                    {/* Indicadores de Rendimiento */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <Card>
                             <CardContent className="p-6">
                                 <div className="flex items-center justify-between">
@@ -282,12 +347,13 @@ export default function EstadisticasGeneralesPage() {
                                         <p className="text-sm font-medium text-muted-foreground">Promedio General</p>
                                         <div className="flex items-center gap-2">
                                             {getPerformanceIcon(estadisticas.promedio_general_colegio)}
-                                            <p className={`text-2xl font-bold ${getPerformanceColor(estadisticas.promedio_general_colegio)}`}>
+                                            <p className={`text-3xl font-bold ${getPerformanceColor(estadisticas.promedio_general_colegio)}`}>
                                                 {Number(estadisticas.promedio_general_colegio || 0).toFixed(1)}
                                             </p>
                                         </div>
+                                        <p className="text-xs text-muted-foreground mt-1">del colegio</p>
                                     </div>
-                                    <BarChart3 className="h-8 w-8 text-blue-600" />
+                                    <BarChart3 className="h-10 w-10 text-blue-600" />
                                 </div>
                             </CardContent>
                         </Card>
@@ -295,15 +361,13 @@ export default function EstadisticasGeneralesPage() {
                             <CardContent className="p-6">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-sm font-medium text-muted-foreground">% Aprobación</p>
-                                        <div className="flex items-center gap-2">
-                                            <CheckCircle className="h-4 w-4 text-green-600" />
-                                            <p className="text-2xl font-bold text-green-600">
-                                                {Number(estadisticas.porcentaje_aprobacion_general || 0).toFixed(1)}%
-                                            </p>
-                                        </div>
+                                        <p className="text-sm font-medium text-muted-foreground">Aprobados</p>
+                                        <p className="text-3xl font-bold text-green-600">
+                                            {Number(estadisticas.porcentaje_aprobacion_general || 0).toFixed(0)}%
+                                        </p>
+                                        <p className="text-xs text-muted-foreground mt-1">de estudiantes</p>
                                     </div>
-                                    <Target className="h-8 w-8 text-green-600" />
+                                    <CheckCircle className="h-10 w-10 text-green-600" />
                                 </div>
                             </CardContent>
                         </Card>
@@ -311,37 +375,98 @@ export default function EstadisticasGeneralesPage() {
                             <CardContent className="p-6">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-sm font-medium text-muted-foreground">% Asistencia</p>
-                                        <div className="flex items-center gap-2">
-                                            <Clock className="h-4 w-4 text-blue-600" />
-                                            <p className="text-2xl font-bold text-blue-600">
-                                                {Number(estadisticas.promedio_asistencia_general || 0).toFixed(1)}%
-                                            </p>
-                                        </div>
+                                        <p className="text-sm font-medium text-muted-foreground">Reprobados</p>
+                                        <p className="text-3xl font-bold text-red-600">
+                                            {Number(estadisticas.porcentaje_reprobacion_general || 0).toFixed(0)}%
+                                        </p>
+                                        <p className="text-xs text-muted-foreground mt-1">de estudiantes</p>
                                     </div>
-                                    <Clock className="h-8 w-8 text-blue-600" />
+                                    <XCircle className="h-10 w-10 text-red-600" />
                                 </div>
                             </CardContent>
                         </Card>
                     </div>
 
-                    <Tabs defaultValue="niveles" className="space-y-4">
+
+                    <Tabs defaultValue="curso-materia" className="space-y-4">
                         <TabsList>
+                            <TabsTrigger value="curso-materia">Rendimiento por Curso y Materia</TabsTrigger>
                             <TabsTrigger value="niveles">Por Niveles</TabsTrigger>
-                            <TabsTrigger value="colegios">Por Colegios</TabsTrigger>
-                            <TabsTrigger value="materias">Materias Populares</TabsTrigger>
                             <TabsTrigger value="trimestres">Por Trimestres</TabsTrigger>
                         </TabsList>
+
+                        <TabsContent value="curso-materia" className="space-y-4">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <BookOpen className="h-5 w-5" />
+                                        Rendimiento por Curso y Materia
+                                    </CardTitle>
+                                    <CardDescription>
+                                        Desempeño académico detallado por curso y materia
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="overflow-x-auto">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Curso</TableHead>
+                                                    <TableHead>Materia</TableHead>
+                                                    <TableHead className="text-center">Estudiantes</TableHead>
+                                                    <TableHead className="text-center">Promedio</TableHead>
+                                                    <TableHead className="text-center">Aprobados</TableHead>
+                                                    <TableHead className="text-center">Reprobados</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {estadisticas.rendimiento_curso_materia.map((item, idx) => (
+                                                    <TableRow key={`${item.curso}-${item.materia}-${idx}`} className="hover:bg-muted/50">
+                                                        <TableCell>
+                                                            <span className="font-semibold text-base">{item.curso}</span>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Badge variant="outline">{item.materia}</Badge>
+                                                        </TableCell>
+                                                        <TableCell className="text-center">
+                                                            <span className="text-lg font-bold">{item.total_estudiantes}</span>
+                                                        </TableCell>
+                                                        <TableCell className="text-center">
+                                                            <div className="flex items-center justify-center gap-2">
+                                                                {getPerformanceIcon(item.promedio_general)}
+                                                                <span className={`text-lg font-bold ${getPerformanceColor(item.promedio_general)}`}>
+                                                                    {Number(item.promedio_general || 0).toFixed(1)}
+                                                                </span>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="text-center">
+                                                            <span className="text-lg font-bold text-green-600">
+                                                                {Number(item.porcentaje_aprobacion || 0).toFixed(0)}%
+                                                            </span>
+                                                        </TableCell>
+                                                        <TableCell className="text-center">
+                                                            <span className="text-lg font-bold text-red-600">
+                                                                {Number(item.porcentaje_reprobacion || 0).toFixed(0)}%
+                                                            </span>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
 
                         <TabsContent value="niveles" className="space-y-4">
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2">
                                         <School className="h-5 w-5" />
-                                        Estadísticas por Niveles Educativos
+                                        Rendimiento por Niveles
                                     </CardTitle>
                                     <CardDescription>
-                                        Distribución de estudiantes y rendimiento por nivel
+                                        Comparación de rendimiento académico entre niveles
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent>
@@ -350,198 +475,38 @@ export default function EstadisticasGeneralesPage() {
                                             <TableHeader>
                                                 <TableRow>
                                                     <TableHead>Nivel</TableHead>
-                                                    <TableHead className="text-center">Total Estudiantes</TableHead>
-                                                    <TableHead className="text-center">Promedio General</TableHead>
-                                                    <TableHead className="text-center">% Aprobación</TableHead>
-                                                    <TableHead className="text-center">Rendimiento</TableHead>
+                                                    <TableHead className="text-center">Estudiantes</TableHead>
+                                                    <TableHead className="text-center">Promedio</TableHead>
+                                                    <TableHead className="text-center">Aprobados</TableHead>
+                                                    <TableHead className="text-center">Reprobados</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
                                                 {estadisticas.estudiantes_por_nivel.map((nivel) => (
                                                     <TableRow key={nivel.nivel} className="hover:bg-muted/50">
                                                         <TableCell>
-                                                            <div className="flex items-center gap-2">
-                                                                <School className="h-4 w-4 text-blue-600" />
-                                                                <span className="font-medium">{nivel.nivel}</span>
-                                                            </div>
+                                                            <span className="font-semibold text-base">{nivel.nivel}</span>
                                                         </TableCell>
                                                         <TableCell className="text-center">
-                                                            <Badge variant="outline">{nivel.total_estudiantes}</Badge>
+                                                            <span className="text-lg font-bold">{nivel.total_estudiantes}</span>
                                                         </TableCell>
                                                         <TableCell className="text-center">
                                                             <div className="flex items-center justify-center gap-2">
                                                                 {getPerformanceIcon(nivel.promedio_general)}
-                                                                <span className={`font-bold ${getPerformanceColor(nivel.promedio_general)}`}>
+                                                                <span className={`text-lg font-bold ${getPerformanceColor(nivel.promedio_general)}`}>
                                                                     {Number(nivel.promedio_general || 0).toFixed(1)}
                                                                 </span>
                                                             </div>
                                                         </TableCell>
                                                         <TableCell className="text-center">
-                                                            <div className="flex items-center justify-center gap-2">
-                                                                <Progress value={nivel.porcentaje_aprobacion} className="w-16" />
-                                                                <span className="text-sm font-medium">{Number(nivel.porcentaje_aprobacion || 0).toFixed(1)}%</span>
-                                                            </div>
+                                                            <span className="text-lg font-bold text-green-600">
+                                                                {Number(nivel.porcentaje_aprobacion || 0).toFixed(0)}%
+                                                            </span>
                                                         </TableCell>
                                                         <TableCell className="text-center">
-                                                            <Badge className={
-                                                                nivel.promedio_general >= 90 ? "bg-green-100 text-green-800" :
-                                                                    nivel.promedio_general >= 80 ? "bg-blue-100 text-blue-800" :
-                                                                        nivel.promedio_general >= 70 ? "bg-yellow-100 text-yellow-800" :
-                                                                            nivel.promedio_general >= 60 ? "bg-orange-100 text-orange-800" :
-                                                                                "bg-red-100 text-red-800"
-                                                            }>
-                                                                {nivel.promedio_general >= 90 ? "Excelente" :
-                                                                    nivel.promedio_general >= 80 ? "Muy Bueno" :
-                                                                        nivel.promedio_general >= 70 ? "Bueno" :
-                                                                            nivel.promedio_general >= 60 ? "Regular" : "Deficiente"}
-                                                            </Badge>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-
-                        <TabsContent value="colegios" className="space-y-4">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <Building className="h-5 w-5" />
-                                        Estadísticas por Colegios
-                                    </CardTitle>
-                                    <CardDescription>
-                                        Distribución de profesores y rendimiento por colegio
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="overflow-x-auto">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>Colegio</TableHead>
-                                                    <TableHead className="text-center">Total Profesores</TableHead>
-                                                    <TableHead className="text-center">Total Aulas</TableHead>
-                                                    <TableHead className="text-center">Promedio General</TableHead>
-                                                    <TableHead className="text-center">Rendimiento</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {estadisticas.profesores_por_colegio.map((colegio) => (
-                                                    <TableRow key={colegio.colegio} className="hover:bg-muted/50">
-                                                        <TableCell>
-                                                            <div className="flex items-center gap-2">
-                                                                <Building className="h-4 w-4 text-blue-600" />
-                                                                <span className="font-medium">{colegio.colegio}</span>
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell className="text-center">
-                                                            <div className="flex items-center justify-center gap-1">
-                                                                <GraduationCap className="h-4 w-4 text-green-600" />
-                                                                <span className="font-medium">{colegio.total_profesores}</span>
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell className="text-center">
-                                                            <div className="flex items-center justify-center gap-1">
-                                                                <BookOpen className="h-4 w-4 text-purple-600" />
-                                                                <span className="font-medium">{colegio.total_aulas}</span>
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell className="text-center">
-                                                            <div className="flex items-center justify-center gap-2">
-                                                                {getPerformanceIcon(colegio.promedio_general)}
-                                                                <span className={`font-bold ${getPerformanceColor(colegio.promedio_general)}`}>
-                                                                    {Number(colegio.promedio_general || 0).toFixed(1)}
-                                                                </span>
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell className="text-center">
-                                                            <Badge className={
-                                                                colegio.promedio_general >= 90 ? "bg-green-100 text-green-800" :
-                                                                    colegio.promedio_general >= 80 ? "bg-blue-100 text-blue-800" :
-                                                                        colegio.promedio_general >= 70 ? "bg-yellow-100 text-yellow-800" :
-                                                                            colegio.promedio_general >= 60 ? "bg-orange-100 text-orange-800" :
-                                                                                "bg-red-100 text-red-800"
-                                                            }>
-                                                                {colegio.promedio_general >= 90 ? "Excelente" :
-                                                                    colegio.promedio_general >= 80 ? "Muy Bueno" :
-                                                                        colegio.promedio_general >= 70 ? "Bueno" :
-                                                                            colegio.promedio_general >= 60 ? "Regular" : "Deficiente"}
-                                                            </Badge>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-
-                        <TabsContent value="materias" className="space-y-4">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <BookMarked className="h-5 w-5" />
-                                        Materias Más Demandadas
-                                    </CardTitle>
-                                    <CardDescription>
-                                        Materias con mayor número de aulas y estudiantes
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="overflow-x-auto">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>Materia</TableHead>
-                                                    <TableHead className="text-center">Total Aulas</TableHead>
-                                                    <TableHead className="text-center">Total Estudiantes</TableHead>
-                                                    <TableHead className="text-center">Promedio General</TableHead>
-                                                    <TableHead className="text-center">Rendimiento</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {estadisticas.materias_mas_demandadas.map((materia) => (
-                                                    <TableRow key={materia.materia} className="hover:bg-muted/50">
-                                                        <TableCell>
-                                                            <div className="flex items-center gap-2">
-                                                                <BookMarked className="h-4 w-4 text-orange-600" />
-                                                                <span className="font-medium">{materia.materia}</span>
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell className="text-center">
-                                                            <Badge variant="outline">{materia.total_aulas}</Badge>
-                                                        </TableCell>
-                                                        <TableCell className="text-center">
-                                                            <div className="flex items-center justify-center gap-1">
-                                                                <Users className="h-4 w-4 text-blue-600" />
-                                                                <span className="font-medium">{materia.total_estudiantes}</span>
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell className="text-center">
-                                                            <div className="flex items-center justify-center gap-2">
-                                                                {getPerformanceIcon(materia.promedio_general)}
-                                                                <span className={`font-bold ${getPerformanceColor(materia.promedio_general)}`}>
-                                                                    {Number(materia.promedio_general || 0).toFixed(1)}
-                                                                </span>
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell className="text-center">
-                                                            <Badge className={
-                                                                materia.promedio_general >= 90 ? "bg-green-100 text-green-800" :
-                                                                    materia.promedio_general >= 80 ? "bg-blue-100 text-blue-800" :
-                                                                        materia.promedio_general >= 70 ? "bg-yellow-100 text-yellow-800" :
-                                                                            materia.promedio_general >= 60 ? "bg-orange-100 text-orange-800" :
-                                                                                "bg-red-100 text-red-800"
-                                                            }>
-                                                                {materia.promedio_general >= 90 ? "Excelente" :
-                                                                    materia.promedio_general >= 80 ? "Muy Bueno" :
-                                                                        materia.promedio_general >= 70 ? "Bueno" :
-                                                                            materia.promedio_general >= 60 ? "Regular" : "Deficiente"}
-                                                            </Badge>
+                                                            <span className="text-lg font-bold text-red-600">
+                                                                {Number(nivel.porcentaje_reprobacion || 0).toFixed(0)}%
+                                                            </span>
                                                         </TableCell>
                                                     </TableRow>
                                                 ))}
@@ -557,10 +522,10 @@ export default function EstadisticasGeneralesPage() {
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2">
                                         <Calendar className="h-5 w-5" />
-                                        Rendimiento por Trimestres
+                                        Evolución por Trimestres
                                     </CardTitle>
                                     <CardDescription>
-                                        Evolución del rendimiento académico por trimestre
+                                        Comparación del rendimiento entre trimestres por nivel
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent>
@@ -569,51 +534,38 @@ export default function EstadisticasGeneralesPage() {
                                             <TableHeader>
                                                 <TableRow>
                                                     <TableHead>Trimestre</TableHead>
-                                                    <TableHead className="text-center">Total Estudiantes</TableHead>
-                                                    <TableHead className="text-center">Promedio General</TableHead>
-                                                    <TableHead className="text-center">% Aprobación</TableHead>
-                                                    <TableHead className="text-center">Rendimiento</TableHead>
+                                                    <TableHead className="text-center">Nivel</TableHead>
+                                                    <TableHead className="text-center">Promedio</TableHead>
+                                                    <TableHead className="text-center">Aprobados</TableHead>
+                                                    <TableHead className="text-center">Reprobados</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {estadisticas.rendimiento_por_trimestre.map((trimestre) => (
-                                                    <TableRow key={trimestre.trimestre} className="hover:bg-muted/50">
+                                                {estadisticas.rendimiento_por_trimestre.map((trimestre, idx) => (
+                                                    <TableRow key={`${trimestre.trimestre}-${trimestre.nivel}-${idx}`} className="hover:bg-muted/50">
                                                         <TableCell>
-                                                            <div className="flex items-center gap-2">
-                                                                <Calendar className="h-4 w-4 text-blue-600" />
-                                                                <span className="font-medium">Trimestre {trimestre.trimestre}</span>
-                                                            </div>
+                                                            <span className="font-semibold text-base">Trimestre {trimestre.trimestre}</span>
                                                         </TableCell>
                                                         <TableCell className="text-center">
-                                                            <Badge variant="outline">{trimestre.total_estudiantes}</Badge>
+                                                            <Badge variant="outline">{trimestre.nivel}</Badge>
                                                         </TableCell>
                                                         <TableCell className="text-center">
                                                             <div className="flex items-center justify-center gap-2">
                                                                 {getPerformanceIcon(trimestre.promedio_general)}
-                                                                <span className={`font-bold ${getPerformanceColor(trimestre.promedio_general)}`}>
+                                                                <span className={`text-lg font-bold ${getPerformanceColor(trimestre.promedio_general)}`}>
                                                                     {Number(trimestre.promedio_general || 0).toFixed(1)}
                                                                 </span>
                                                             </div>
                                                         </TableCell>
                                                         <TableCell className="text-center">
-                                                            <div className="flex items-center justify-center gap-2">
-                                                                <Progress value={trimestre.porcentaje_aprobacion} className="w-16" />
-                                                                <span className="text-sm font-medium">{Number(trimestre.porcentaje_aprobacion || 0).toFixed(1)}%</span>
-                                                            </div>
+                                                            <span className="text-lg font-bold text-green-600">
+                                                                {Number(trimestre.porcentaje_aprobacion || 0).toFixed(0)}%
+                                                            </span>
                                                         </TableCell>
                                                         <TableCell className="text-center">
-                                                            <Badge className={
-                                                                trimestre.promedio_general >= 90 ? "bg-green-100 text-green-800" :
-                                                                    trimestre.promedio_general >= 80 ? "bg-blue-100 text-blue-800" :
-                                                                        trimestre.promedio_general >= 70 ? "bg-yellow-100 text-yellow-800" :
-                                                                            trimestre.promedio_general >= 60 ? "bg-orange-100 text-orange-800" :
-                                                                                "bg-red-100 text-red-800"
-                                                            }>
-                                                                {trimestre.promedio_general >= 90 ? "Excelente" :
-                                                                    trimestre.promedio_general >= 80 ? "Muy Bueno" :
-                                                                        trimestre.promedio_general >= 70 ? "Bueno" :
-                                                                            trimestre.promedio_general >= 60 ? "Regular" : "Deficiente"}
-                                                            </Badge>
+                                                            <span className="text-lg font-bold text-red-600">
+                                                                {Number(trimestre.porcentaje_reprobacion || 0).toFixed(0)}%
+                                                            </span>
                                                         </TableCell>
                                                     </TableRow>
                                                 ))}

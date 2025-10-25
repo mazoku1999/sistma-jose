@@ -20,8 +20,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Parámetros incompletos" }, { status: 400 })
     }
 
-    // Solo los administradores pueden acceder a la centralización
-    if (!session.user.roles.includes("ADMIN")) {
+    // Solo los administradores y administrativos pueden acceder a la centralización
+    if (!session.user.roles.includes("ADMIN") && !session.user.roles.includes("ADMINISTRATIVO")) {
       return NextResponse.json({ error: "Sin permisos de centralización" }, { status: 403 })
     }
 

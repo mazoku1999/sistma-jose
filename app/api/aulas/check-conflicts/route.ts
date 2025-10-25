@@ -105,7 +105,7 @@ export async function POST(request: Request) {
           AND ap.id_paralelo = ?
           AND ap.id_gestion = ?
         GROUP BY ap.id_aula_profesor
-        ORDER BY m.nombre_completo`,
+        ORDER BY m.id_materia`,
         [id_colegio, id_nivel, id_curso, id_paralelo, id_gestion]
       )
     } else {
@@ -126,7 +126,7 @@ export async function POST(request: Request) {
           AND ap.id_curso = ? 
           AND ap.id_paralelo = ?
         GROUP BY ap.id_aula_profesor
-        ORDER BY m.nombre_completo`,
+        ORDER BY m.id_materia`,
         [id_colegio, id_nivel, id_curso, id_paralelo]
       )
     }

@@ -37,15 +37,12 @@ interface ReporteAsistencia {
     nivel: string
     curso: string
     paralelo: string
-    total_clases: number
+    total_registros: number
     asistencias: number
     faltas: number
     retrasos: number
     licencias: number
     porcentaje_asistencia: number
-    porcentaje_faltas: number
-    porcentaje_retrasos: number
-    porcentaje_licencias: number
 }
 
 interface EstadisticasAsistencia {
@@ -55,9 +52,6 @@ interface EstadisticasAsistencia {
     estudiantes_buena_asistencia: number
     estudiantes_regular_asistencia: number
     estudiantes_mala_asistencia: number
-    total_faltas: number
-    total_retrasos: number
-    total_licencias: number
 }
 
 interface AsistenciaPorNivel {
@@ -120,7 +114,7 @@ export default function AsistenciaGeneralPage() {
                 const data = await response.json()
                 setReportes(data.reportes || [])
                 setEstadisticas(data.estadisticas || null)
-                setAsistenciaPorNivel(data.asistenciaPorNivel || [])
+                setAsistenciaPorNivel(data.asistencia_por_nivel || [])
             } else {
                 setError("Error al cargar los datos")
             }
@@ -348,7 +342,7 @@ export default function AsistenciaGeneralPage() {
                                                 <TableHead>Estudiante</TableHead>
                                                 <TableHead>Colegio</TableHead>
                                                 <TableHead>Nivel - Curso</TableHead>
-                                                <TableHead className="text-center">Total Clases</TableHead>
+                                                <TableHead className="text-center">Total Registros</TableHead>
                                                 <TableHead className="text-center">Asistencias</TableHead>
                                                 <TableHead className="text-center">Faltas</TableHead>
                                                 <TableHead className="text-center">Retrasos</TableHead>
@@ -377,7 +371,7 @@ export default function AsistenciaGeneralPage() {
                                                             </div>
                                                         </TableCell>
                                                         <TableCell className="text-center">
-                                                            <span className="font-medium">{reporte.total_clases}</span>
+                                                            <span className="font-medium">{reporte.total_registros}</span>
                                                         </TableCell>
                                                         <TableCell className="text-center">
                                                             <div className="flex items-center justify-center gap-1">

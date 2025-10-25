@@ -33,7 +33,8 @@ import AssignAulaWizard from "./assign-aula-wizard"
 import { useGestionGlobal } from "@/hooks/use-gestion-global"
 
 interface Profesor {
-  id: number
+  id: number | null
+  id_usuario: number
   usuario: string
   nombres: string
   apellido_paterno: string
@@ -96,7 +97,7 @@ export default function ProfesoresPage() {
     apellido_materno: "",
     email: "",
     estado: "activo" as "activo" | "inactivo",
-    role: "PROFESOR" as "PROFESOR" | "ADMIN",
+    role: "PROFESOR" as "PROFESOR" | "ADMIN" | "ADMINISTRATIVO",
     es_tutor: false,
     puede_centralizar_notas: true,
   })
@@ -181,7 +182,7 @@ export default function ProfesoresPage() {
     if (profesor) {
       setEditingProfesor(profesor)
 
-      setEditingUserId((profesor as any).id_usuario ?? profesor.id)
+      setEditingUserId(profesor.id_usuario)
       setFormData({
         usuario: profesor.usuario,
         nombres: profesor.nombres || "",
@@ -189,7 +190,8 @@ export default function ProfesoresPage() {
         apellido_materno: profesor.apellido_materno || "",
         email: profesor.email || "",
         estado: profesor.estado,
-        role: (profesor.roles && profesor.roles.includes("ADMIN")) ? "ADMIN" : "PROFESOR",
+        role: (profesor.roles && profesor.roles.includes("ADMIN")) ? "ADMIN" : 
+              (profesor.roles && profesor.roles.includes("ADMINISTRATIVO")) ? "ADMINISTRATIVO" : "PROFESOR",
         es_tutor: !!profesor.es_tutor,
         puede_centralizar_notas: profesor.puede_centralizar_notas !== undefined ? !!profesor.puede_centralizar_notas : true,
       })
@@ -210,7 +212,14 @@ export default function ProfesoresPage() {
   }
 
   const handleRoleSelect = (value: string) => {
-    setFormData(prev => ({ ...prev, role: (value === "ADMIN" ? "ADMIN" : "PROFESOR") }))
+    const newRole = (value === "ADMIN" ? "ADMIN" : value === "ADMINISTRATIVO" ? "ADMINISTRATIVO" : "PROFESOR")
+    setFormData(prev => ({ 
+      ...prev, 
+      role: newRole,
+      // Resetear campos de profesor si no es rol PROFESOR
+      es_tutor: newRole === "PROFESOR" ? prev.es_tutor : false,
+      puede_centralizar_notas: newRole === "PROFESOR" ? prev.puede_centralizar_notas : false,
+    }))
   }
 
 
@@ -232,7 +241,7 @@ export default function ProfesoresPage() {
           es_tutor: formData.es_tutor,
           puede_centralizar_notas: formData.puede_centralizar_notas,
         }
-        const targetId = editingUserId ?? (editingProfesor as any).id_usuario ?? editingProfesor.id
+        const targetId = editingUserId ?? editingProfesor.id_usuario
         response = await fetch(`/api/profesores/${targetId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -409,7 +418,7 @@ export default function ProfesoresPage() {
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-          <p className="mt-4 text-muted-foreground">Cargando profesores...</p>
+          <p className="mt-4 text-muted-foreground">Cargando usuarios...</p>
         </div>
       </div>
     )
@@ -437,7 +446,7 @@ export default function ProfesoresPage() {
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
-            placeholder="Buscar profesores..."
+            placeholder="Buscar usuarios..."
             className="pl-8"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -462,7 +471,7 @@ export default function ProfesoresPage() {
               </TableHeader>
               <TableBody>
                 {filteredProfesores.map((profesor) => (
-                  <TableRow key={profesor.id}>
+                  <TableRow key={profesor.id_usuario}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar>
@@ -486,25 +495,31 @@ export default function ProfesoresPage() {
                             className={
                               rol === "ADMIN"
                                 ? "bg-red-50 text-red-700 border-red-200"
+                                : rol === "ADMINISTRATIVO"
+                                ? "bg-blue-50 text-blue-700 border-blue-200"
                                 : "bg-green-50 text-green-700 border-green-200"
                             }
                           >
-                            {rol === "ADMIN" ? "Admin" : "Profesor"}
+                            {rol === "ADMIN" ? "Admin" : rol === "ADMINISTRATIVO" ? "Administrativo" : "Profesor"}
                           </Badge>
                         ))}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={
-                          profesor.es_tutor
-                            ? "bg-blue-50 text-blue-700 border-blue-200"
-                            : "bg-gray-50 text-gray-700 border-gray-200"
-                        }
-                      >
-                        {profesor.es_tutor ? "Tutor" : "No tutor"}
-                      </Badge>
+                      {profesor.roles.includes("PROFESOR") ? (
+                        <Badge
+                          variant="outline"
+                          className={
+                            profesor.es_tutor
+                              ? "bg-blue-50 text-blue-700 border-blue-200"
+                              : "bg-gray-50 text-gray-700 border-gray-200"
+                          }
+                        >
+                          {profesor.es_tutor ? "Tutor" : "No tutor"}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">N/A</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -531,13 +546,13 @@ export default function ProfesoresPage() {
                             <DropdownMenuItem onClick={() => handleOpenDialog(profesor)}>
                               Editar
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleResetPassword((profesor as any).id_usuario ?? profesor.id)}>
+                            <DropdownMenuItem onClick={() => handleResetPassword(profesor.id_usuario)}>
                               Restablecer contraseña
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-red-600"
-                              onClick={() => handleDeleteProfesor((profesor as any).id_usuario ?? profesor.id)}
+                              onClick={() => handleDeleteProfesor(profesor.id_usuario)}
                             >
                               Eliminar
                             </DropdownMenuItem>
@@ -552,13 +567,13 @@ export default function ProfesoresPage() {
           ) : (
             <div className="flex flex-col items-center justify-center h-64">
               <UserPlus className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
-              <h3 className="text-lg font-medium mb-1">No hay profesores</h3>
+              <h3 className="text-lg font-medium mb-1">No hay usuarios</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                No se encontraron profesores con los criterios de búsqueda
+                No se encontraron usuarios con los criterios de búsqueda
               </p>
               <Button onClick={() => handleOpenDialog()}>
                 <Plus className="mr-2 h-4 w-4" />
-                Nuevo Profesor
+                Nuevo Usuario
               </Button>
             </div>
           )}
@@ -573,7 +588,7 @@ export default function ProfesoresPage() {
               {editingProfesor ? "Editar Usuario" : "Nuevo Usuario"}
             </DialogTitle>
             <DialogDescription>
-              Completa los datos principales del docente, define su acceso y otorga permisos claves.
+              Completa los datos del usuario, define su rol y otorga permisos según corresponda.
             </DialogDescription>
           </DialogHeader>
 
@@ -581,7 +596,7 @@ export default function ProfesoresPage() {
             <section className="rounded-lg border p-4 md:p-6 space-y-4">
               <div className="space-y-1">
                 <h3 className="text-base font-semibold">Información personal</h3>
-                <p className="text-sm text-muted-foreground">Completa los datos básicos del docente.</p>
+                <p className="text-sm text-muted-foreground">Completa los datos básicos del usuario.</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -679,34 +694,37 @@ export default function ProfesoresPage() {
                       <SelectContent>
                         <SelectItem value="PROFESOR">Profesor</SelectItem>
                         <SelectItem value="ADMIN">Administrador</SelectItem>
+                        <SelectItem value="ADMINISTRATIVO">Administrativo</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="flex items-center justify-between rounded-md border border-dashed px-4 py-3">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium leading-none">Profesor tutor</p>
-                      <p className="text-xs text-muted-foreground">Responsable directo del curso y su seguimiento.</p>
+                {formData.role === "PROFESOR" && (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="flex items-center justify-between rounded-md border border-dashed px-4 py-3">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium leading-none">Profesor tutor</p>
+                        <p className="text-xs text-muted-foreground">Responsable directo del curso y su seguimiento.</p>
+                      </div>
+                      <Switch
+                        id="es_tutor"
+                        checked={formData.es_tutor}
+                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, es_tutor: checked }))}
+                      />
                     </div>
-                    <Switch
-                      id="es_tutor"
-                      checked={formData.es_tutor}
-                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, es_tutor: checked }))}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between rounded-md border border-dashed px-4 py-3">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium leading-none">Puede centralizar notas</p>
-                      <p className="text-xs text-muted-foreground">Autoriza cargar la centralización de notas del curso.</p>
+                    <div className="flex items-center justify-between rounded-md border border-dashed px-4 py-3">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium leading-none">Puede centralizar notas</p>
+                        <p className="text-xs text-muted-foreground">Autoriza cargar la centralización de notas del curso.</p>
+                      </div>
+                      <Switch
+                        id="puede_centralizar_notas"
+                        checked={formData.puede_centralizar_notas}
+                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, puede_centralizar_notas: checked }))}
+                      />
                     </div>
-                    <Switch
-                      id="puede_centralizar_notas"
-                      checked={formData.puede_centralizar_notas}
-                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, puede_centralizar_notas: checked }))}
-                    />
                   </div>
-                </div>
+                )}
               </div>
             </section>
 
@@ -767,8 +785,8 @@ export default function ProfesoresPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Wizard para asignar aula */}
-      {selectedProfesorForAssign && (
+      {/* Wizard de asignación de aula para profesor existente */}
+      {selectedProfesorForAssign && selectedProfesorForAssign.id && (
         <AssignAulaWizard
           isOpen={showAssignWizard}
           onClose={() => {

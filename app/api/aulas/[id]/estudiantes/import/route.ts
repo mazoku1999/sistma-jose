@@ -65,8 +65,8 @@ export async function POST(
 
         // Verificar si el estudiante ya existe
         const existingStudent = await executeQuery<any[]>(
-          "SELECT id_estudiante FROM estudiantes WHERE nombres = ? AND apellido_paterno = ? AND apellido_materno = ?",
-          [nombres, apellido_paterno, apellido_materno]
+          "SELECT id_estudiante FROM estudiantes WHERE nombres = ? AND COALESCE(apellido_paterno, '') = ? AND COALESCE(apellido_materno, '') = ?",
+          [nombres, apellido_paterno || '', apellido_materno || '']
         )
 
         let studentId: number

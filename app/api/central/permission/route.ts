@@ -10,8 +10,8 @@ export async function GET() {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    // Solo los administradores pueden centralizar notas
-    const canCentralize = session.user.roles.includes("ADMIN")
+    // Solo los administradores y administrativos pueden centralizar notas
+    const canCentralize = session.user.roles.includes("ADMIN") || session.user.roles.includes("ADMINISTRATIVO")
 
     return NextResponse.json({ canCentralize })
   } catch (error) {

@@ -21,20 +21,20 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Parámetros incompletos" }, { status: 400 })
     }
 
-    // Solo los administradores pueden centralizar notas
-    if (!session.user.roles.includes("ADMIN")) {
+    // Solo los administradores y administrativos pueden centralizar notas
+    if (!session.user.roles.includes("ADMIN") && !session.user.roles.includes("ADMINISTRATIVO")) {
       return NextResponse.json({ error: "Sin permisos de centralización" }, { status: 403 })
     }
 
     // Obtener estudiantes del curso/paralelo específico
     const estudiantesQuery = await executeQuery<any[]>(
       `
-      SELECT DISTINCT 
+      SELECT 
         e.id_estudiante,
-        e.nombres,
-        e.apellido_paterno,
-        e.apellido_materno,
-        CONCAT(e.nombres, ' ', e.apellido_paterno, ' ', e.apellido_materno) as nombre_completo
+        MAX(e.nombres) as nombres,
+        MAX(e.apellido_paterno) as apellido_paterno,
+        MAX(e.apellido_materno) as apellido_materno,
+        TRIM(CONCAT_WS(' ', MAX(e.nombres), MAX(e.apellido_paterno), MAX(e.apellido_materno))) as nombre_completo
       FROM estudiantes e
       JOIN inscripciones_aula ia ON e.id_estudiante = ia.id_estudiante
       JOIN aulas_profesor ap ON ia.id_aula_profesor = ap.id_aula_profesor
@@ -42,16 +42,17 @@ export async function GET(request: Request) {
         AND ap.id_nivel = ? 
         AND ap.id_curso = ? 
         AND ap.id_paralelo = ?
+      GROUP BY e.id_estudiante
       ORDER BY 
-        CASE WHEN TRIM(IFNULL(e.apellido_paterno, '')) = '' THEN 0 ELSE 1 END,
-        CASE WHEN TRIM(IFNULL(e.apellido_paterno, '')) = '' THEN TRIM(e.apellido_materno) ELSE TRIM(e.apellido_paterno) END,
-        CASE WHEN TRIM(IFNULL(e.apellido_paterno, '')) = '' THEN TRIM(e.nombres) ELSE TRIM(e.apellido_materno) END,
-        TRIM(e.nombres)
+        CASE WHEN TRIM(IFNULL(MAX(e.apellido_paterno), '')) = '' THEN 0 ELSE 1 END,
+        CASE WHEN TRIM(IFNULL(MAX(e.apellido_paterno), '')) = '' THEN TRIM(MAX(e.apellido_materno)) ELSE TRIM(MAX(e.apellido_paterno)) END,
+        CASE WHEN TRIM(IFNULL(MAX(e.apellido_paterno), '')) = '' THEN TRIM(MAX(e.nombres)) ELSE TRIM(MAX(e.apellido_materno)) END,
+        TRIM(MAX(e.nombres))
       `,
       [colegio, nivel, curso, paralelo]
     )
 
-    // Determinar materias por curso (1-3: 11 materias; 4+: 13 materias)
+    // Determinar materias por curso (1-3: 11 materias; 4-6: 13 materias)
     const cursoInfo = await executeQuery<any[]>(
       `SELECT nombre FROM cursos WHERE id_curso = ?`,
       [curso]
@@ -60,28 +61,14 @@ export async function GET(request: Request) {
     // parseInt("1ro") -> 1, parseInt fallback NaN -> 0
     const cursoNumero = Number.parseInt(cursoNombre)
 
-    const baseMaterias = [
-      "COM-LEN", // Comunicación y lenguajes
-      "LEN-EXT", // Lengua extranjera
-      "CSOC",    // Ciencias sociales
-      "EFYD",    // Educación física y deportes
-      "MUS",     // Educación musical
-      "ART-PV",  // Artes plásticas y visuales
-      "MAT",     // Matemática
-      "TEC",     // Técnica tecnológica (nombre se ajusta abajo para 1-3)
-      "CN-BIOGEO", // CN: Biología - Geografía
-      "COS-FIL", // Cosmovisiones, Filosofía y Sicología
-      "VAL-REL", // Valores, Espiritualidad y Religiones
-    ] as const
+    // IDs de materias base (1-11) para todos los cursos
+    // IDs 10 y 11 (Física y Química) solo para cursos 4-6
+    const baseMateriaIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13] // Todos excepto Física (10) y Química (11)
+    const extraMateriaIds = [10, 11] // Física y Química solo para 4-6
+    
+    const materiasPermitidas = cursoNumero >= 4 ? [...baseMateriaIds, ...extraMateriaIds] : [...baseMateriaIds]
 
-    const extraMaterias = [
-      "CN-FIS", // CN: Física
-      "CN-QUI", // CN: Química
-    ] as const
-
-    const materiasPermitidas = cursoNumero >= 4 ? [...baseMaterias, ...extraMaterias] : [...baseMaterias]
-
-    // Obtener SOLO las materias correspondientes
+    // Obtener las materias por ID (no depende de nombre_corto editable)
     const placeholders = materiasPermitidas.map(() => "?").join(",")
     const materiasRaw = await executeQuery<any[]>(
       `
@@ -90,15 +77,16 @@ export async function GET(request: Request) {
         m.nombre_corto,
         m.nombre_completo
       FROM materias m
-      WHERE m.nombre_corto IN (${placeholders})
-      ORDER BY m.nombre_completo
+      WHERE m.id_materia IN (${placeholders})
+      ORDER BY m.id_materia
       `,
       [...materiasPermitidas]
     )
 
-    // Ajustar nombre de Técnica para cursos 1-3
+    // Ajustar nombre de Técnica para cursos 1-3 (mantener lógica especial)
     const materiasQuery = (materiasRaw || []).map((m) => {
-      if (cursoNumero > 0 && cursoNumero <= 3 && m.nombre_corto === "TEC") {
+      // Si es TEC (id 8) y curso 1-3, cambiar el nombre
+      if (cursoNumero > 0 && cursoNumero <= 3 && m.id_materia === 8) {
         return {
           ...m,
           nombre_completo: "TÉCNICA TECNOLÓGICA GENERAL",
@@ -152,8 +140,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Datos incompletos" }, { status: 400 })
     }
 
-    // Solo los administradores pueden centralizar notas
-    if (!session.user.roles.includes("ADMIN")) {
+    // Solo los administradores y administrativos pueden centralizar notas
+    if (!session.user.roles.includes("ADMIN") && !session.user.roles.includes("ADMINISTRATIVO")) {
       return NextResponse.json({ error: "Sin permisos de centralización" }, { status: 403 })
     }
 

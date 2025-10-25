@@ -5,16 +5,20 @@ import { executeQuery } from "@/lib/db"
 export async function GET(request: NextRequest) {
     try {
         const session = await getServerSession()
-        if (!session?.user || !session.user.roles?.includes("ADMIN")) {
+        if (!session?.user || (!session.user.roles?.includes("ADMIN") && !session.user.roles?.includes("ADMINISTRATIVO"))) {
             return NextResponse.json({ error: "No autorizado" }, { status: 401 })
         }
 
         const { searchParams } = new URL(request.url)
         const colegio = searchParams.get("colegio")
+        const nivel = searchParams.get("nivel")
+        const curso = searchParams.get("curso")
+        const profesor = searchParams.get("profesor")
+        const materia = searchParams.get("materia")
         const gestion = searchParams.get("gestion") || "1"
 
-        // Construir condiciones WHERE
-        let whereConditions = ["ap.id_gestion = ?"]
+        // Construir condiciones WHERE dinámicamente
+        let whereConditions = ["ap.id_gestion = ?", "ap.activa = TRUE"]
         let params: any[] = [gestion]
 
         if (colegio && colegio !== "all") {
@@ -22,119 +26,175 @@ export async function GET(request: NextRequest) {
             params.push(colegio)
         }
 
+        if (nivel && nivel !== "all") {
+            whereConditions.push("ap.id_nivel = ?")
+            params.push(nivel)
+        }
+
+        if (curso && curso !== "all") {
+            whereConditions.push("ap.id_curso = ?")
+            params.push(curso)
+        }
+
+        if (profesor && profesor !== "all") {
+            whereConditions.push("ap.id_profesor = ?")
+            params.push(profesor)
+        }
+
+        if (materia && materia !== "all") {
+            whereConditions.push("ap.id_materia = ?")
+            params.push(materia)
+        }
+
         const whereClause = whereConditions.join(" AND ")
 
-        // Query para estadísticas generales
+        // 1. ESTADÍSTICAS GENERALES
         const estadisticasGeneralesQuery = `
             SELECT 
                 COUNT(DISTINCT e.id_estudiante) as total_estudiantes,
-                COUNT(DISTINCT pr.id_profesor) as total_profesores,
+                COUNT(DISTINCT ap.id_profesor) as total_profesores,
                 COUNT(DISTINCT ap.id_aula_profesor) as total_aulas,
-                COUNT(DISTINCT m.id_materia) as total_materias,
-                COUNT(DISTINCT col.id_colegio) as total_colegios,
-                AVG(nap.promedio_final_trimestre) as promedio_general_colegio,
-                ROUND((COUNT(DISTINCT CASE WHEN nap.promedio_final_trimestre >= 60 THEN iap.id_estudiante END) * 100.0 / 
-                       COUNT(DISTINCT iap.id_estudiante)), 2) as porcentaje_aprobacion_general,
-                ROUND(AVG(
+                COUNT(DISTINCT ap.id_materia) as total_materias,
+                COUNT(DISTINCT ap.id_colegio) as total_colegios,
+                ROUND(AVG(nap.promedio_final_trimestre), 2) as promedio_general_colegio,
+                ROUND(SUM(CASE WHEN nap.promedio_final_trimestre >= 60 THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT e.id_estudiante), 2) as porcentaje_aprobacion_general,
+                ROUND(SUM(CASE WHEN nap.promedio_final_trimestre < 60 THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT e.id_estudiante), 2) as porcentaje_reprobacion_general
+            FROM estudiantes e
+            JOIN inscripciones_aula iap ON e.id_estudiante = iap.id_estudiante
+            JOIN aulas_profesor ap ON iap.id_aula_profesor = ap.id_aula_profesor
+            LEFT JOIN notas_aula_profesor nap ON iap.id_inscripcion = nap.id_inscripcion
+            WHERE ${whereClause}
+        `
+
+        const estadisticasResult = await executeQuery(estadisticasGeneralesQuery, params)
+        const estadisticas = Array.isArray(estadisticasResult) ? estadisticasResult[0] : estadisticasResult
+
+        // 2. PROMEDIO DE ASISTENCIA
+        const asistenciaQuery = `
+            SELECT 
+                ROUND(AVG(porcentaje_asistencia), 2) as promedio_asistencia_general
+            FROM (
+                SELECT 
+                    iap.id_inscripcion,
                     CASE 
                         WHEN COUNT(ae.id_asistencia) > 0 THEN 
                             (COUNT(CASE WHEN ae.tipo_asistencia = 'A' THEN 1 END) * 100.0 / COUNT(ae.id_asistencia))
                         ELSE 0 
-                    END
-                ), 2) as promedio_asistencia_general
-            FROM estudiantes e
-            INNER JOIN inscripciones_aula iap ON e.id_estudiante = iap.id_estudiante
-            INNER JOIN aulas_profesor ap ON iap.id_aula_profesor = ap.id_aula_profesor
-            INNER JOIN profesores pr ON ap.id_profesor = pr.id_profesor
-            INNER JOIN materias m ON ap.id_materia = m.id_materia
-            INNER JOIN colegios col ON ap.id_colegio = col.id_colegio
-            INNER JOIN notas_aula_profesor nap ON iap.id_inscripcion = nap.id_inscripcion
-            LEFT JOIN asistencia_estudiante ae ON iap.id_inscripcion = ae.id_inscripcion AND ae.id_gestion = ?
-            WHERE ${whereClause} AND ap.activa = TRUE
-            GROUP BY iap.id_inscripcion
+                    END as porcentaje_asistencia
+                FROM inscripciones_aula iap
+                JOIN aulas_profesor ap ON iap.id_aula_profesor = ap.id_aula_profesor
+                LEFT JOIN asistencia_estudiante ae ON iap.id_inscripcion = ae.id_inscripcion AND ae.id_gestion = ?
+                WHERE ${whereClause}
+                GROUP BY iap.id_inscripcion
+            ) AS asistencias
         `
 
-        const estadisticasParams = [...params, gestion]
-        const estadisticasResult = await executeQuery(estadisticasGeneralesQuery, estadisticasParams)
-        const estadisticas = Array.isArray(estadisticasResult) ? estadisticasResult[0] : estadisticasResult
+        const asistenciaParams = [gestion, ...params]
+        const asistenciaResult = await executeQuery(asistenciaQuery, asistenciaParams)
+        const asistenciaData = Array.isArray(asistenciaResult) ? asistenciaResult[0] : asistenciaResult
 
-        // Query para estudiantes por nivel
+        // 3. ESTUDIANTES POR NIVEL
         const estudiantesPorNivelQuery = `
             SELECT 
                 n.nombre as nivel,
                 COUNT(DISTINCT e.id_estudiante) as total_estudiantes,
-                AVG(nap.promedio_final_trimestre) as promedio_general,
-                ROUND((COUNT(DISTINCT CASE WHEN nap.promedio_final_trimestre >= 60 THEN iap.id_estudiante END) * 100.0 / 
-                       COUNT(DISTINCT iap.id_estudiante)), 2) as porcentaje_aprobacion
+                ROUND(AVG(nap.promedio_final_trimestre), 2) as promedio_general,
+                ROUND(SUM(CASE WHEN nap.promedio_final_trimestre >= 60 THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT e.id_estudiante), 2) as porcentaje_aprobacion,
+                ROUND(SUM(CASE WHEN nap.promedio_final_trimestre < 60 THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT e.id_estudiante), 2) as porcentaje_reprobacion
             FROM estudiantes e
-            INNER JOIN inscripciones_aula iap ON e.id_estudiante = iap.id_estudiante
-            INNER JOIN aulas_profesor ap ON iap.id_aula_profesor = ap.id_aula_profesor
-            INNER JOIN niveles n ON ap.id_nivel = n.id_nivel
-            INNER JOIN notas_aula_profesor nap ON iap.id_inscripcion = nap.id_inscripcion
-            WHERE ${whereClause} AND ap.activa = TRUE
+            JOIN inscripciones_aula iap ON e.id_estudiante = iap.id_estudiante
+            JOIN aulas_profesor ap ON iap.id_aula_profesor = ap.id_aula_profesor
+            JOIN niveles n ON ap.id_nivel = n.id_nivel
+            LEFT JOIN notas_aula_profesor nap ON iap.id_inscripcion = nap.id_inscripcion
+            WHERE ${whereClause}
             GROUP BY n.id_nivel, n.nombre
             ORDER BY n.nombre
         `
 
         const estudiantesPorNivel = await executeQuery(estudiantesPorNivelQuery, params)
 
-        // Query para profesores por colegio
+        // 4. PROFESORES POR COLEGIO
         const profesoresPorColegioQuery = `
             SELECT 
                 col.nombre as colegio,
-                COUNT(DISTINCT pr.id_profesor) as total_profesores,
-                COUNT(DISTINCT ap.id_aula_profesor) as total_aulas,
-                AVG(nap.promedio_final_trimestre) as promedio_general
-            FROM profesores pr
-            INNER JOIN aulas_profesor ap ON pr.id_profesor = ap.id_profesor
-            INNER JOIN colegios col ON ap.id_colegio = col.id_colegio
-            INNER JOIN inscripciones_aula iap ON ap.id_aula_profesor = iap.id_aula_profesor
-            INNER JOIN notas_aula_profesor nap ON iap.id_inscripcion = nap.id_inscripcion
-            WHERE ${whereClause} AND ap.activa = TRUE
+                COUNT(DISTINCT ap.id_profesor) as total_profesores,
+                ROUND(AVG(nap.promedio_final_trimestre), 2) as promedio_general
+            FROM aulas_profesor ap
+            JOIN colegios col ON ap.id_colegio = col.id_colegio
+            JOIN inscripciones_aula iap ON ap.id_aula_profesor = iap.id_aula_profesor
+            LEFT JOIN notas_aula_profesor nap ON iap.id_inscripcion = nap.id_inscripcion
+            WHERE ${whereClause}
             GROUP BY col.id_colegio, col.nombre
             ORDER BY col.nombre
         `
 
         const profesoresPorColegio = await executeQuery(profesoresPorColegioQuery, params)
 
-        // Query para materias más demandadas
+        // 5. MATERIAS MÁS DEMANDADAS
         const materiasMasDemandadasQuery = `
             SELECT 
                 m.nombre_corto as materia,
-                COUNT(DISTINCT ap.id_aula_profesor) as total_aulas,
-                COUNT(DISTINCT iap.id_estudiante) as total_estudiantes,
-                AVG(nap.promedio_final_trimestre) as promedio_general
+                n.nombre as nivel,
+                COUNT(DISTINCT e.id_estudiante) as total_estudiantes,
+                ROUND(AVG(nap.promedio_final_trimestre), 2) as promedio_general
             FROM materias m
-            INNER JOIN aulas_profesor ap ON m.id_materia = ap.id_materia
-            INNER JOIN inscripciones_aula iap ON ap.id_aula_profesor = iap.id_aula_profesor
-            INNER JOIN notas_aula_profesor nap ON iap.id_inscripcion = nap.id_inscripcion
-            WHERE ${whereClause} AND ap.activa = TRUE
-            GROUP BY m.id_materia, m.nombre_corto
-            ORDER BY total_aulas DESC, total_estudiantes DESC
-            LIMIT 10
+            JOIN aulas_profesor ap ON m.id_materia = ap.id_materia
+            JOIN niveles n ON ap.id_nivel = n.id_nivel
+            JOIN inscripciones_aula iap ON ap.id_aula_profesor = iap.id_aula_profesor
+            JOIN estudiantes e ON iap.id_estudiante = e.id_estudiante
+            LEFT JOIN notas_aula_profesor nap ON iap.id_inscripcion = nap.id_inscripcion
+            WHERE ${whereClause}
+            GROUP BY m.id_materia, m.nombre_corto, n.id_nivel, n.nombre
+            ORDER BY total_estudiantes DESC, m.nombre_corto
+            LIMIT 15
         `
 
         const materiasMasDemandadas = await executeQuery(materiasMasDemandadasQuery, params)
 
-        // Query para rendimiento por trimestre
+        // 6. RENDIMIENTO POR TRIMESTRE
         const rendimientoPorTrimestreQuery = `
             SELECT 
                 nap.trimestre,
-                COUNT(DISTINCT iap.id_estudiante) as total_estudiantes,
-                AVG(nap.promedio_final_trimestre) as promedio_general,
-                ROUND((COUNT(DISTINCT CASE WHEN nap.promedio_final_trimestre >= 60 THEN iap.id_estudiante END) * 100.0 / 
-                       COUNT(DISTINCT iap.id_estudiante)), 2) as porcentaje_aprobacion
+                n.nombre as nivel,
+                COUNT(DISTINCT e.id_estudiante) as total_estudiantes,
+                ROUND(AVG(nap.promedio_final_trimestre), 2) as promedio_general,
+                ROUND(SUM(CASE WHEN nap.promedio_final_trimestre >= 60 THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT e.id_estudiante), 2) as porcentaje_aprobacion,
+                ROUND(SUM(CASE WHEN nap.promedio_final_trimestre < 60 THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT e.id_estudiante), 2) as porcentaje_reprobacion
             FROM estudiantes e
-            INNER JOIN inscripciones_aula iap ON e.id_estudiante = iap.id_estudiante
-            INNER JOIN aulas_profesor ap ON iap.id_aula_profesor = ap.id_aula_profesor
-            INNER JOIN notas_aula_profesor nap ON iap.id_inscripcion = nap.id_inscripcion
-            WHERE ${whereClause} AND ap.activa = TRUE
-            GROUP BY nap.trimestre
-            ORDER BY nap.trimestre
+            JOIN inscripciones_aula iap ON e.id_estudiante = iap.id_estudiante
+            JOIN aulas_profesor ap ON iap.id_aula_profesor = ap.id_aula_profesor
+            JOIN niveles n ON ap.id_nivel = n.id_nivel
+            JOIN notas_aula_profesor nap ON iap.id_inscripcion = nap.id_inscripcion
+            WHERE ${whereClause}
+            GROUP BY nap.trimestre, n.id_nivel, n.nombre
+            ORDER BY nap.trimestre, n.nombre
         `
 
         const rendimientoPorTrimestre = await executeQuery(rendimientoPorTrimestreQuery, params)
 
+        // 7. RENDIMIENTO POR CURSO Y MATERIA
+        const rendimientoCursoMateriaQuery = `
+            SELECT 
+                c.nombre as curso,
+                m.nombre_corto as materia,
+                COUNT(DISTINCT e.id_estudiante) as total_estudiantes,
+                ROUND(AVG(nap.promedio_final_trimestre), 2) as promedio_general,
+                ROUND(SUM(CASE WHEN nap.promedio_final_trimestre >= 60 THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT e.id_estudiante), 2) as porcentaje_aprobacion,
+                ROUND(SUM(CASE WHEN nap.promedio_final_trimestre < 60 THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT e.id_estudiante), 2) as porcentaje_reprobacion
+            FROM estudiantes e
+            JOIN inscripciones_aula iap ON e.id_estudiante = iap.id_estudiante
+            JOIN aulas_profesor ap ON iap.id_aula_profesor = ap.id_aula_profesor
+            JOIN cursos c ON ap.id_curso = c.id_curso
+            JOIN materias m ON ap.id_materia = m.id_materia
+            LEFT JOIN notas_aula_profesor nap ON iap.id_inscripcion = nap.id_inscripcion
+            WHERE ${whereClause}
+            GROUP BY c.id_curso, c.nombre, m.id_materia, m.nombre_corto
+            ORDER BY c.nombre, m.id_materia
+        `
+
+        const rendimientoCursoMateria = await executeQuery(rendimientoCursoMateriaQuery, params)
+
+        // Respuesta final
         return NextResponse.json({
             total_estudiantes: estadisticas?.total_estudiantes || 0,
             total_profesores: estadisticas?.total_profesores || 0,
@@ -143,18 +203,21 @@ export async function GET(request: NextRequest) {
             total_colegios: estadisticas?.total_colegios || 0,
             promedio_general_colegio: estadisticas?.promedio_general_colegio || 0,
             porcentaje_aprobacion_general: estadisticas?.porcentaje_aprobacion_general || 0,
-            promedio_asistencia_general: estadisticas?.promedio_asistencia_general || 0,
-            estudiantes_por_nivel: Array.isArray(estudiantesPorNivel) ? estudiantesPorNivel : [],
-            profesores_por_colegio: Array.isArray(profesoresPorColegio) ? profesoresPorColegio : [],
-            materias_mas_demandadas: Array.isArray(materiasMasDemandadas) ? materiasMasDemandadas : [],
-            rendimiento_por_trimestre: Array.isArray(rendimientoPorTrimestre) ? rendimientoPorTrimestre : []
+            porcentaje_reprobacion_general: estadisticas?.porcentaje_reprobacion_general || 0,
+            promedio_asistencia_general: asistenciaData?.promedio_asistencia_general || 0,
+            estudiantes_por_nivel: estudiantesPorNivel || [],
+            profesores_por_colegio: profesoresPorColegio || [],
+            materias_mas_demandadas: materiasMasDemandadas || [],
+            rendimiento_por_trimestre: rendimientoPorTrimestre || [],
+            rendimiento_curso_materia: rendimientoCursoMateria || []
         })
 
     } catch (error) {
-        console.error("Error al obtener estadísticas generales:", error)
+        console.error("Error en estadísticas generales:", error)
         return NextResponse.json(
-            { error: "Error interno del servidor" },
+            { error: "Error al cargar estadísticas" },
             { status: 500 }
         )
     }
 }
+

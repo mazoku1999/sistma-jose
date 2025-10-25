@@ -65,7 +65,7 @@ export default function CentralPage() {
     const [isSaving, setIsSaving] = useState(false)
     const [hasChanges, setHasChanges] = useState(false)
     // Derivar permisos directamente del usuario autenticado
-    const canCentralize = !!user?.roles?.includes("ADMIN")
+    const canCentralize = !!user?.roles?.includes("ADMIN") || !!user?.roles?.includes("ADMINISTRATIVO")
 
     useEffect(() => {
         fetchSelectOptions()
@@ -365,11 +365,45 @@ export default function CentralPage() {
 
     const getEstadisticas = () => {
         const totalEstudiantes = estudiantes.length
-        const notasIngresadas = Object.values(notasCentralizadas).filter(n => n.nota_final > 0).length
-        const totalNotas = estudiantes.length * materias.length
-        const progreso = totalNotas > 0 ? (notasIngresadas / totalNotas) * 100 : 0
-
-        return { totalEstudiantes, notasIngresadas, totalNotas, progreso }
+        
+        // Calcular promedios por estudiante
+        const promediosPorEstudiante = estudiantes.map(est => {
+            const notasEstudiante = materias
+                .map(mat => {
+                    const key = `${est.id_estudiante}-${mat.id}`
+                    const nota = notasCentralizadas[key]
+                    return nota && nota.nota_final > 0 ? nota.nota_final : 0
+                })
+                .filter(n => n > 0)
+            
+            const promedio = notasEstudiante.length > 0 
+                ? notasEstudiante.reduce((a, b) => a + b, 0) / notasEstudiante.length 
+                : 0
+            
+            return { estudiante: est, promedio, cantidadNotas: notasEstudiante.length }
+        })
+        
+        // Promedio general del curso (todos los estudiantes, incluso sin notas)
+        const promedioGeneral = totalEstudiantes > 0
+            ? promediosPorEstudiante.reduce((sum, p) => sum + p.promedio, 0) / totalEstudiantes
+            : 0
+        
+        // Estudiantes aprobados (promedio >= 51)
+        const aprobados = promediosPorEstudiante.filter(p => p.promedio >= 51).length
+        
+        // Estudiantes reprobados (promedio < 51 y promedio > 0)
+        const reprobados = promediosPorEstudiante.filter(p => p.promedio > 0 && p.promedio < 51).length
+        
+        // Estudiantes destacados (promedio >= 85)
+        const destacados = promediosPorEstudiante.filter(p => p.promedio >= 85).length
+        
+        return { 
+            totalEstudiantes,
+            promedioGeneral, 
+            aprobados,
+            reprobados,
+            destacados
+        }
     }
 
     const stats = getEstadisticas()
@@ -541,45 +575,47 @@ export default function CentralPage() {
                 <div className="grid gap-4 md:grid-cols-4">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Estudiantes</CardTitle>
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{stats.totalEstudiantes}</div>
-                            <p className="text-xs text-muted-foreground">en el curso</p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Notas Ingresadas</CardTitle>
+                            <CardTitle className="text-sm font-medium">Promedio General</CardTitle>
                             <Calculator className="h-4 w-4 text-blue-600" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-blue-600">{stats.notasIngresadas}</div>
-                            <p className="text-xs text-muted-foreground">de {stats.totalNotas} total</p>
+                            <div className="text-2xl font-bold text-blue-600">
+                                {stats.promedioGeneral > 0 ? stats.promedioGeneral.toFixed(1) : '-'}
+                            </div>
+                            <p className="text-xs text-muted-foreground">del curso</p>
                         </CardContent>
                     </Card>
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Progreso</CardTitle>
-                            <TrendingUp className="h-4 w-4 text-purple-600" />
+                            <CardTitle className="text-sm font-medium">Aprobados</CardTitle>
+                            <TrendingUp className="h-4 w-4 text-green-600" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-purple-600">{stats.progreso.toFixed(1)}%</div>
-                            <p className="text-xs text-muted-foreground">completado</p>
+                            <div className="text-2xl font-bold text-green-600">{stats.aprobados}</div>
+                            <p className="text-xs text-muted-foreground">de {stats.totalEstudiantes} estudiantes</p>
                         </CardContent>
                     </Card>
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Materias</CardTitle>
-                            <BookOpen className="h-4 w-4 text-green-600" />
+                            <CardTitle className="text-sm font-medium">Reprobados</CardTitle>
+                            <AlertTriangle className="h-4 w-4 text-red-600" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-green-600">{materias.length}</div>
-                            <p className="text-xs text-muted-foreground">disponibles</p>
+                            <div className="text-2xl font-bold text-red-600">{stats.reprobados}</div>
+                            <p className="text-xs text-muted-foreground">promedio &lt; 51</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Destacados</CardTitle>
+                            <Users className="h-4 w-4 text-purple-600" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-purple-600">{stats.destacados}</div>
+                            <p className="text-xs text-muted-foreground">promedio ≥ 85</p>
                         </CardContent>
                     </Card>
                 </div>

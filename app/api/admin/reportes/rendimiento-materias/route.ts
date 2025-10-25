@@ -5,7 +5,7 @@ import { executeQuery } from "@/lib/db"
 export async function GET(request: NextRequest) {
     try {
         const session = await getServerSession()
-        if (!session?.user || !session.user.roles?.includes("ADMIN")) {
+        if (!session?.user || (!session.user.roles?.includes("ADMIN") && !session.user.roles?.includes("ADMINISTRATIVO"))) {
             return NextResponse.json({ error: "No autorizado" }, { status: 401 })
         }
 
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
 
         const rendimientoMaterias = await executeQuery(rendimientoMateriasQuery, params)
 
-        // Query para rendimiento por profesores
+        // Query para rendimiento por profesores (usando subconsulta para calcular promedios por materia)
         const rendimientoProfesoresQuery = `
             SELECT 
                 pr.id_profesor,
@@ -84,18 +84,50 @@ export async function GET(request: NextRequest) {
                 AVG(nap.promedio_final_trimestre) as promedio_general,
                 ROUND((COUNT(DISTINCT CASE WHEN nap.promedio_final_trimestre >= 60 THEN iap.id_estudiante END) * 100.0 / 
                        COUNT(DISTINCT iap.id_estudiante)), 2) as porcentaje_aprobacion_general,
-                COUNT(DISTINCT CASE 
-                    WHEN AVG(nap.promedio_final_trimestre) >= 90 THEN ap.id_aula_profesor 
-                END) as materias_excelentes,
-                COUNT(DISTINCT CASE 
-                    WHEN AVG(nap.promedio_final_trimestre) >= 80 AND AVG(nap.promedio_final_trimestre) < 90 THEN ap.id_aula_profesor 
-                END) as materias_buenas,
-                COUNT(DISTINCT CASE 
-                    WHEN AVG(nap.promedio_final_trimestre) >= 70 AND AVG(nap.promedio_final_trimestre) < 80 THEN ap.id_aula_profesor 
-                END) as materias_regulares,
-                COUNT(DISTINCT CASE 
-                    WHEN AVG(nap.promedio_final_trimestre) < 70 THEN ap.id_aula_profesor 
-                END) as materias_deficientes
+                (SELECT COUNT(*)
+                 FROM (
+                     SELECT ap2.id_aula_profesor
+                     FROM aulas_profesor ap2
+                     INNER JOIN inscripciones_aula iap2 ON ap2.id_aula_profesor = iap2.id_aula_profesor
+                     INNER JOIN notas_aula_profesor nap2 ON iap2.id_inscripcion = nap2.id_inscripcion
+                     WHERE ap2.id_profesor = pr.id_profesor AND ${whereClause.replace(/ap\./g, 'ap2.')} AND ap2.activa = TRUE
+                     GROUP BY ap2.id_aula_profesor
+                     HAVING AVG(nap2.promedio_final_trimestre) >= 90
+                 ) as subq1
+                ) as materias_excelentes,
+                (SELECT COUNT(*)
+                 FROM (
+                     SELECT ap2.id_aula_profesor
+                     FROM aulas_profesor ap2
+                     INNER JOIN inscripciones_aula iap2 ON ap2.id_aula_profesor = iap2.id_aula_profesor
+                     INNER JOIN notas_aula_profesor nap2 ON iap2.id_inscripcion = nap2.id_inscripcion
+                     WHERE ap2.id_profesor = pr.id_profesor AND ${whereClause.replace(/ap\./g, 'ap2.')} AND ap2.activa = TRUE
+                     GROUP BY ap2.id_aula_profesor
+                     HAVING AVG(nap2.promedio_final_trimestre) >= 80 AND AVG(nap2.promedio_final_trimestre) < 90
+                 ) as subq2
+                ) as materias_buenas,
+                (SELECT COUNT(*)
+                 FROM (
+                     SELECT ap2.id_aula_profesor
+                     FROM aulas_profesor ap2
+                     INNER JOIN inscripciones_aula iap2 ON ap2.id_aula_profesor = iap2.id_aula_profesor
+                     INNER JOIN notas_aula_profesor nap2 ON iap2.id_inscripcion = nap2.id_inscripcion
+                     WHERE ap2.id_profesor = pr.id_profesor AND ${whereClause.replace(/ap\./g, 'ap2.')} AND ap2.activa = TRUE
+                     GROUP BY ap2.id_aula_profesor
+                     HAVING AVG(nap2.promedio_final_trimestre) >= 70 AND AVG(nap2.promedio_final_trimestre) < 80
+                 ) as subq3
+                ) as materias_regulares,
+                (SELECT COUNT(*)
+                 FROM (
+                     SELECT ap2.id_aula_profesor
+                     FROM aulas_profesor ap2
+                     INNER JOIN inscripciones_aula iap2 ON ap2.id_aula_profesor = iap2.id_aula_profesor
+                     INNER JOIN notas_aula_profesor nap2 ON iap2.id_inscripcion = nap2.id_inscripcion
+                     WHERE ap2.id_profesor = pr.id_profesor AND ${whereClause.replace(/ap\./g, 'ap2.')} AND ap2.activa = TRUE
+                     GROUP BY ap2.id_aula_profesor
+                     HAVING AVG(nap2.promedio_final_trimestre) < 70
+                 ) as subq4
+                ) as materias_deficientes
             FROM profesores pr
             INNER JOIN usuarios u ON pr.id_usuario = u.id_usuario
             INNER JOIN aulas_profesor ap ON pr.id_profesor = ap.id_profesor
@@ -106,34 +138,32 @@ export async function GET(request: NextRequest) {
             ORDER BY promedio_general DESC
         `
 
-        const rendimientoProfesores = await executeQuery(rendimientoProfesoresQuery, params)
+        const rendimientoProfesores = await executeQuery(rendimientoProfesoresQuery, [...params, ...params, ...params, ...params, ...params])
 
-        // Query para estadísticas generales
+        // Query para estadísticas generales (usando subconsulta para calcular promedios)
         const estadisticasQuery = `
             SELECT 
-                COUNT(DISTINCT ap.id_aula_profesor) as total_materias,
-                COUNT(DISTINCT pr.id_profesor) as total_profesores,
-                AVG(nap.promedio_final_trimestre) as promedio_general_colegio,
-                ROUND((COUNT(DISTINCT CASE WHEN nap.promedio_final_trimestre >= 60 THEN iap.id_estudiante END) * 100.0 / 
-                       COUNT(DISTINCT iap.id_estudiante)), 2) as porcentaje_aprobacion_general,
-                COUNT(DISTINCT CASE 
-                    WHEN AVG(nap.promedio_final_trimestre) >= 90 THEN ap.id_aula_profesor 
-                END) as materias_excelentes,
-                COUNT(DISTINCT CASE 
-                    WHEN AVG(nap.promedio_final_trimestre) >= 80 AND AVG(nap.promedio_final_trimestre) < 90 THEN ap.id_aula_profesor 
-                END) as materias_buenas,
-                COUNT(DISTINCT CASE 
-                    WHEN AVG(nap.promedio_final_trimestre) >= 70 AND AVG(nap.promedio_final_trimestre) < 80 THEN ap.id_aula_profesor 
-                END) as materias_regulares,
-                COUNT(DISTINCT CASE 
-                    WHEN AVG(nap.promedio_final_trimestre) < 70 THEN ap.id_aula_profesor 
-                END) as materias_deficientes
-            FROM aulas_profesor ap
-            INNER JOIN profesores pr ON ap.id_profesor = pr.id_profesor
-            INNER JOIN inscripciones_aula iap ON ap.id_aula_profesor = iap.id_aula_profesor
-            INNER JOIN notas_aula_profesor nap ON iap.id_inscripcion = nap.id_inscripcion
-            WHERE ${whereClause} AND ap.activa = TRUE
-            GROUP BY ap.id_aula_profesor
+                COUNT(DISTINCT promedios.id_aula_profesor) as total_materias,
+                COUNT(DISTINCT promedios.id_profesor) as total_profesores,
+                AVG(promedios.promedio_materia) as promedio_general_colegio,
+                ROUND((SUM(promedios.estudiantes_aprobados) * 100.0 / SUM(promedios.total_estudiantes)), 2) as porcentaje_aprobacion_general,
+                SUM(CASE WHEN promedios.promedio_materia >= 90 THEN 1 ELSE 0 END) as materias_excelentes,
+                SUM(CASE WHEN promedios.promedio_materia >= 80 AND promedios.promedio_materia < 90 THEN 1 ELSE 0 END) as materias_buenas,
+                SUM(CASE WHEN promedios.promedio_materia >= 70 AND promedios.promedio_materia < 80 THEN 1 ELSE 0 END) as materias_regulares,
+                SUM(CASE WHEN promedios.promedio_materia < 70 THEN 1 ELSE 0 END) as materias_deficientes
+            FROM (
+                SELECT 
+                    ap.id_aula_profesor,
+                    ap.id_profesor,
+                    AVG(nap.promedio_final_trimestre) as promedio_materia,
+                    COUNT(DISTINCT iap.id_estudiante) as total_estudiantes,
+                    COUNT(DISTINCT CASE WHEN nap.promedio_final_trimestre >= 60 THEN iap.id_estudiante END) as estudiantes_aprobados
+                FROM aulas_profesor ap
+                INNER JOIN inscripciones_aula iap ON ap.id_aula_profesor = iap.id_aula_profesor
+                INNER JOIN notas_aula_profesor nap ON iap.id_inscripcion = nap.id_inscripcion
+                WHERE ${whereClause} AND ap.activa = TRUE
+                GROUP BY ap.id_aula_profesor, ap.id_profesor
+            ) as promedios
         `
 
         const estadisticasResult = await executeQuery(estadisticasQuery, params)

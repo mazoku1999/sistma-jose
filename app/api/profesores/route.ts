@@ -12,7 +12,7 @@ export async function GET() {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    // Obtener profesores con sus asignaciones
+    // Obtener todos los usuarios (profesores, admin, administrativos)
     const profesores = await executeQuery<any[]>(
       `SELECT 
         u.id_usuario,
@@ -25,11 +25,11 @@ export async function GET() {
         u.email,
         u.activo,
         DATE_FORMAT(u.fecha_creacion, '%Y-%m-%d') as fecha_registro,
-        p.puede_centralizar_notas,
-        p.profesor_area,
-        p.es_tutor
+        COALESCE(p.puede_centralizar_notas, 0) as puede_centralizar_notas,
+        COALESCE(p.profesor_area, 0) as profesor_area,
+        COALESCE(p.es_tutor, 0) as es_tutor
       FROM usuarios u
-      JOIN profesores p ON u.id_usuario = p.id_usuario
+      LEFT JOIN profesores p ON u.id_usuario = p.id_usuario
       ORDER BY u.nombre_completo`
     )
 
@@ -45,14 +45,18 @@ export async function GET() {
       profesor.roles = roles.map(r => r.nombre)
       profesor.estado = profesor.activo ? "activo" : "inactivo"
 
-      // Obtener conteo de aulas asignadas
-      const aulasCount = await executeQuery<any[]>(
-        `SELECT COUNT(*) as count 
-         FROM aulas_profesor 
-         WHERE id_profesor = ? AND activa = TRUE`,
-        [profesor.id]
-      )
-      profesor.aulas_asignadas = aulasCount[0]?.count || 0
+      // Obtener conteo de aulas asignadas (solo si es profesor)
+      if (profesor.id) {
+        const aulasCount = await executeQuery<any[]>(
+          `SELECT COUNT(*) as count 
+           FROM aulas_profesor 
+           WHERE id_profesor = ? AND activa = TRUE`,
+          [profesor.id]
+        )
+        profesor.aulas_asignadas = aulasCount[0]?.count || 0
+      } else {
+        profesor.aulas_asignadas = 0
+      }
       profesor.puede_centralizar_notas = !!profesor.puede_centralizar_notas
       profesor.es_tutor = !!profesor.es_tutor
     }
@@ -130,16 +134,19 @@ export async function POST(request: Request) {
 
       const userId = userResult.insertId
 
-      // Crear profesor
-      const profesorResult = await executeQuery<any>(
-        "INSERT INTO profesores (id_usuario, puede_centralizar_notas, profesor_area, es_tutor) VALUES (?, ?, ?, ?)",
-        [userId, puedeCentralizar, body.profesor_area ?? false, esTutor]
-      )
-
-      const profesorId = profesorResult.insertId
-
-      // Asignar roles (por defecto PROFESOR si no se envían)
+      // Crear registro en profesores solo si el rol es PROFESOR
       const desiredRoles = roles && Array.isArray(roles) && roles.length > 0 ? roles : ["PROFESOR"]
+      let profesorId = null
+      
+      if (desiredRoles.includes("PROFESOR")) {
+        const profesorResult = await executeQuery<any>(
+          "INSERT INTO profesores (id_usuario, puede_centralizar_notas, profesor_area, es_tutor) VALUES (?, ?, ?, ?)",
+          [userId, puedeCentralizar, body.profesor_area ?? false, esTutor]
+        )
+        profesorId = profesorResult.insertId
+      }
+
+      // Asignar roles
       for (const roleName of desiredRoles) {
         const roleResult = await executeQuery<any[]>(
           "SELECT id_rol FROM roles WHERE nombre = ?",
@@ -175,15 +182,15 @@ export async function POST(request: Request) {
       }
 
       return NextResponse.json({
-        id: profesorId,
+        id: profesorId || userId,
         usuario,
         nombres,
         apellido_paterno,
         apellido_materno,
         nombre_completo,
         email: email,
-        puede_centralizar_notas: puedeCentralizar,
-        es_tutor: esTutor,
+        puede_centralizar_notas: desiredRoles.includes("PROFESOR") ? puedeCentralizar : false,
+        es_tutor: desiredRoles.includes("PROFESOR") ? esTutor : false,
         password: password,
         emailEnviado,
         emailError

@@ -151,6 +151,7 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
 
   const isAdmin = user?.roles.includes("ADMIN")
   const isProfesor = user?.roles.includes("PROFESOR")
+  const isAdministrativo = user?.roles.includes("ADMINISTRATIVO")
 
   return (
     <SidebarProvider>
@@ -308,6 +309,84 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
               </SidebarGroup>
             )}
 
+            {isAdministrativo && (
+              <>
+                <SidebarGroup>
+                  <SidebarGroupLabel>Académico</SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild isActive={pathname.startsWith("/admin/central")} tooltip="Central de Notas">
+                          <Link href="/admin/central">
+                            <FileSpreadsheet className="h-4 w-4" />
+                            <span>Central de Notas</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+
+                <SidebarGroup>
+                  <SidebarGroupLabel>Reportes</SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      <SidebarMenuItem>
+                        <Collapsible>
+                          <CollapsibleTrigger asChild>
+                            <SidebarMenuButton
+                              isActive={pathname.startsWith("/admin/reportes")}
+                              tooltip="Reportes"
+                            >
+                              <BarChart3 className="h-4 w-4" />
+                              <span>Reportes</span>
+                              <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                            </SidebarMenuButton>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <SidebarMenuSub>
+                              <SidebarMenuSubItem>
+                                <SidebarMenuSubButton asChild>
+                                  <Link href="/admin/reportes/mejores-estudiantes">
+                                    <Award className="h-4 w-4" />
+                                    <span>Mejores Estudiantes</span>
+                                  </Link>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                              <SidebarMenuSubItem>
+                                <SidebarMenuSubButton asChild>
+                                  <Link href="/admin/reportes/asistencia-general">
+                                    <Clock className="h-4 w-4" />
+                                    <span>Asistencia General</span>
+                                  </Link>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                              <SidebarMenuSubItem>
+                                <SidebarMenuSubButton asChild>
+                                  <Link href="/admin/reportes/rendimiento-materias">
+                                    <TrendingUp className="h-4 w-4" />
+                                    <span>Rendimiento por Materias</span>
+                                  </Link>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                              <SidebarMenuSubItem>
+                                <SidebarMenuSubButton asChild>
+                                  <Link href="/admin/reportes/estadisticas-generales">
+                                    <BarChart3 className="h-4 w-4" />
+                                    <span>Estadísticas Generales</span>
+                                  </Link>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            </SidebarMenuSub>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      </SidebarMenuItem>
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              </>
+            )}
+
             {isAdmin && (
               <SidebarGroup>
                 <SidebarGroupLabel>Administración</SidebarGroupLabel>
@@ -326,11 +405,11 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
                       <SidebarMenuButton
                         asChild
                         isActive={pathname.startsWith("/admin/profesores")}
-                        tooltip="Usuarios"
+                        tooltip="Gestión de Usuarios"
                       >
                         <Link href="/admin/profesores">
                           <GraduationCap className="h-4 w-4" />
-                          <span>Usuarios</span>
+                          <span>Gestión de Usuarios</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>

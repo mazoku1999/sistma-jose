@@ -10,8 +10,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    // Solo los administradores pueden acceder a la centralización
-    if (!session.user.roles.includes("ADMIN")) {
+    // Solo los administradores y administrativos pueden acceder a la centralización
+    if (!session.user.roles.includes("ADMIN") && !session.user.roles.includes("ADMINISTRATIVO")) {
       return NextResponse.json({ error: "Sin permisos de centralización" }, { status: 403 })
     }
 
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
         AND ap.id_paralelo = ?
         AND ap.activa = TRUE
         AND ap.fecha_eliminacion IS NULL
-      ORDER BY m.nombre_completo
+      ORDER BY m.id_materia
       `,
       [colegio, nivel, curso, paralelo]
     )

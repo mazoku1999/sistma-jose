@@ -202,7 +202,8 @@ CREATE TABLE IF NOT EXISTS horario_profesor (
 -- Insertar roles básicos
 INSERT INTO roles (nombre, descripcion) VALUES 
 ('ADMIN', 'Administrador del sistema'),
-('PROFESOR', 'Profesor con acceso a aulas y notas');
+('PROFESOR', 'Profesor con acceso a aulas y notas'),
+('ADMINISTRATIVO', 'Personal administrativo con acceso a central de notas y reportes');
 
 -- Insertar usuario administrador (password: admin123)
 INSERT INTO usuarios (usuario, password, nombres, apellido_paterno, apellido_materno, nombre_completo, activo, email) VALUES 
@@ -211,6 +212,10 @@ INSERT INTO usuarios (usuario, password, nombres, apellido_paterno, apellido_mat
 -- Insertar usuario profesor (password: admin123)
 INSERT INTO usuarios (usuario, password, nombres, apellido_paterno, apellido_materno, nombre_completo, activo, email) VALUES 
 ('profesor', '$2b$10$WnF./ztE.2asPXhhFBN/1.ttDlaQja3eRgJFtUFt0AO7IscFXwzEa', 'Profesor', 'Ejemplo', 'Demo', 'Profesor Ejemplo Demo', TRUE, 'profesor@profesor.com');
+
+-- Insertar usuario administrativo (password: admin123)
+INSERT INTO usuarios (usuario, password, nombres, apellido_paterno, apellido_materno, nombre_completo, activo, email) VALUES 
+('administrativo', '$2b$10$WnF./ztE.2asPXhhFBN/1.ttDlaQja3eRgJFtUFt0AO7IscFXwzEa', 'Personal', 'Administrativo', 'Sistema', 'Personal Administrativo Sistema', TRUE, 'administrativo@sistema.com');
 
 -- Asignar rol de administrador al usuario admin
 INSERT INTO usuario_roles (id_usuario, id_rol) 
@@ -223,6 +228,12 @@ INSERT INTO usuario_roles (id_usuario, id_rol)
 SELECT u.id_usuario, r.id_rol 
 FROM usuarios u, roles r 
 WHERE u.usuario = 'profesor' AND r.nombre = 'PROFESOR';
+
+-- Asignar rol de administrativo al usuario administrativo
+INSERT INTO usuario_roles (id_usuario, id_rol) 
+SELECT u.id_usuario, r.id_rol 
+FROM usuarios u, roles r 
+WHERE u.usuario = 'administrativo' AND r.nombre = 'ADMINISTRATIVO';
 
 -- Insertar profesor
 INSERT INTO profesores (id_usuario, puede_centralizar_notas, profesor_area, es_tutor, fecha_ingreso) 

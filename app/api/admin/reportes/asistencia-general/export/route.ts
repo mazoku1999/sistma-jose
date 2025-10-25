@@ -6,7 +6,7 @@ import * as XLSX from "xlsx"
 export async function GET(request: NextRequest) {
     try {
         const session = await getServerSession()
-        if (!session?.user || !session.user.roles?.includes("ADMIN")) {
+        if (!session?.user || (!session.user.roles?.includes("ADMIN") && !session.user.roles?.includes("ADMINISTRATIVO"))) {
             return NextResponse.json({ error: "No autorizado" }, { status: 401 })
         }
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Fragment } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -64,17 +64,37 @@ export default function MejoresEstudiantesPage() {
     const [selectedCurso, setSelectedCurso] = useState("all")
     const [selectedParalelo, setSelectedParalelo] = useState("all")
     const [selectedColegio, setSelectedColegio] = useState("all")
+    
+    // Función para manejar cambio de colegio y resetear dependientes
+    const handleColegioChange = (value: string) => {
+        setSelectedColegio(value)
+        setSelectedNivel("all")
+        setSelectedCurso("all")
+        setSelectedParalelo("all")
+    }
+    
+    // Función para manejar cambio de nivel y resetear dependientes
+    const handleNivelChange = (value: string) => {
+        setSelectedNivel(value)
+        setSelectedCurso("all")
+        setSelectedParalelo("all")
+    }
+    
+    // Función para manejar cambio de curso y resetear dependientes
+    const handleCursoChange = (value: string) => {
+        setSelectedCurso(value)
+        setSelectedParalelo("all")
+    }
     const [cantidadTop, setCantidadTop] = useState(3)
-    const [tipoReporte, setTipoReporte] = useState<"colegio" | "curso" | "paralelo">("colegio")
     const [niveles, setNiveles] = useState<{ id: number; nombre: string }[]>([])
     const [cursos, setCursos] = useState<{ id: number; nombre: string }[]>([])
-    const [paralelos, setParalelos] = useState<{ id: number; letra: string }[]>([])
+    const [paralelos, setParalelos] = useState<{ id: number; nombre: string }[]>([])
     const [colegios, setColegios] = useState<{ id: number; nombre: string }[]>([])
 
     useEffect(() => {
         fetchData()
         fetchSelectOptions()
-    }, [selectedNivel, selectedCurso, selectedParalelo, selectedColegio, cantidadTop, tipoReporte, gestionActual])
+    }, [selectedNivel, selectedCurso, selectedParalelo, selectedColegio, cantidadTop, gestionActual])
 
     const fetchSelectOptions = async () => {
         try {
@@ -94,6 +114,13 @@ export default function MejoresEstudiantesPage() {
         }
     }
 
+    // Determinar el tipo de reporte según los filtros seleccionados
+    const getTipoReporte = () => {
+        if (selectedParalelo !== "all") return "paralelo"
+        if (selectedCurso !== "all" || selectedNivel !== "all") return "curso"
+        return "colegio"
+    }
+
     const fetchData = async () => {
         setIsLoading(true)
         setError("")
@@ -104,7 +131,7 @@ export default function MejoresEstudiantesPage() {
             if (selectedParalelo !== "all") params.append("paralelo", selectedParalelo)
             if (selectedColegio !== "all") params.append("colegio", selectedColegio)
             params.append("cantidad", cantidadTop.toString())
-            params.append("tipo", tipoReporte)
+            params.append("tipo", getTipoReporte())
             if (gestionActual) params.append("gestion", gestionActual.id_gestion.toString())
 
             const response = await fetch(`/api/admin/reportes/mejores-estudiantes?${params}`)
@@ -131,7 +158,7 @@ export default function MejoresEstudiantesPage() {
             if (selectedParalelo !== "all") params.append("paralelo", selectedParalelo)
             if (selectedColegio !== "all") params.append("colegio", selectedColegio)
             params.append("cantidad", cantidadTop.toString())
-            params.append("tipo", tipoReporte)
+            params.append("tipo", getTipoReporte())
             if (gestionActual) params.append("gestion", gestionActual.id_gestion.toString())
 
             const response = await fetch(`/api/admin/reportes/mejores-estudiantes/export?${params}`)
@@ -179,14 +206,10 @@ export default function MejoresEstudiantesPage() {
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
                         <Award className="h-8 w-8 text-yellow-600" />
-                        {tipoReporte === "colegio" && "Mejores Estudiantes del Colegio"}
-                        {tipoReporte === "curso" && "Mejores Estudiantes por Curso"}
-                        {tipoReporte === "paralelo" && "Mejores Estudiantes por Paralelo"}
+                        Mejores Estudiantes
                     </h1>
                     <p className="text-muted-foreground">
-                        {tipoReporte === "colegio" && "Top " + cantidadTop + " estudiantes con mejor rendimiento de todo el colegio"}
-                        {tipoReporte === "curso" && "Top " + cantidadTop + " estudiantes con mejor rendimiento por curso"}
-                        {tipoReporte === "paralelo" && "Top " + cantidadTop + " estudiantes con mejor rendimiento por paralelo"}
+                        Top {cantidadTop} estudiantes con mejor rendimiento académico
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -207,23 +230,10 @@ export default function MejoresEstudiantesPage() {
                     <CardTitle className="text-lg">Configuración del Reporte</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    {/* Tipo de Reporte y Cantidad */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Cantidad */}
+                    <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                         <div>
-                            <label className="text-sm font-medium mb-2 block">Tipo de Reporte</label>
-                            <Select value={tipoReporte} onValueChange={(value: "colegio" | "curso" | "paralelo") => setTipoReporte(value)}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Seleccionar tipo de reporte" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="colegio">Mejores del Colegio</SelectItem>
-                                    <SelectItem value="curso">Mejores por Curso</SelectItem>
-                                    <SelectItem value="paralelo">Mejores por Paralelo</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <label className="text-sm font-medium mb-2 block">Cantidad de Mejores</label>
+                            <label className="text-sm font-medium mb-2 block">Cantidad de Mejores Estudiantes</label>
                             <Input
                                 type="number"
                                 min="1"
@@ -231,15 +241,16 @@ export default function MejoresEstudiantesPage() {
                                 value={cantidadTop}
                                 onChange={(e) => setCantidadTop(Number(e.target.value))}
                                 placeholder="Ej: 3"
+                                className="max-w-xs"
                             />
                         </div>
                     </div>
 
-                    {/* Filtros según el tipo de reporte */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Filtros - Siempre visibles */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
                             <label className="text-sm font-medium mb-2 block">Colegio</label>
-                            <Select value={selectedColegio} onValueChange={setSelectedColegio}>
+                            <Select value={selectedColegio} onValueChange={handleColegioChange}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Seleccionar colegio" />
                                 </SelectTrigger>
@@ -254,66 +265,69 @@ export default function MejoresEstudiantesPage() {
                             </Select>
                         </div>
 
-                        {(tipoReporte === "curso" || tipoReporte === "paralelo") && (
-                            <div>
-                                <label className="text-sm font-medium mb-2 block">Nivel</label>
-                                <Select value={selectedNivel} onValueChange={setSelectedNivel}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Seleccionar nivel" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">Todos los niveles</SelectItem>
-                                        {niveles.map((nivel) => (
-                                            <SelectItem key={nivel.id} value={nivel.id.toString()}>
-                                                {nivel.nombre}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
-
-                        {tipoReporte === "paralelo" && (
-                            <div>
-                                <label className="text-sm font-medium mb-2 block">Curso</label>
-                                <Select value={selectedCurso} onValueChange={setSelectedCurso}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Seleccionar curso" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">Todos los cursos</SelectItem>
-                                        {cursos.map((curso) => (
-                                            <SelectItem key={curso.id} value={curso.id.toString()}>
-                                                {curso.nombre}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Paralelo solo para tipo paralelo */}
-                    {tipoReporte === "paralelo" && (
-                        <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-                            <div>
-                                <label className="text-sm font-medium mb-2 block">Paralelo</label>
-                                <Select value={selectedParalelo} onValueChange={setSelectedParalelo}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Seleccionar paralelo" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">Todos los paralelos</SelectItem>
-                                        {paralelos.map((paralelo) => (
-                                            <SelectItem key={paralelo.id} value={paralelo.id.toString()}>
-                                                {paralelo.letra}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                        <div>
+                            <label className="text-sm font-medium mb-2 block">Nivel</label>
+                            <Select 
+                                value={selectedNivel} 
+                                onValueChange={handleNivelChange}
+                                disabled={selectedColegio === "all"}
+                            >
+                                <SelectTrigger disabled={selectedColegio === "all"}>
+                                    <SelectValue placeholder={selectedColegio === "all" ? "Primero selecciona colegio" : "Seleccionar nivel"} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Todos los niveles</SelectItem>
+                                    {niveles.map((nivel) => (
+                                        <SelectItem key={nivel.id} value={nivel.id.toString()}>
+                                            {nivel.nombre}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
-                    )}
+
+                        <div>
+                            <label className="text-sm font-medium mb-2 block">Curso</label>
+                            <Select 
+                                value={selectedCurso} 
+                                onValueChange={handleCursoChange}
+                                disabled={selectedNivel === "all"}
+                            >
+                                <SelectTrigger disabled={selectedNivel === "all"}>
+                                    <SelectValue placeholder={selectedNivel === "all" ? "Primero selecciona nivel" : "Seleccionar curso"} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Todos los cursos</SelectItem>
+                                    {cursos.map((curso) => (
+                                        <SelectItem key={curso.id} value={curso.id.toString()}>
+                                            {curso.nombre}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-medium mb-2 block">Paralelo</label>
+                            <Select 
+                                value={selectedParalelo} 
+                                onValueChange={setSelectedParalelo}
+                                disabled={selectedCurso === "all"}
+                            >
+                                <SelectTrigger disabled={selectedCurso === "all"}>
+                                    <SelectValue placeholder={selectedCurso === "all" ? "Primero selecciona curso" : "Seleccionar paralelo"} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Todos los paralelos</SelectItem>
+                                    {paralelos.map((paralelo) => (
+                                        <SelectItem key={paralelo.id} value={paralelo.id.toString()}>
+                                            {paralelo.nombre}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
 
@@ -413,16 +427,36 @@ export default function MejoresEstudiantesPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {estudiantes.map((estudiante) => {
+                                    {estudiantes.map((estudiante, index) => {
                                         const performance = getPerformanceBadge(estudiante.promedio_general)
+                                        const tipoActual = getTipoReporte()
+                                        const showCursoSeparator = tipoActual === "curso" && index > 0 && estudiantes[index - 1].curso !== estudiante.curso
+                                        const showParaleloSeparator = tipoActual === "paralelo" && index > 0 && 
+                                            (estudiantes[index - 1].curso !== estudiante.curso || estudiantes[index - 1].paralelo !== estudiante.paralelo)
+                                        
                                         return (
-                                            <TableRow key={estudiante.id_estudiante} className="hover:bg-muted/50">
-                                                <TableCell>
-                                                    <div className="flex items-center gap-2">
-                                                        {getRankingIcon(estudiante.ranking)}
-                                                        <span className="font-bold">#{estudiante.ranking}</span>
-                                                    </div>
-                                                </TableCell>
+                                            <Fragment key={`estudiante-${estudiante.id_estudiante}-${index}`}>
+                                                {showCursoSeparator && (
+                                                    <TableRow className="bg-muted/30">
+                                                        <TableCell colSpan={8} className="text-center font-semibold py-2">
+                                                            📚 {estudiante.curso}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                                {showParaleloSeparator && (
+                                                    <TableRow className="bg-muted/30">
+                                                        <TableCell colSpan={8} className="text-center font-semibold py-2">
+                                                            📚 {estudiante.curso} - Paralelo {estudiante.paralelo}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                                <TableRow className="hover:bg-muted/50">
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            {getRankingIcon(estudiante.ranking || (index + 1))}
+                                                            <span className="font-bold">#{estudiante.ranking || (index + 1)}</span>
+                                                        </div>
+                                                    </TableCell>
                                                 <TableCell>
                                                     <div>
                                                         <p className="font-medium">{estudiante.nombre_completo}</p>
@@ -434,7 +468,9 @@ export default function MejoresEstudiantesPage() {
                                                 <TableCell>
                                                     <div className="text-sm">
                                                         <p>{estudiante.nivel}</p>
-                                                        <p className="text-muted-foreground">{estudiante.curso} {estudiante.paralelo}</p>
+                                                        <p className="text-muted-foreground">
+                                                            {estudiante.curso}{estudiante.paralelo ? ` - ${estudiante.paralelo}` : ''}
+                                                        </p>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-center">
@@ -464,7 +500,8 @@ export default function MejoresEstudiantesPage() {
                                                         {performance.label}
                                                     </Badge>
                                                 </TableCell>
-                                            </TableRow>
+                                                </TableRow>
+                                            </Fragment>
                                         )
                                     })}
                                 </TableBody>
