@@ -896,47 +896,36 @@
     <link href="http://fonts.googleapis.com/css?family=Oswald:700,400" rel="stylesheet">
     <!--/ END FONT STYLES -->
     <!-- START @GLOBAL MANDATORY STYLES -->
-    <link
-        href="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/bootstrap/dist/css/bootstrap.min.css"
+    <link href="/webherramienta/assets/global/plugins/bower_components/bootstrap/dist/css/bootstrap.min.css"
         rel="stylesheet">
     <!--/ END GLOBAL MANDATORY STYLES -->
 
     <!-- START @PAGE LEVEL STYLES -->
-    <link
-        href="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/fontawesome/css/font-awesome.min.css"
+    <link href="/webherramienta/assets/global/plugins/bower_components/fontawesome/css/font-awesome.min.css"
+        rel="stylesheet">
+    <link href="/webherramienta/assets/global/plugins/bower_components/animate.css/animate.min.css" rel="stylesheet">
+    <link href="/webherramienta/assets/global/plugins/bower_components/bootstrap-tagsinput/dist/bootstrap-tagsinput.css"
         rel="stylesheet">
     <link
-        href="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/animate.css/animate.min.css"
+        href="/webherramienta/assets/global/plugins/bower_components/jasny-bootstrap-fileinput/css/jasny-bootstrap-fileinput.min.css"
         rel="stylesheet">
-    <link
-        href="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/bootstrap-tagsinput/dist/bootstrap-tagsinput.css"
-        rel="stylesheet">
-    <link
-        href="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/jasny-bootstrap-fileinput/css/jasny-bootstrap-fileinput.min.css"
-        rel="stylesheet">
-    <link
-        href="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/chosen_v1.2.0/chosen.min.css"
-        rel="stylesheet">
-    <link
-        href="https://academico.sie.gob.bo/juegos/assets/global/plugins/bower_components/fuelux/dist/css/fuelux.min.css"
-        rel="stylesheet">
-    <link
-        href="https://academico.sie.gob.bo/juegos/assets/global/plugins/bower_components/datatables/css/dataTables.bootstrap.min.css"
+    <link href="/webherramienta/assets/global/plugins/bower_components/chosen_v1.2.0/chosen.min.css" rel="stylesheet">
+    <link href="/juegos/assets/global/plugins/bower_components/fuelux/dist/css/fuelux.min.css" rel="stylesheet">
+    <link href="/juegos/assets/global/plugins/bower_components/datatables/css/dataTables.bootstrap.min.css"
         rel="stylesheet">
 
     <link rel="stylesheet" type="text/css"
-        href="https://academico.sie.gob.bo/webherramienta/assets/commercial/plugins/cube-portfolio/cubeportfolio/css/cubeportfolio.css">
+        href="/webherramienta/assets/commercial/plugins/cube-portfolio/cubeportfolio/css/cubeportfolio.css">
     <!--/ END PAGE LEVEL STYLES -->
 
     <!-- START @THEME STYLES -->
-    <link href="https://academico.sie.gob.bo/webherramienta/assets/admin/css/reset.css" rel="stylesheet">
-    <link href="https://academico.sie.gob.bo/css/layout.css" rel="stylesheet">
-    <link href="https://academico.sie.gob.bo/webherramienta/assets/admin/css/components.css" rel="stylesheet">
-    <link href="https://academico.sie.gob.bo/webherramienta/assets/admin/css/plugins.css" rel="stylesheet">
-    <link href="https://academico.sie.gob.bo/webherramienta/assets/admin/css/themes/blue-gray.theme.css"
-        rel="stylesheet" id="theme">
-    <link href="https://academico.sie.gob.bo/webherramienta/assets/admin/css/custom.css" rel="stylesheet">
-    <link href="https://academico.sie.gob.bo/webherramienta/assets/admin/css/menuTree.css" rel="stylesheet">
+    <link href="/webherramienta/assets/admin/css/reset.css" rel="stylesheet">
+    <link href="/css/layout.css" rel="stylesheet">
+    <link href="/webherramienta/assets/admin/css/components.css" rel="stylesheet">
+    <link href="/webherramienta/assets/admin/css/plugins.css" rel="stylesheet">
+    <link href="/webherramienta/assets/admin/css/themes/blue-gray.theme.css" rel="stylesheet" id="theme">
+    <link href="/webherramienta/assets/admin/css/custom.css" rel="stylesheet">
+    <link href="/webherramienta/assets/admin/css/menuTree.css" rel="stylesheet">
 
     <!--/ END THEME STYLES -->
     <link href="https://openlayers.org/api/theme/default/style.css" rel="stylesheet">
@@ -944,19 +933,18 @@
     <!-- START @IE SUPPORT -->
     <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
     <!--[if lt IE 9]>
-            <script src="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/html5shiv/dist/html5shiv.min.js"></script>
-            <script src="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/respond-minmax/dest/respond.min.js"></script>
+            <script src="/webherramienta/assets/global/plugins/bower_components/html5shiv/dist/html5shiv.min.js"></script>
+            <script src="/webherramienta/assets/global/plugins/bower_components/respond-minmax/dest/respond.min.js"></script>
             <![endif]-->
     <!--/ END IE SUPPORT -->
-    <link href="https://academico.sie.gob.bo/bower_components/select2/dist/css/select2.min.css" rel="stylesheet">
-    <link
-        href="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/jquery.gritter/css/jquery.gritter.css"
+    <link href="/bower_components/select2/dist/css/select2.min.css" rel="stylesheet">
+    <link href="/webherramienta/assets/global/plugins/bower_components/jquery.gritter/css/jquery.gritter.css"
         rel="stylesheet">
-    <link href="https://academico.sie.gob.bo/css/plugins/bootstrap-datepicker/datepicker3.css" rel="stylesheet">
+    <link href="/css/plugins/bootstrap-datepicker/datepicker3.css" rel="stylesheet">
 
     <style>
         .loading {
-            background-image: url("https://academico.sie.gob.bo/img/loading.gif}");
+            background-image: url("/img/loading.gif}");
         }
 
         .img-responsive {
@@ -5944,9 +5932,8 @@
                 <div class="navbar-header">
 
                     <!-- Start brand -->
-                    <a class="navbar-brand" href="https://academico.sie.gob.bo/acceso/principal/">
-                        <img class="logo" src="https://academico.sie.gob.bo/webherramienta/img/logo/html/logo-white.png"
-                            alt="brand logo">
+                    <a class="navbar-brand" href="/acceso/principal/">
+                        <img class="logo" src="/webherramienta/img/logo/html/logo-white.png" alt="brand logo">
                     </a><!-- /.navbar-brand -->
                     <!--/ End brand -->
 
@@ -6009,8 +5996,7 @@
                         <li class="dropdown navbar-profile">
                             <a href="form-element.html#" class="dropdown-toggle" data-toggle="dropdown">
                                 <span class="meta">
-                                    <span class="avatar"><img
-                                            src="https://academico.sie.gob.bo/webherramienta/img/avatar/35/1.png"
+                                    <span class="avatar"><img src="/webherramienta/img/avatar/35/1.png"
                                             class="img-circle" alt="admin"></span>
                                     <span class="text hidden-xs hidden-sm text-white">MARITZA RITA</span>
                                     <span class="caret"></span>
@@ -6019,11 +6005,9 @@
                             <!-- Start dropdown menu -->
                             <ul class="dropdown-menu animated flipInX">
                                 <li class="dropdown-header">Account</li>
-                                <li><a href="https://academico.sie.gob.bo/acceso/usuarios_index/"><i
-                                            class="fa fa-user"></i>Gestión de usuarios</a>
+                                <li><a href="/acceso/usuarios_index/"><i class="fa fa-user"></i>Gestión de usuarios</a>
                                 </li>
-                                <li><a href="https://academico.sie.gob.bo/logout"><i
-                                            class="fa fa-sign-out"></i>Salir</a></li>
+                                <li><a href="/logout"><i class="fa fa-sign-out"></i>Salir</a></li>
                             </ul>
                             <!--/ End dropdown menu -->
                         </li><!-- /.navbar-profile -->
@@ -6064,7 +6048,7 @@
             <div class="sidebar-content">
                 <div class="media">
                     <a class="pull-left has-notif avatar" href="page-profile.html">
-                        <img src="https://academico.sie.gob.bo/webherramienta/img/avatar/50/1.png" alt="admin">
+                        <img src="/webherramienta/img/avatar/50/1.png" alt="admin">
                         <i class="online"></i>
                     </a>
                     <div class="media-body">
@@ -6079,14 +6063,14 @@
 
             <ul class="sidebar-menu">
                 <li>
-                    <a href="https://academico.sie.gob.bo/acceso/principal/">
+                    <a href="/acceso/principal/">
                         <span class="icon"><i class="fa fa-home"></i></span>
                         <span class="text">Inicio</span>
                     </a>
                 </li>
 
                 <!-- <li class="submenu">
-                        <a href="https://academico.sie.gob.bo/sie/inbox/">
+                        <a href="/sie/inbox/">
                             <span class="icon"><i class="fa fa-dropbox"></i></span>
                             <span class="text">Recibidos</span>
                             <span class="selected"></span>
@@ -6100,10 +6084,9 @@
                         <span class="arrow"></span>
                     </a>
                     <ul>
-                        <li><a href="https://academico.sie.gob.bo/sie/inbox/">Recibidos</a></li>
-                        <li><a href="https://academico.sie.gob.bo/sie/infoConsolidation/">Consolidación Info</a></li>
-                        <li><a href="https://academico.sie.gob.bo/sie/registerforeignerperson/">Registro
-                                Diplomático/Extranjero</a></li>
+                        <li><a href="/sie/inbox/">Recibidos</a></li>
+                        <li><a href="/sie/infoConsolidation/">Consolidación Info</a></li>
+                        <li><a href="/sie/registerforeignerperson/">Registro Diplomático/Extranjero</a></li>
 
 
 
@@ -6127,13 +6110,12 @@
                         <span class="arrow"></span>
                     </a>
                     <ul>
-                        <li><a href="https://academico.sie.gob.bo/sie/maestroAsignacion/asignar/maestro/materia/index">Asignación
-                                Docente</a></li>
+                        <li><a href="/sie/maestroAsignacion/asignar/maestro/materia/index">Asignación Docente</a></li>
                     </ul>
                 </li>
 
                 <li class="">
-                    <a href="https://academico.sie.gob.bo/sie/tramite/">
+                    <a href="/sie/tramite/">
                         <span class="icon"><i class="fa fa-home"></i></span>
                         <span class="text">Trámites</span>
                     </a>
@@ -6145,28 +6127,28 @@
                         <span class="arrow"></span>
                     </a>
                     <ul>
-                        <li><a href="https://academico.sie.gob.bo/sie/addcilocalidad/">Incorporar Datos</a></li>
+                        <li><a href="/sie/addcilocalidad/">Incorporar Datos</a></li>
                     </ul>
 
                     <ul>
-                        <li><a href="https://academico.sie.gob.bo/acceso/declaracionjurada/">Declaración Jurada</a></li>
+                        <li><a href="/acceso/declaracionjurada/">Declaración Jurada</a></li>
                     </ul>
                     <ul>
-                        <li><a href="https://academico.sie.gob.bo/acceso/newhistoryInscription/">Historial</a></li>
+                        <li><a href="/acceso/newhistoryInscription/">Historial</a></li>
                     </ul>
                     <ul>
-                        <li><a href="https://academico.sie.gob.bo/sie/changeParalelo/">Cambio de Paralelo</a></li>
+                        <li><a href="/sie/changeParalelo/">Cambio de Paralelo</a></li>
                     </ul>
                 </li>
                 <!--sub menu inscripciones UE -->
-                <!--li><a href="https://academico.sie.gob.bo/sie/inscriptiongral/"> Gestión</a></li -->
-                <!-- li><a href="https://academico.sie.gob.bo/sie/removeIns/">Eliminar Inscripción</a></li-->
-                <!--li><a href="https://academico.sie.gob.bo/sie/inscriptionSpecialNew/find">Centros de Educación Especial</a></li -->
-                <!-- li><a href="https://academico.sie.gob.bo/sie/inscriptionStudentsOmi/">Omitidos/Extemporáneos</a></li -->
-                <!--li><a href="https://academico.sie.gob.bo/sie/changeParalelo/">Cambio de Paralelo</a></li-->
-                <!--li><a href="https://academico.sie.gob.bo/sie/updatestudentlevel/">Modificar Nivel y Grado</a></li-->
-                <!--li><a href="https://academico.sie.gob.bo/sie/newunificationrudeinsc/rudeunifInsc">Unificar Rudes de Inscripción</a></li-->
-                <!--li><a href="https://academico.sie.gob.bo/acceso/unificacionInscriptionUe/">Corrección doble inscripción en la UE</a></li-->
+                <!--li><a href="/sie/inscriptiongral/"> Gestión</a></li -->
+                <!-- li><a href="/sie/removeIns/">Eliminar Inscripción</a></li-->
+                <!--li><a href="/sie/inscriptionSpecialNew/find">Centros de Educación Especial</a></li -->
+                <!-- li><a href="/sie/inscriptionStudentsOmi/">Omitidos/Extemporáneos</a></li -->
+                <!--li><a href="/sie/changeParalelo/">Cambio de Paralelo</a></li-->
+                <!--li><a href="/sie/updatestudentlevel/">Modificar Nivel y Grado</a></li-->
+                <!--li><a href="/sie/newunificationrudeinsc/rudeunifInsc">Unificar Rudes de Inscripción</a></li-->
+                <!--li><a href="/acceso/unificacionInscriptionUe/">Corrección doble inscripción en la UE</a></li-->
 
 
 
@@ -6182,7 +6164,7 @@
                         <span class="arrow"></span>
                     </a>
                     <ul>
-                        <li><a href="https://academico.sie.gob.bo/sie/censobeneficio/">Registro Beneficio CPV</a></li>
+                        <li><a href="/sie/censobeneficio/">Registro Beneficio CPV</a></li>
                     </ul>
 
 
@@ -6198,7 +6180,7 @@
                         <span class="arrow"></span>
                     </a>
                     <ul>
-                        <li><a href="https://academico.sie.gob.bo/sie/regularizarRue/">Fecha de Fundación</a></li>
+                        <li><a href="/sie/regularizarRue/">Fecha de Fundación</a></li>
                     </ul>
                 </li>
 
@@ -6230,8 +6212,8 @@
                       <span class="arrow"></span>
                     </a>
                     <ul>
-                      <li><a href="https://academico.sie.gob.bo/sie/downloadFileSieAcademico/">Descargar Archivo igm</a></li>
-                      <li><a href="https://academico.sie.gob.bo/sie/upfileue/"> Subir Archivo emp </a></li>
+                      <li><a href="/sie/downloadFileSieAcademico/">Descargar Archivo igm</a></li>
+                      <li><a href="/sie/upfileue/"> Subir Archivo emp </a></li>
                     </ul>
                   </li> -->
 
@@ -6265,11 +6247,11 @@
                     <ol class="breadcrumb">
                         <li>
                             <i class="fa fa-home"></i>
-                            <a href="https://academico.sie.gob.bo/sie/inbox/">Recibidos</a>
+                            <a href="/sie/inbox/">Recibidos</a>
                             <i class="fa fa-angle-right"></i>
                         </li>
                         <li>
-                            <form name="form" method="post" action="https://academico.sie.gob.bo/sie/inbox/sie/open">
+                            <form name="form" method="post" action="/sie/inbox/sie/open">
                                 <input type="hidden" id="form_data" name="form[data]"
                                     value="{&quot;id&quot;:80980472,&quot;gestion&quot;:&quot;2025&quot;}">
                                 <div>
@@ -6421,8 +6403,7 @@
 
                                                     <div class="dropdown-header">Reportes</div>
 
-                                                    <li><a
-                                                            href="https://academico.sie.gob.bo/reportdownload/listStudentPerUe/80980472/2025">Listado
+                                                    <li><a href="/reportdownload/listStudentPerUe/80980472/2025">Listado
                                                             de estudiantes</a></li>
 
 
@@ -7627,14 +7608,14 @@
 
                                             <span style="font-size:1.2em">Opciones del curso:</span>
                                             <a class="btn btn-menu tooltips"
-                                                href="https://academico.sie.gob.bo/reportdownload/listStudentPerCourse/80980472/2025/13/1/1/1"
+                                                href="/reportdownload/listStudentPerCourse/80980472/2025/13/1/1/1"
                                                 data-toggle="tooltip" data-container="body" title=""
                                                 data-original-title="Listado de Estudiantes del Curso">
                                                 <i class="fa fa-download" style="color:#FFFFFF"></i>
                                             </a>
 
                                             <a class="btn btn-menu tooltips"
-                                                href="https://academico.sie.gob.bo/reportdownload/boletinPromoPerUe/80980472/13/1/1/1/1/2025/Secundaria%20Comunitaria%20Productiva,Primero,A"
+                                                href="/reportdownload/boletinPromoPerUe/80980472/13/1/1/1/1/2025/Secundaria%20Comunitaria%20Productiva,Primero,A"
                                                 data-toggle="tooltip" data-container="body" title=""
                                                 data-original-title="Boletín centralizador preliminar">
                                                 <i class="fa fa-file-text-o"></i>
@@ -12041,7 +12022,7 @@
                                         url: "/sie/estudiantesocioeconomico/",
                                         beforeSend: function () {
                                             $('#modal').empty();
-                                            $('#modal').append('<div class="modal-dialog modal-lg"><div class="modal-content"><div class="panel panel-tab panel-tab-double"><div class="panel-heading no-padding"><div style="height:50px; background:#64CBE2; color:#FFFFFF; margin-top:-10px;"><h4 style="padding:10px 0px 0px 10px; text-align:center">RUDE</h4></div></div><div class="panel-body no-padding" id="modal-body"><div style="text-align:center; color:#69A7E2; font-size:17px; padding:20px"><img src="https://academico.sie.gob.bo/img/loading.gif"><br>Cargando...</div></div></div></div></div>');
+                                            $('#modal').append('<div class="modal-dialog modal-lg"><div class="modal-content"><div class="panel panel-tab panel-tab-double"><div class="panel-heading no-padding"><div style="height:50px; background:#64CBE2; color:#FFFFFF; margin-top:-10px;"><h4 style="padding:10px 0px 0px 10px; text-align:center">RUDE</h4></div></div><div class="panel-body no-padding" id="modal-body"><div style="text-align:center; color:#69A7E2; font-size:17px; padding:20px"><img src="/img/loading.gif"><br>Cargando...</div></div></div></div></div>');
                                         },
                                         success: function (data) {
                                             $('#modal').empty();
@@ -12073,7 +12054,7 @@
                                         url: "/sie/infoEstudianteRude/",
                                         beforeSend: function () {
                                             $('#modal').empty();
-                                            $('#modal').append('<div class="modal-dialog modal-lg"><div class="modal-content"><div class="panel panel-tab panel-tab-double"><div class="panel-heading no-padding"><div style="height:50px; background:#64CBE2; color:#FFFFFF; margin-top:-10px;"><h4 style="padding:10px 0px 0px 10px; text-align:center">RUDE</h4></div></div><div class="panel-body no-padding" id="modal-body"><div style="text-align:center; color:#69A7E2; font-size:17px; padding:20px"><img src="https://academico.sie.gob.bo/img/loading.gif"><br>Cargando...</div></div></div></div></div>');
+                                            $('#modal').append('<div class="modal-dialog modal-lg"><div class="modal-content"><div class="panel panel-tab panel-tab-double"><div class="panel-heading no-padding"><div style="height:50px; background:#64CBE2; color:#FFFFFF; margin-top:-10px;"><h4 style="padding:10px 0px 0px 10px; text-align:center">RUDE</h4></div></div><div class="panel-body no-padding" id="modal-body"><div style="text-align:center; color:#69A7E2; font-size:17px; padding:20px"><img src="/img/loading.gif"><br>Cargando...</div></div></div></div></div>');
                                         },
                                         success: function (data) {
                                             $('#modal').empty();
@@ -12105,7 +12086,7 @@
                                         url: "/sie/infoEstudianteRudeNuevo/",
                                         beforeSend: function () {
                                             $('#modal').empty();
-                                            $('#modal').append('<div class="modal-dialog modal-lg"><div class="modal-content"><div class="panel panel-tab panel-tab-double"><div class="panel-heading no-padding"><div style="height:50px; background:#64CBE2; color:#FFFFFF; margin-top:-10px;"><h4 style="padding:10px 0px 0px 10px; text-align:center">RUDE</h4></div></div><div class="panel-body no-padding" id="modal-body"><div style="text-align:center; color:#69A7E2; font-size:17px; padding:20px"><img src="https://academico.sie.gob.bo/img/loading.gif"><br>Cargando...</div></div></div></div></div>');
+                                            $('#modal').append('<div class="modal-dialog modal-lg"><div class="modal-content"><div class="panel panel-tab panel-tab-double"><div class="panel-heading no-padding"><div style="height:50px; background:#64CBE2; color:#FFFFFF; margin-top:-10px;"><h4 style="padding:10px 0px 0px 10px; text-align:center">RUDE</h4></div></div><div class="panel-body no-padding" id="modal-body"><div style="text-align:center; color:#69A7E2; font-size:17px; padding:20px"><img src="/img/loading.gif"><br>Cargando...</div></div></div></div></div>');
                                         },
                                         success: function (data) {
                                             $('#modal').empty();
@@ -12137,7 +12118,7 @@
                                         url: "/sie/apoderadoNuevo/",
                                         beforeSend: function () {
                                             $('#modal').empty();
-                                            $('#modal').append('<div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-content text-center" style="padding:20px;"><img src="https://academico.sie.gob.bo/img/loading.gif"><br>Cargando...</div></div></div>');
+                                            $('#modal').append('<div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-content text-center" style="padding:20px;"><img src="/img/loading.gif"><br>Cargando...</div></div></div>');
                                         },
                                         success: function (data) {
                                             $('#modal').empty();
@@ -12169,7 +12150,7 @@
                                         url: "/sie/apoderado-bono-familia/",
                                         beforeSend: function () {
                                             $('#modal').empty();
-                                            $('#modal').append('<div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-content text-center" style="padding:20px;"><img src="https://academico.sie.gob.bo/img/loading.gif"><br>Cargando...</div></div></div>');
+                                            $('#modal').append('<div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-content text-center" style="padding:20px;"><img src="/img/loading.gif"><br>Cargando...</div></div></div>');
                                         },
                                         success: function (data) {
                                             $('#modal').empty();
@@ -12201,7 +12182,7 @@
                                         url: "/sie/estudianteTrabaja/index",
                                         beforeSend: function () {
                                             $('#modal').empty();
-                                            $('#modal').append('<div class="modal-dialog modal-lg"><div class="modal-content"><div class="panel panel-tab panel-tab-double"><div class="panel-heading no-padding"><div style="height:50px; background:#64CBE2; color:#FFFFFF; margin-top:-10px;"><h4 style="padding:10px 0px 0px 10px; text-align:center">DATOS DE TRABAJO DEL ESTUDIANTE</h4></div></div><div class="panel-body no-padding" id="modal-body"><div style="text-align:center; color:#69A7E2; font-size:17px; padding:20px"><img src="https://academico.sie.gob.bo/img/loading.gif"><br>Cargando...</div></div></div></div></div>');
+                                            $('#modal').append('<div class="modal-dialog modal-lg"><div class="modal-content"><div class="panel panel-tab panel-tab-double"><div class="panel-heading no-padding"><div style="height:50px; background:#64CBE2; color:#FFFFFF; margin-top:-10px;"><h4 style="padding:10px 0px 0px 10px; text-align:center">DATOS DE TRABAJO DEL ESTUDIANTE</h4></div></div><div class="panel-body no-padding" id="modal-body"><div style="text-align:center; color:#69A7E2; font-size:17px; padding:20px"><img src="/img/loading.gif"><br>Cargando...</div></div></div></div></div>');
                                         },
                                         success: function (data) {
                                             $('#modal').empty();
@@ -12233,7 +12214,7 @@
                                         url: "/sie/estudianteTrabajaNuevo/",
                                         beforeSend: function () {
                                             $('#modal').empty();
-                                            $('#modal').append('<div class="modal-dialog modal-lg"><div class="modal-content"><div class="panel panel-tab panel-tab-double"><div class="panel-heading no-padding"><div style="height:50px; background:#64CBE2; color:#FFFFFF; margin-top:-10px;"><h4 style="padding:10px 0px 0px 10px; text-align:center">BUSQUEDA ESTUDIANTE Y REGISTRO TRABAJO</h4></div></div><div class="panel-body no-padding" id="modal-body"><div style="text-align:center; color:#69A7E2; font-size:17px; padding:20px"><img src="https://academico.sie.gob.bo/img/loading.gif"><br>Cargando...</div></div></div></div></div>');
+                                            $('#modal').append('<div class="modal-dialog modal-lg"><div class="modal-content"><div class="panel panel-tab panel-tab-double"><div class="panel-heading no-padding"><div style="height:50px; background:#64CBE2; color:#FFFFFF; margin-top:-10px;"><h4 style="padding:10px 0px 0px 10px; text-align:center">BUSQUEDA ESTUDIANTE Y REGISTRO TRABAJO</h4></div></div><div class="panel-body no-padding" id="modal-body"><div style="text-align:center; color:#69A7E2; font-size:17px; padding:20px"><img src="/img/loading.gif"><br>Cargando...</div></div></div></div></div>');
                                         },
                                         success: function (data) {
                                             $('#modal').empty();
@@ -12395,7 +12376,7 @@
                                         url: "/sie/infoEstudiante/sie/estudiante_areas_estudiante/index",
                                         beforeSend: function () {
                                             $('#modal').empty();
-                                            $('#modal').append('<div class="modal-dialog modal-lg"><div class="modal-content"><div class="panel panel-tab panel-tab-double"><div class="panel-heading no-padding"><div style="height:50px; background:#E14031; color:#FFFFFF; margin-top:-10px;"><h4 style="padding:15px 0px 0px 10px; text-align:left">Adición y Eliminación de Áreas / Estudiante</h4></div></div><div class="panel-body no-padding" id="modal-body"><div style="text-align:center; color:#69A7E2; font-size:17px; padding:20px"><img src="https://academico.sie.gob.bo/img/loading.gif"><br>Cargando...</div></div></div></div></div>');
+                                            $('#modal').append('<div class="modal-dialog modal-lg"><div class="modal-content"><div class="panel panel-tab panel-tab-double"><div class="panel-heading no-padding"><div style="height:50px; background:#E14031; color:#FFFFFF; margin-top:-10px;"><h4 style="padding:15px 0px 0px 10px; text-align:left">Adición y Eliminación de Áreas / Estudiante</h4></div></div><div class="panel-body no-padding" id="modal-body"><div style="text-align:center; color:#69A7E2; font-size:17px; padding:20px"><img src="/img/loading.gif"><br>Cargando...</div></div></div></div></div>');
                                         },
                                         success: function (data) {
                                             $('#modal').empty();
@@ -13177,7 +13158,7 @@
                                 beforeSend: function () {
                                     $('#modal-body').empty();
                                     $('.modal-footer').empty();
-                                    $('#modal-body').append("<div style='text-align:center; padding:10px; color:#6ECBFF; font-size:15px'><img src="https://academico.sie.gob.bo/img/loading-sm.gif"><br>Espere mientras se procesan los cambios...</div>");
+                                    $('#modal-body').append("<div style='text-align:center; padding:10px; color:#6ECBFF; font-size:15px'><img src='/img/loading-sm.gif'><br>Espere mientras se procesan los cambios...</div>");
                                 },
                                 success: function (data) {
 
@@ -13232,7 +13213,7 @@
                                 $('#respSpeciality').empty();
                                 //$('#modal-body').empty();
                                 //$('.modal-footer').empty();
-                                //$('#modal-body').append("<div style='text-align:center; padding:10px; color:#6ECBFF; font-size:15px'><img src="https://academico.sie.gob.bo/img/loading-sm.gif"><br>Espere mientras se procesan los cambios...</div>");
+                                //$('#modal-body').append("<div style='text-align:center; padding:10px; color:#6ECBFF; font-size:15px'><img src='/img/loading-sm.gif'><br>Espere mientras se procesan los cambios...</div>");
                             },
                             success: function (data) {
                                 $('#respSpeciality').append(data);
@@ -13420,8 +13401,8 @@
                                         <div class="media-list working">
                                             <a href="form-element.html#" class="media">
                                                 <div class="media-object pull-left has-notif">
-                                                    <img src="https://academico.sie.gob.bo/webherramienta/img/avatar/35/10.png"
-                                                        class="img-circle" alt="Daddy Botak">
+                                                    <img src="/webherramienta/img/avatar/35/10.png" class="img-circle"
+                                                        alt="Daddy Botak">
                                                     <i class="online"></i>
                                                 </div><!-- /.media-object -->
                                                 <div class="media-body">
@@ -13432,8 +13413,8 @@
                                             </a><!-- /.media -->
                                             <a href="form-element.html#" class="media">
                                                 <div class="media-object pull-left has-notif">
-                                                    <img src="https://academico.sie.gob.bo/webherramienta/img/avatar/35/11.png"
-                                                        class="img-circle" alt="Sarah Tingting">
+                                                    <img src="/webherramienta/img/avatar/35/11.png" class="img-circle"
+                                                        alt="Sarah Tingting">
                                                     <i class="offline"></i>
                                                 </div><!-- /.media-object -->
                                                 <div class="media-body">
@@ -13445,8 +13426,8 @@
                                             </a><!-- /.media -->
                                             <a href="form-element.html#" class="media">
                                                 <div class="media-object pull-left has-notif">
-                                                    <img src="https://academico.sie.gob.bo/webherramienta/img/avatar/35/26.png"
-                                                        class="img-circle" alt="">
+                                                    <img src="/webherramienta/img/avatar/35/26.png" class="img-circle"
+                                                        alt="">
                                                     <i class="busy"></i>
                                                 </div><!-- /.media-object -->
                                                 <div class="media-body">
@@ -13457,8 +13438,8 @@
                                             </a><!-- /.media -->
                                             <a href="form-element.html#" class="media">
                                                 <div class="media-object pull-left has-notif">
-                                                    <img src="https://academico.sie.gob.bo/webherramienta/img/avatar/35/13.png"
-                                                        class="img-circle" alt="Claudia Cinta">
+                                                    <img src="/webherramienta/img/avatar/35/13.png" class="img-circle"
+                                                        alt="Claudia Cinta">
                                                     <i class="online"></i>
                                                 </div><!-- /.media-object -->
                                                 <div class="media-body">
@@ -13469,8 +13450,8 @@
                                             </a><!-- /.media -->
                                             <a href="form-element.html#" class="media">
                                                 <div class="media-object pull-left has-notif">
-                                                    <img src="https://academico.sie.gob.bo/webherramienta/img/avatar/35/26.png"
-                                                        class="img-circle" alt="">
+                                                    <img src="/webherramienta/img/avatar/35/26.png" class="img-circle"
+                                                        alt="">
                                                     <i class="busy"></i>
                                                 </div><!-- /.media-object -->
                                                 <div class="media-body">
@@ -13988,8 +13969,8 @@
                                         <div class="media-list">
                                             <a href="form-element.html#" class="media">
                                                 <div class="media-object pull-left has-notif">
-                                                    <img src="https://academico.sie.gob.bo/webherramienta/img/avatar/35/10.png"
-                                                        class="img-circle" alt="Daddy Botak">
+                                                    <img src="/webherramienta/img/avatar/35/10.png" class="img-circle"
+                                                        alt="Daddy Botak">
                                                     <i class="online"></i>
                                                 </div><!-- /.media-object -->
                                                 <div class="media-body">
@@ -14000,8 +13981,8 @@
                                             </a><!-- /.media -->
                                             <a href="form-element.html#" class="media">
                                                 <div class="media-object pull-left has-notif">
-                                                    <img src="https://academico.sie.gob.bo/webherramienta/img/avatar/35/11.png"
-                                                        class="img-circle" alt="Sarah Tingting">
+                                                    <img src="/webherramienta/img/avatar/35/11.png" class="img-circle"
+                                                        alt="Sarah Tingting">
                                                     <i class="offline"></i>
                                                 </div><!-- /.media-object -->
                                                 <div class="media-body">
@@ -14013,8 +13994,8 @@
                                             </a><!-- /.media -->
                                             <a href="form-element.html#" class="media">
                                                 <div class="media-object pull-left has-notif">
-                                                    <img src="https://academico.sie.gob.bo/webherramienta/img/avatar/35/26.png"
-                                                        class="img-circle" alt="...">
+                                                    <img src="/webherramienta/img/avatar/35/26.png" class="img-circle"
+                                                        alt="...">
                                                     <i class="busy"></i>
                                                 </div><!-- /.media-object -->
                                                 <div class="media-body">
@@ -14025,8 +14006,8 @@
                                             </a><!-- /.media -->
                                             <a href="form-element.html#" class="media">
                                                 <div class="media-object pull-left has-notif">
-                                                    <img src="https://academico.sie.gob.bo/webherramienta/img/avatar/35/12.png"
-                                                        class="img-circle" alt="Harry Potret">
+                                                    <img src="/webherramienta/img/avatar/35/12.png" class="img-circle"
+                                                        alt="Harry Potret">
                                                     <i class="online"></i>
                                                 </div><!-- /.media-object -->
                                                 <div class="media-body">
@@ -14037,8 +14018,8 @@
                                             </a><!-- /.media -->
                                             <a href="form-element.html#" class="media">
                                                 <div class="media-object pull-left has-notif">
-                                                    <img src="https://academico.sie.gob.bo/webherramienta/img/avatar/35/26.png"
-                                                        class="img-circle" alt="...">
+                                                    <img src="/webherramienta/img/avatar/35/26.png" class="img-circle"
+                                                        alt="...">
                                                     <i class="busy"></i>
                                                 </div><!-- /.media-object -->
                                                 <div class="media-body">
@@ -14063,8 +14044,8 @@
                                         <div class="media-list">
                                             <a href="form-element.html#" class="media">
                                                 <div class="media-object pull-left has-notif">
-                                                    <img src="https://academico.sie.gob.bo/webherramienta/img/avatar/35/15.png"
-                                                        class="img-circle" alt="Jeck Joko">
+                                                    <img src="/webherramienta/img/avatar/35/15.png" class="img-circle"
+                                                        alt="Jeck Joko">
                                                     <i class="online"></i>
                                                 </div><!-- /.media-object -->
                                                 <div class="media-body">
@@ -14075,8 +14056,8 @@
                                             </a><!-- /.media -->
                                             <a href="form-element.html#" class="media">
                                                 <div class="media-object pull-left has-notif">
-                                                    <img src="https://academico.sie.gob.bo/webherramienta/img/avatar/35/16.png"
-                                                        class="img-circle" alt="Tenny Imoet">
+                                                    <img src="/webherramienta/img/avatar/35/16.png" class="img-circle"
+                                                        alt="Tenny Imoet">
                                                     <i class="busy"></i>
                                                 </div><!-- /.media-object -->
                                                 <div class="media-body">
@@ -14087,8 +14068,8 @@
                                             </a><!-- /.media -->
                                             <a href="form-element.html#" class="media">
                                                 <div class="media-object pull-left has-notif">
-                                                    <img src="https://academico.sie.gob.bo/webherramienta/img/avatar/35/17.png"
-                                                        class="img-circle" alt="Leli Madang">
+                                                    <img src="/webherramienta/img/avatar/35/17.png" class="img-circle"
+                                                        alt="Leli Madang">
                                                     <i class="offline"></i>
                                                 </div><!-- /.media-object -->
                                                 <div class="media-body">
@@ -14100,8 +14081,8 @@
                                             </a><!-- /.media -->
                                             <a href="form-element.html#" class="media">
                                                 <div class="media-object pull-left has-notif">
-                                                    <img src="https://academico.sie.gob.bo/webherramienta/img/avatar/35/18.png"
-                                                        class="img-circle" alt="Rebecca Cabean">
+                                                    <img src="/webherramienta/img/avatar/35/18.png" class="img-circle"
+                                                        alt="Rebecca Cabean">
                                                     <i class="offline"></i>
                                                 </div><!-- /.media-object -->
                                                 <div class="media-body">
@@ -14113,8 +14094,8 @@
                                             </a><!-- /.media -->
                                             <a href="form-element.html#" class="media">
                                                 <div class="media-object pull-left has-notif">
-                                                    <img src="https://academico.sie.gob.bo/webherramienta/img/avatar/35/26.png"
-                                                        class="img-circle" alt="...">
+                                                    <img src="/webherramienta/img/avatar/35/26.png" class="img-circle"
+                                                        alt="...">
                                                     <i class="busy"></i>
                                                 </div><!-- /.media-object -->
                                                 <div class="media-body">
@@ -14139,8 +14120,8 @@
                                         <div class="media-list">
                                             <a href="form-element.html#" class="media">
                                                 <div class="media-object pull-left has-notif">
-                                                    <img src="https://academico.sie.gob.bo/webherramienta/img/avatar/35/19.png"
-                                                        class="img-circle" alt="Sishy Mawar">
+                                                    <img src="/webherramienta/img/avatar/35/19.png" class="img-circle"
+                                                        alt="Sishy Mawar">
                                                     <i class="offline"></i>
                                                 </div><!-- /.media-object -->
                                                 <div class="media-body">
@@ -14152,8 +14133,8 @@
                                             </a><!-- /.media -->
                                             <a href="form-element.html#" class="media">
                                                 <div class="media-object pull-left has-notif">
-                                                    <img src="https://academico.sie.gob.bo/webherramienta/img/avatar/35/20.png"
-                                                        class="img-circle" alt="Mbah Roso">
+                                                    <img src="/webherramienta/img/avatar/35/20.png" class="img-circle"
+                                                        alt="Mbah Roso">
                                                     <i class="away"></i>
                                                 </div><!-- /.media-object -->
                                                 <div class="media-body">
@@ -14165,8 +14146,8 @@
                                             </a><!-- /.media -->
                                             <a href="form-element.html#" class="media">
                                                 <div class="media-object pull-left has-notif">
-                                                    <img src="https://academico.sie.gob.bo/webherramienta/img/avatar/35/26.png"
-                                                        class="img-circle" alt="...">
+                                                    <img src="/webherramienta/img/avatar/35/26.png" class="img-circle"
+                                                        alt="...">
                                                     <i class="busy"></i>
                                                 </div><!-- /.media-object -->
                                                 <div class="media-body">
@@ -14251,91 +14232,78 @@
 
     <!-- START JAVASCRIPT SECTION (Load javascripts at bottom to reduce load time) -->
     <!-- START @CORE PLUGINS -->
+    <script src="/webherramienta/assets/global/plugins/bower_components/jquery/dist/jquery.min.js"></script>
+    <script src="/webherramienta/assets/global/plugins/bower_components/jquery-cookie/jquery.cookie.js"></script>
+    <script src="/webherramienta/assets/global/plugins/bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script src="/webherramienta/assets/global/plugins/bower_components/typehead.js/dist/handlebars.js"></script>
     <script
-        src="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/jquery/dist/jquery.min.js"></script>
+        src="/webherramienta/assets/global/plugins/bower_components/typehead.js/dist/typeahead.bundle.min.js"></script>
     <script
-        src="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/jquery-cookie/jquery.cookie.js"></script>
+        src="/webherramienta/assets/global/plugins/bower_components/jquery-nicescroll/jquery.nicescroll.min.js"></script>
+    <script src="/webherramienta/assets/global/plugins/bower_components/jquery.sparkline.min/index.js"></script>
     <script
-        src="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
-    <script
-        src="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/typehead.js/dist/handlebars.js"></script>
-    <script
-        src="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/typehead.js/dist/typeahead.bundle.min.js"></script>
-    <script
-        src="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/jquery-nicescroll/jquery.nicescroll.min.js"></script>
-    <script
-        src="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/jquery.sparkline.min/index.js"></script>
-    <script
-        src="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/jquery-easing-original/jquery.easing.1.3.min.js"></script>
-    <script
-        src="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/ionsound/js/ion.sound.min.js"></script>
-    <script
-        src="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/bootbox/bootbox.js"></script>
+        src="/webherramienta/assets/global/plugins/bower_components/jquery-easing-original/jquery.easing.1.3.min.js"></script>
+    <script src="/webherramienta/assets/global/plugins/bower_components/ionsound/js/ion.sound.min.js"></script>
+    <script src="/webherramienta/assets/global/plugins/bower_components/bootbox/bootbox.js"></script>
 
     <!-- Highcharts Charts -->
-    <script src="https://academico.sie.gob.bo/js/highcharts/highcharts.js"></script>
-    <script src="https://academico.sie.gob.bo/js/highcharts/funnel.js"></script>
-    <script src="https://academico.sie.gob.bo/js/highcharts/highcharts-3d.js"></script>
-    <script src="https://academico.sie.gob.bo/js/highcharts/exporting.js"></script>
+    <script src="/js/highcharts/highcharts.js"></script>
+    <script src="/js/highcharts/funnel.js"></script>
+    <script src="/js/highcharts/highcharts-3d.js"></script>
+    <script src="/js/highcharts/exporting.js"></script>
     <!--/ END CORE PLUGINS -->
 
     <script
-        src="https://academico.sie.gob.bo/webherramienta/assets/commercial/plugins/cube-portfolio/cubeportfolio/js/jquery.cubeportfolio.min.js"></script>
+        src="/webherramienta/assets/commercial/plugins/cube-portfolio/cubeportfolio/js/jquery.cubeportfolio.min.js"></script>
 
     <!-- START @PAGE LEVEL PLUGINS -->
     <script
-        src="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/bootstrap-tagsinput/dist/bootstrap-tagsinput.min.js"></script>
+        src="/webherramienta/assets/global/plugins/bower_components/bootstrap-tagsinput/dist/bootstrap-tagsinput.min.js"></script>
     <script
-        src="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/jasny-bootstrap-fileinput/js/jasny-bootstrap.fileinput.min.js"></script>
+        src="/webherramienta/assets/global/plugins/bower_components/jasny-bootstrap-fileinput/js/jasny-bootstrap.fileinput.min.js"></script>
+    <script src="/webherramienta/assets/global/plugins/bower_components/holderjs/holder.js"></script>
     <script
-        src="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/holderjs/holder.js"></script>
+        src="/webherramienta/assets/global/plugins/bower_components/bootstrap-maxlength/bootstrap-maxlength.min.js"></script>
     <script
-        src="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/bootstrap-maxlength/bootstrap-maxlength.min.js"></script>
+        src="/webherramienta/assets/global/plugins/bower_components/jquery-autosize/jquery.autosize.min.js"></script>
+    <script src="/webherramienta/assets/global/plugins/bower_components/chosen_v1.2.0/chosen.jquery.min.js"></script>
     <script
-        src="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/jquery-autosize/jquery.autosize.min.js"></script>
-    <script
-        src="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/chosen_v1.2.0/chosen.jquery.min.js"></script>
-    <script
-        src="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/jquery-validation/dist/jquery.validate.min.js"></script>
-    <script
-        src="https://academico.sie.gob.bo/juegos/assets/global/plugins/bower_components/datatables/js/jquery.dataTables.min.js"></script>
-    <script
-        src="https://academico.sie.gob.bo/juegos/assets/global/plugins/bower_components/datatables/js/dataTables.bootstrap.min.js"></script>
-    <script
-        src="https://academico.sie.gob.bo/juegos/assets/global/plugins/bower_components/datatables/js/dataTables.bootstrap.js"></script>
-    <script
-        src="https://academico.sie.gob.bo/juegos/assets/global/plugins/bower_components/fuelux/dist/js/fuelux.min.js"></script>
+        src="/webherramienta/assets/global/plugins/bower_components/jquery-validation/dist/jquery.validate.min.js"></script>
+    <script src="/juegos/assets/global/plugins/bower_components/datatables/js/jquery.dataTables.min.js"></script>
+    <script src="/juegos/assets/global/plugins/bower_components/datatables/js/dataTables.bootstrap.min.js"></script>
+    <script src="/juegos/assets/global/plugins/bower_components/datatables/js/dataTables.bootstrap.js"></script>
+    <script src="/juegos/assets/global/plugins/bower_components/fuelux/dist/js/fuelux.min.js"></script>
 
     <!--/ END PAGE LEVEL PLUGINS -->
 
     <!-- START @PAGE LEVEL SCRIPTS -->
-    <script src="https://academico.sie.gob.bo/webherramienta/assets/admin/js/apps.js"></script>
-    <script src="https://academico.sie.gob.bo/webherramienta/assets/admin/js/pages/blankon.form.element.js"></script>
-    <script src="https://academico.sie.gob.bo/webherramienta/assets/admin/js/pages/blankon.form.validation.js"></script>
-    <script src="https://academico.sie.gob.bo/webherramienta/assets/admin/js/demo.js"></script>
-    <script src="https://academico.sie.gob.bo/webherramienta/assets/admin/js/menuTree.js"></script>
+    <script src="/webherramienta/assets/admin/js/apps.js"></script>
+    <script src="/webherramienta/assets/admin/js/pages/blankon.form.element.js"></script>
+    <script src="/webherramienta/assets/admin/js/pages/blankon.form.validation.js"></script>
+    <script src="/webherramienta/assets/admin/js/demo.js"></script>
+    <script src="/webherramienta/assets/admin/js/menuTree.js"></script>
     <!--/ END PAGE LEVEL SCRIPTS -->
     <!--/ END JAVASCRIPT SECTION -->
 
 
     <script
-        src="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/jquery.inputmask/dist/jquery.inputmask.bundle.min.js"></script>
+        src="/webherramienta/assets/global/plugins/bower_components/jquery.inputmask/dist/jquery.inputmask.bundle.min.js"></script>
 
     <!-- START GOOGLE ANALYTICS -->
     <script>
 
     </script>
-    <script src="https://academico.sie.gob.bo/bundles/fosjsrouting/js/router.js"></script>
-    <script src="https://academico.sie.gob.bo/js/routing?callback=fos.Router.setData"></script>
-    <script src="https://academico.sie.gob.bo/bower_components/select2/dist/js/select2.min.js"></script>
-    <script src="https://academico.sie.gob.bo/js/jquery.alphanum.js"></script>
+    <script src="/bundles/fosjsrouting/js/router.js"></script>
+    <script src="/js/routing?callback=fos.Router.setData"></script>
+    <script src="/bower_components/select2/dist/js/select2.min.js"></script>
+    <script src="/js/jquery.alphanum.js"></script>
     <!--/ END GOOGLE ANALYTICS -->
     <script
-        src="https://academico.sie.gob.bo/webherramienta/assets/global/plugins/bower_components/jquery.gritter/js/jquery.gritter.min.js"></script>
+        src="/webherramienta/assets/global/plugins/bower_components/jquery.gritter/js/jquery.gritter.min.js"></script>
 
-    <script src="https://academico.sie.gob.bo/js/plugins/bootstrap-datepicker/bootstrap-datepicker.js"></script>
+    <script src="/js/plugins/bootstrap-datepicker/bootstrap-datepicker.js"></script>
 
-    <script src="https://academico.sie.gob.bo/js/initialize.js"></script>
+    <script src="/js/initialize.js"></script>
     <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
 
     <script type="text/javascript">
@@ -14383,7 +14351,7 @@
                 url: Routing.generate('herramienta_info_estudiante_cerrarRude'),
                 beforeSend: function () {
                     $("#idCerrarRude").empty();
-                    $("#idCerrarRude").append('<div style="text-align:center"><img src="https://academico.sie.gob.bo/img/loading.gif" /></div>');
+                    $("#idCerrarRude").append('<div style="text-align:center"><img src="/img/loading.gif" /></div>');
                 },
                 success: function (data) {
                     $("#idCerrarRude").empty();
@@ -14411,7 +14379,7 @@
                 url: Routing.generate('herramienta_info_estudiante_get_students'),
                 beforeSend: function () {
                     $("#idstudents").empty();
-                    $("#idstudents").append('<div style="text-align:center"><img src="https://academico.sie.gob.bo/img/loading.gif" /></div>');
+                    $("#idstudents").append('<div style="text-align:center"><img src="/img/loading.gif" /></div>');
                 },
                 success: function (data) {
                     $("#idstudents").empty();
@@ -14437,7 +14405,7 @@
                 url: Routing.generate('herramienta_info_estudiante_optionsBth'),
                 beforeSend: function () {
                     $("#idstudents").empty();
-                    $("#idstudents").append('<div style="text-align:center"><img src="https://academico.sie.gob.bo/img/loading.gif"  /></div>');
+                    $("#idstudents").append('<div style="text-align:center"><img src="/img/loading.gif"  /></div>');
                 },
                 success: function (data) {
                     $("#idstudents").empty();
@@ -14463,7 +14431,7 @@
                 url: Routing.generate('herramienta_info_estudiante_see_students'),
                 beforeSend: function () {
                     $("#idstudents").empty();
-                    $("#idstudents").append('<div style="text-align:center"><img src="https://academico.sie.gob.bo/img/loading.gif"  /></div>');
+                    $("#idstudents").append('<div style="text-align:center"><img src="/img/loading.gif"  /></div>');
                 },
                 success: function (data) {
                     $("#idstudents").empty();
@@ -14491,7 +14459,7 @@
                 url: Routing.generate('herramienta_info_estudiante_see_students'),
                 beforeSend: function () {
                     $("#idstudents").empty();
-                    $("#idstudents").append('<div style="text-align:center"><img src="https://academico.sie.gob.bo/img/loading.gif"  /></div>');
+                    $("#idstudents").append('<div style="text-align:center"><img src="/img/loading.gif"  /></div>');
                 },
                 success: function (data) {
                     $("#idstudents").empty();
@@ -14528,7 +14496,7 @@
                 url: Routing.generate('herramienta_info_estudiante_inscription'),
                 beforeSend: function () {
                     $("#idstudents").empty();
-                    $("#idstudents").append('<div style="text-align:center"><img src="https://academico.sie.gob.bo/img/loading.gif" /></div>');
+                    $("#idstudents").append('<div style="text-align:center"><img src="/img/loading.gif" /></div>');
                 },
                 success: function (data) {
                     $("#idstudents").empty();
@@ -14561,7 +14529,7 @@
                     /* $("#idgrados").empty();
                      $("#idparalelos").empty();
                      $("#idstudents").empty();*/
-                    $("#idgrados_" + key).append('<div style="text-align:center"><img src="https://academico.sie.gob.bo/img/loading.gif"  /></div>');
+                    $("#idgrados_" + key).append('<div style="text-align:center"><img src="/img/loading.gif"  /></div>');
                 },
                 success: function (data) {
                     $("#idgrados_" + key).empty();
@@ -14588,7 +14556,7 @@
                 beforeSend: function () {
                     /* $("#idparalelos").empty();
                      $("#idstudents").empty();*/
-                    $("#idparalelos_" + key).append('<div style="text-align:center"><img src="https://academico.sie.gob.bo/img/loading.gif"  /></div>');
+                    $("#idparalelos_" + key).append('<div style="text-align:center"><img src="/img/loading.gif"  /></div>');
                 },
                 success: function (data) {
                     /*$("#idstudents").empty();
@@ -14708,7 +14676,7 @@
                 url: Routing.generate('herramienta_info_estudiante_with_rude'),
                 beforeSend: function () {
                     $("#idstudents").empty();
-                    $("#idstudents").append('<div style="text-align:center"><img src="https://academico.sie.gob.bo/img/loading.gif"  /></div>');
+                    $("#idstudents").append('<div style="text-align:center"><img src="/img/loading.gif"  /></div>');
                 },
                 success: function (data) {
                     $("#idstudents").empty();
@@ -14740,7 +14708,7 @@
                 url: Routing.generate('herramienta_info_estudiante_rude_inscription'),
                 beforeSend: function () {
                     $("#resultfindrude").empty();
-                    $("#resultfindrude").append('<div style="text-align:center"><img src="https://academico.sie.gob.bo/img/loading.gif" /></div>');
+                    $("#resultfindrude").append('<div style="text-align:center"><img src="/img/loading.gif" /></div>');
                 },
                 success: function (data) {
                     $("#resultfindrude").empty();
@@ -14769,7 +14737,7 @@
                 url: Routing.generate('herramienta_info_estudiante_exe_inscription'),
                 beforeSend: function () {
                     $("#resultfindrude").empty();
-                    $("#resultfindrude").append('<div style="text-align:center"><img src="https://academico.sie.gob.bo/img/loading.gif"  /></div>');
+                    $("#resultfindrude").append('<div style="text-align:center"><img src="/img/loading.gif"  /></div>');
                 },
                 success: function (data) {
                     $("#resultfindrude").empty();
@@ -14938,7 +14906,7 @@
                         data: formData,
                         beforeSend: function () {
                             $("#idstudents").empty();
-                            $("#idstudents").append('<div style="text-align:center"><img src="https://academico.sie.gob.bo/img/loading.gif"  /></div>');
+                            $("#idstudents").append('<div style="text-align:center"><img src="/img/loading.gif"  /></div>');
                         },
                         success: function (data) {
                             //console.log(data);return;
@@ -14990,7 +14958,7 @@
                         data: formData,
                         beforeSend: function () {
                             $("#idstudents").empty();
-                            $("#idstudents").append('<div style="text-align:center"><img src="https://academico.sie.gob.bo/img/loading.gif"  /></div>');
+                            $("#idstudents").append('<div style="text-align:center"><img src="/img/loading.gif"  /></div>');
                         },
                         success: function (data) {
 
@@ -15127,7 +15095,7 @@
                 url: "/sie/infoEstudiante/asigParalelo",
                 beforeSend: function () {
                     $("#modal").empty();
-                    $("#modal").append('<div style="text-align:center"><img src="https://academico.sie.gob.bo/img/loading.gif" /></div>');
+                    $("#modal").append('<div style="text-align:center"><img src="/img/loading.gif" /></div>');
                 },
                 success: function (data) {
                     console.log(data);

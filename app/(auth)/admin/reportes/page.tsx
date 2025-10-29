@@ -6,12 +6,10 @@ import { Badge } from "@/components/ui/badge"
 import {
     BarChart3,
     Award,
-    Clock,
     TrendingUp,
     Users,
     BookOpen,
     Calendar,
-    Download,
     FileText,
     Target,
     Star
@@ -29,16 +27,6 @@ export default function AdminReportesPage() {
             color: "text-yellow-600",
             bgColor: "bg-yellow-50",
             borderColor: "border-yellow-200"
-        },
-        {
-            id: "asistencia-general",
-            title: "Asistencia General",
-            description: "Reporte de asistencia de todos los estudiantes por nivel y curso",
-            icon: Clock,
-            href: "/admin/reportes/asistencia-general",
-            color: "text-blue-600",
-            bgColor: "bg-blue-50",
-            borderColor: "border-blue-200"
         },
         {
             id: "rendimiento-materias",

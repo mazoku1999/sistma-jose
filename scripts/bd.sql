@@ -190,6 +190,19 @@ CREATE TABLE IF NOT EXISTS centralizacion_notas (
   UNIQUE KEY unique_centralizacion (id_colegio, id_nivel, id_curso, id_paralelo, id_estudiante, trimestre, id_materia)
 );
 
+-- Tabla de gestiones academicas (años escolares)
+CREATE TABLE IF NOT EXISTS gestiones_academicas (
+  id_gestion INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(50) NOT NULL, -- Ej: "Gestión 2024"
+  anio INT NOT NULL, -- Año académico
+  fecha_inicio DATE NOT NULL,
+  fecha_fin DATE NOT NULL,
+  activa BOOLEAN DEFAULT FALSE,
+  descripcion VARCHAR(255),
+  fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY unique_gestion (anio)
+);
+
 -- Tabla de horario de profesores
 CREATE TABLE IF NOT EXISTS horario_profesor (
   id_horario INT AUTO_INCREMENT PRIMARY KEY,
@@ -298,19 +311,6 @@ INSERT INTO materias (nombre_corto, nombre_completo, descripcion) VALUES
 -- Insertar un colegio de ejemplo
 INSERT INTO colegios (nombre, direccion, telefono, email) VALUES 
 ('Colegio San Francisco', 'Calle Ayacucho 123, La Paz, Bolivia', '22123456', 'info@colegio.bo');
-
--- Tabla de gestiones academicas (anos escolares)
-CREATE TABLE IF NOT EXISTS gestiones_academicas (
-  id_gestion INT AUTO_INCREMENT PRIMARY KEY,
-  nombre VARCHAR(50) NOT NULL, -- Ej: "Gestión 2024"
-  anio INT NOT NULL, -- Año académico
-  fecha_inicio DATE NOT NULL,
-  fecha_fin DATE NOT NULL,
-  activa BOOLEAN DEFAULT FALSE,
-  descripcion VARCHAR(255),
-  fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY unique_gestion (anio)
-);
 
 -- Modificar tabla de aulas para incluir gestión
 ALTER TABLE aulas_profesor ADD COLUMN id_gestion INT NOT NULL DEFAULT 1;

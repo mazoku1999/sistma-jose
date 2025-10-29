@@ -4,6 +4,7 @@ import type React from "react"
 
 import { useState, useEffect, Suspense } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-provider"
 import { cn } from "@/lib/utils"
@@ -158,13 +159,8 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
       <div className="flex min-h-screen w-full !max-w-none">
         <Sidebar variant="inset" collapsible="icon">
           <SidebarHeader className="flex flex-col gap-4 py-4">
-            <div className="flex items-center gap-2 px-2">
-              <School className="h-6 w-6 text-primary" />
-              <h1 className="text-xl font-bold">SisAcadémico</h1>
-            </div>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <SidebarInput placeholder="Buscar..." className="pl-9" onClick={() => setSearchOpen(true)} readOnly />
+            <div className="flex items-center justify-center px-2">
+              <Image src="/logo.png" alt="SisAcadémico" width={120} height={120} priority />
             </div>
           </SidebarHeader>
 
@@ -262,7 +258,8 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
               </SidebarGroup>
             )}
 
-            {isProfesor && (
+            {/* Reportes de profesor temporalmente ocultos */}
+            {/* {isProfesor && (
               <SidebarGroup>
                 <SidebarGroupLabel>Reportes</SidebarGroupLabel>
                 <SidebarGroupContent>
@@ -307,7 +304,7 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
-            )}
+            )} */}
 
             {isAdministrativo && (
               <>
@@ -350,14 +347,6 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
                                   <Link href="/admin/reportes/mejores-estudiantes">
                                     <Award className="h-4 w-4" />
                                     <span>Mejores Estudiantes</span>
-                                  </Link>
-                                </SidebarMenuSubButton>
-                              </SidebarMenuSubItem>
-                              <SidebarMenuSubItem>
-                                <SidebarMenuSubButton asChild>
-                                  <Link href="/admin/reportes/asistencia-general">
-                                    <Clock className="h-4 w-4" />
-                                    <span>Asistencia General</span>
                                   </Link>
                                 </SidebarMenuSubButton>
                               </SidebarMenuSubItem>
@@ -488,14 +477,6 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
                                 <Link href="/admin/reportes/mejores-estudiantes">
                                   <Award className="h-4 w-4" />
                                   <span>Mejores Estudiantes</span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                            <SidebarMenuSubItem>
-                              <SidebarMenuSubButton asChild>
-                                <Link href="/admin/reportes/asistencia-general">
-                                  <Clock className="h-4 w-4" />
-                                  <span>Asistencia General</span>
                                 </Link>
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
