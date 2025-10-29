@@ -124,6 +124,7 @@ export default function StudentImportExport({
                 const paternoColIndex = 2 // columna C
                 const maternoColIndex = 3 // columna D
                 const nombresColIndex = 4 // columna E
+                const telefonoColIndex = 70 // columna BS (0-indexed)
 
                 const convertedData: any[] = []
                 for (let i = startRow; i < rows.length; i++) {
@@ -133,9 +134,15 @@ export default function StudentImportExport({
                     const apellidoPaterno = (row[paternoColIndex] || '').toString().trim()
                     const apellidoMaterno = (row[maternoColIndex] || '').toString().trim()
                     const nombres = (row[nombresColIndex] || '').toString().trim()
+                    const telefonoApoderado = (row[telefonoColIndex] || '').toString().trim()
 
                     if (!apellidoPaterno && !apellidoMaterno && !nombres) continue
-                    convertedData.push({ Nombres: nombres, ApellidoPaterno: apellidoPaterno, ApellidoMaterno: apellidoMaterno })
+                    convertedData.push({
+                        Nombres: nombres,
+                        ApellidoPaterno: apellidoPaterno,
+                        ApellidoMaterno: apellidoMaterno,
+                        TelefonoApoderado: telefonoApoderado,
+                    })
                 }
 
                 const finalJsonData = convertedData.filter(item => item.Nombres || item.ApellidoPaterno || item.ApellidoMaterno)
@@ -152,7 +159,8 @@ export default function StudentImportExport({
                 const normalizedData = finalJsonData.map(item => ({
                     ApellidoPaterno: (item.ApellidoPaterno || '').toString().trim(),
                     ApellidoMaterno: (item.ApellidoMaterno || '').toString().trim(),
-                    Nombres: (item.Nombres || '').toString().trim()
+                    Nombres: (item.Nombres || '').toString().trim(),
+                    TelefonoApoderado: (item.TelefonoApoderado || '').toString().trim(),
                 }))
 
                 const sortedData = sortStudents(normalizedData)
@@ -341,21 +349,23 @@ export default function StudentImportExport({
                             <h4 className="font-medium mb-3">Vista previa de estudiantes:</h4>
                             <div className="border rounded-lg overflow-hidden">
                                 <div className="bg-gray-50 px-4 py-2 border-b">
-                                    <div className="grid grid-cols-4 gap-4 font-medium text-sm text-gray-700">
+                                    <div className="grid grid-cols-5 gap-4 font-medium text-sm text-gray-700">
                                         <span>N°</span>
                                         <span>Apellido paterno</span>
                                         <span>Apellido materno</span>
                                         <span>Nombres</span>
+                                        <span>Tel. apoderado</span>
                                     </div>
                                 </div>
                                 <div className="max-h-60 overflow-y-auto">
                                     {importPreview.map((row: any, index) => (
                                         <div key={index} className="px-4 py-2 border-b last:border-b-0 hover:bg-gray-50">
-                                            <div className="grid grid-cols-4 gap-4 text-sm">
+                                            <div className="grid grid-cols-5 gap-4 text-sm">
                                                 <span className="text-gray-600">{index + 1}</span>
                                                 <span className="font-medium">{row.ApellidoPaterno}</span>
                                                 <span className="font-medium">{row.ApellidoMaterno}</span>
                                                 <span className="font-medium">{row.Nombres}</span>
+                                                <span className="font-medium">{row.TelefonoApoderado}</span>
                                             </div>
                                         </div>
                                     ))}

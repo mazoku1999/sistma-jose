@@ -61,9 +61,10 @@ export default function CentralPage() {
 
     const [estudiantes, setEstudiantes] = useState<Estudiante[]>([])
     const [notasCentralizadas, setNotasCentralizadas] = useState<Record<string, NotaCentralizada>>({})
-    const [isLoading, setIsLoading] = useState(false)
-    const [isSaving, setIsSaving] = useState(false)
+    const [estadisticas, setEstadisticas] = useState<any>(null)
     const [hasChanges, setHasChanges] = useState(false)
+    const [isSaving, setIsSaving] = useState(false)
+    const [isLoading, setIsLoading] = useState(false)
     // Derivar permisos directamente del usuario autenticado
     const canCentralize = !!user?.roles?.includes("ADMIN") || !!user?.roles?.includes("ADMINISTRATIVO")
 
@@ -148,22 +149,34 @@ export default function CentralPage() {
                 }
 
                 setNotasCentralizadas(notasMap)
+                
+                // Cargar estadísticas desde el backend
+                await fetchEstadisticas()
             } else {
-                toast({
-                    title: "Error",
-                    description: "No se pudieron cargar los datos",
-                    variant: "destructive",
-                })
+                console.error("Error al cargar estudiantes y notas")
             }
         } catch (error) {
-            console.error("Error al cargar datos:", error)
-            toast({
-                title: "Error",
-                description: "Error al cargar los datos",
-                variant: "destructive",
-            })
+            console.error("Error:", error)
         } finally {
             setIsLoading(false)
+        }
+    }
+
+    const fetchEstadisticas = async () => {
+        if (!selectedColegio || !selectedNivel || !selectedCurso || !selectedParalelo) return
+
+        try {
+            const response = await fetch(
+                `/api/central/notas/stats?colegio=${selectedColegio}&nivel=${selectedNivel}&curso=${selectedCurso}&paralelo=${selectedParalelo}&trimestre=${selectedTrimestre}`
+            )
+
+            if (response.ok) {
+                const stats = await response.json()
+                console.log('📊 Estadísticas del backend:', stats)
+                setEstadisticas(stats)
+            }
+        } catch (error) {
+            console.error("Error cargando estadísticas:", error)
         }
     }
 
@@ -363,50 +376,16 @@ export default function CentralPage() {
         return suma / notasEstudiante.length
     }
 
-    const getEstadisticas = () => {
-        const totalEstudiantes = estudiantes.length
-        
-        // Calcular promedios por estudiante
-        const promediosPorEstudiante = estudiantes.map(est => {
-            const notasEstudiante = materias
-                .map(mat => {
-                    const key = `${est.id_estudiante}-${mat.id}`
-                    const nota = notasCentralizadas[key]
-                    return nota && nota.nota_final > 0 ? nota.nota_final : 0
-                })
-                .filter(n => n > 0)
-            
-            const promedio = notasEstudiante.length > 0 
-                ? notasEstudiante.reduce((a, b) => a + b, 0) / notasEstudiante.length 
-                : 0
-            
-            return { estudiante: est, promedio, cantidadNotas: notasEstudiante.length }
-        })
-        
-        // Promedio general del curso (todos los estudiantes, incluso sin notas)
-        const promedioGeneral = totalEstudiantes > 0
-            ? promediosPorEstudiante.reduce((sum, p) => sum + p.promedio, 0) / totalEstudiantes
-            : 0
-        
-        // Estudiantes aprobados (promedio >= 51)
-        const aprobados = promediosPorEstudiante.filter(p => p.promedio >= 51).length
-        
-        // Estudiantes reprobados (promedio < 51 y promedio > 0)
-        const reprobados = promediosPorEstudiante.filter(p => p.promedio > 0 && p.promedio < 51).length
-        
-        // Estudiantes destacados (promedio >= 85)
-        const destacados = promediosPorEstudiante.filter(p => p.promedio >= 85).length
-        
-        return { 
-            totalEstudiantes,
-            promedioGeneral, 
-            aprobados,
-            reprobados,
-            destacados
-        }
+    // Usar estadísticas calculadas por el backend
+    const stats = estadisticas || {
+        totalEstudiantes: estudiantes.length,
+        promedioGeneral: 0,
+        aprobados: 0,
+        reprobados: 0,
+        destacados: 0,
+        puntajeMinimo: 51,
+        esEscala0a10: false
     }
-
-    const stats = getEstadisticas()
 
     // Mostrar loader mientras se resuelve la sesión para evitar parpadeo
     if (isAuthLoading) {
@@ -604,7 +583,9 @@ export default function CentralPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-red-600">{stats.reprobados}</div>
-                            <p className="text-xs text-muted-foreground">promedio &lt; 51</p>
+                            <p className="text-xs text-muted-foreground">
+                                promedio &lt; {stats.puntajeMinimo}
+                            </p>
                         </CardContent>
                     </Card>
 

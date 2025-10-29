@@ -4,18 +4,13 @@ import React, { useState, useEffect, useRef, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Progress } from "@/components/ui/progress"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { useTrimestreGlobal } from "@/hooks/use-trimestre-global"
-import { useGestionGlobal } from "@/hooks/use-gestion-global"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { useAuth } from "@/lib/auth-provider"
-import * as XLSX from "xlsx"
 import {
     ArrowLeft,
     Check,
@@ -86,20 +81,37 @@ export default function NotasPage() {
     const router = useRouter()
     const aulaId = params?.id
     const { toast } = useToast()
-    const { trimestreGlobal, trimestres } = useTrimestreGlobal()
     const { user } = useAuth()
+
+    // Definición local de trimestres
+    const trimestres = {
+        '1': { label: '1er Trimestre', icon: '🌱', periodo: '5 Feb - 10 May' },
+        '2': { label: '2do Trimestre', icon: '☀️', periodo: '13 May - 30 Ago' },
+        '3': { label: '3er Trimestre', icon: '🍂', periodo: '2 Sep - 10 Dic' }
+    }
     const puedeCentralizar = user?.roles.includes("ADMIN") || !!user?.profesor?.puede_centralizar_notas
 
     const [aula, setAula] = useState<Aula | null>(null)
     const [estudiantes, setEstudiantes] = useState<Estudiante[]>([])
     const [notas, setNotas] = useState<Record<number, Nota>>({})
     const [notasPorTrimestre, setNotasPorTrimestre] = useState<Record<number, Record<number, Nota>>>({ 1: {}, 2: {}, 3: {} })
+    const [notasPorTrimestreInicial, setNotasPorTrimestreInicial] = useState<Record<number, Record<number, Nota>>>({ 1: {}, 2: {}, 3: {} }) // Snapshot inicial
     const [isLoading, setIsLoading] = useState(true)
     const [isSaving, setIsSaving] = useState(false)
     const [isImporting, setIsImporting] = useState(false)
     const [isExporting, setIsExporting] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [hasChanges, setHasChanges] = useState(false)
+    const [trimestresHabilitados, setTrimestresHabilitados] = useState<Record<number, boolean>>({ 1: false, 2: false, 3: false })
+    const [isLoadingTrimestres, setIsLoadingTrimestres] = useState(true)
+    const [showTrimestreSelector, setShowTrimestreSelector] = useState(false)
+    const [pendingFile, setPendingFile] = useState<File | null>(null)
+    const [selectedTrimestreImport, setSelectedTrimestreImport] = useState<number | null>(null)
+
+    // Debug: Monitorear cambios en trimestresHabilitados
+    useEffect(() => {
+        console.log('📊 Estado trimestresHabilitados actualizado:', trimestresHabilitados)
+    }, [trimestresHabilitados])
 
 
 
@@ -173,16 +185,39 @@ export default function NotasPage() {
     }, [aulaId, router])
 
     useEffect(() => {
-        if (trimestreGlobal) {
+        if (aula) {
             fetchEstudiantes()
         }
-    }, [trimestreGlobal])
+    }, [aula])
 
     useEffect(() => {
         if (estudiantes.length > 0) {
             fetchNotasTodas()
         }
     }, [estudiantes])
+
+    useEffect(() => {
+        // Cargar trimestres habilitados al montar el componente
+        fetchTrimestresHabilitados()
+    }, [])
+
+    const fetchTrimestresHabilitados = async () => {
+        try {
+            setIsLoadingTrimestres(true)
+            const response = await fetch('/api/profesores/trimestres-habilitados')
+            if (response.ok) {
+                const data = await response.json()
+                console.log('🔍 TRIMESTRES HABILITADOS DESDE API:', data.trimestres_habilitados)
+                setTrimestresHabilitados(data.trimestres_habilitados)
+            } else {
+                console.error('❌ Error en API trimestres:', response.status)
+            }
+        } catch (error) {
+            console.error("Error al cargar trimestres habilitados:", error)
+        } finally {
+            setIsLoadingTrimestres(false)
+        }
+    }
 
     const fetchAula = async () => {
         if (!aulaId) return
@@ -262,14 +297,17 @@ export default function NotasPage() {
                 map3[normalized.id_inscripcion] = normalized
             })
 
-            setNotasPorTrimestre({ 1: map1, 2: map2, 3: map3 })
-            // Sincronizar estado editable con el trimestre actual
-            if (trimestreGlobal) {
-                const t = parseInt(trimestreGlobal)
-                const currentMap = t === 1 ? map1 : t === 2 ? map2 : map3
-                setNotas({ ...currentMap })
-                return currentMap
-            }
+            const notasCompletas = { 1: map1, 2: map2, 3: map3 }
+            setNotasPorTrimestre(notasCompletas)
+            
+            // Guardar snapshot inicial (copia profunda) para comparar cambios
+            setNotasPorTrimestreInicial(JSON.parse(JSON.stringify(notasCompletas)))
+            
+            // Sincronizar con el primer trimestre disponible (para vista inicial)
+            // Los inputs editables se controlan por trimestresHabilitados
+            const firstMap = map1
+            setNotas({ ...firstMap })
+            return firstMap
         } catch (error) {
             console.error("Error al cargar notas:", error)
         }
@@ -285,7 +323,14 @@ export default function NotasPage() {
         valor: number,
         bgColor: string
     ) => {
-        const esEditable = trimestreGlobal === trimestre.toString()
+        // Los tutores pueden editar todos los trimestres
+        // Los profesores solo los habilitados por el admin
+        const esEditable = aula?.es_tutor || (!isLoadingTrimestres && trimestresHabilitados[trimestre])
+
+        // Debug: Ver qué está evaluando
+        if (inscripcionId === 1) { // Solo log para el primer estudiante
+            console.log(`🎯 T${trimestre} - editable:`, esEditable, 'tutor:', aula?.es_tutor, 'loading:', isLoadingTrimestres, 'habilitado:', trimestresHabilitados[trimestre])
+        }
 
         return (
             <TableCell className={`text-center ${bgColor}`}>
@@ -331,58 +376,7 @@ export default function NotasPage() {
         })
     }, [estudiantes])
 
-    const handleDimensionChange = (
-        inscripcionId: number,
-        dimension: 'nota_ser' | 'nota_saber' | 'nota_hacer' | 'nota_decidir' | 'nota_autoevaluacion',
-        valor: string
-    ) => {
-        if (!trimestreGlobal) return
-
-        const t = parseInt(trimestreGlobal)
-        const notaActual = notas[inscripcionId] || {
-            id_inscripcion: inscripcionId,
-            trimestre: t,
-            nota_ser: 0,
-            nota_saber: 0,
-            nota_hacer: 0,
-            nota_decidir: 0,
-            nota_autoevaluacion: 0,
-            promedio_final_trimestre: 0
-        }
-
-        if (valor.trim() === "") {
-            valor = "0"
-        }
-
-        const nota = Number(valor)
-        if (!Number.isFinite(nota)) {
-            return
-        }
-
-        const bounded = Math.max(0, Math.min(100, nota))
-
-        // Actualizar la dimensión específica
-        const notaActualizada = {
-            ...notaActual,
-            [dimension]: bounded
-        }
-
-        // Calcular el puntaje trimestral automáticamente (SUMA de las 5 dimensiones)
-        notaActualizada.promedio_final_trimestre = calcularPuntajeTrimestral(
-            notaActualizada.nota_ser,
-            notaActualizada.nota_saber,
-            notaActualizada.nota_hacer,
-            notaActualizada.nota_decidir,
-            notaActualizada.nota_autoevaluacion
-        )
-
-        setNotas(prev => ({ ...prev, [inscripcionId]: notaActualizada }))
-        setNotasPorTrimestre(prev => ({
-            ...prev,
-            [t]: { ...(prev[t] || {}), [inscripcionId]: notaActualizada }
-        }))
-        setHasChanges(true)
-    }
+    // Función handleDimensionChange eliminada - no se usaba
 
     // Función para actualizar dimensiones por trimestre específico (para tutores)
     const handleTrimestreDimensionChange = (
@@ -448,86 +442,118 @@ export default function NotasPage() {
 
         setIsSaving(true)
         try {
-            if (aula?.es_tutor) {
-                // TUTOR: Guardar notas de los 3 trimestres
-                for (let trimestre = 1; trimestre <= 3; trimestre++) {
-                    const notasTrimestre = notasPorTrimestre[trimestre] || {}
-                    const notasArray = Object.values(notasTrimestre).filter(nota =>
-                        nota.promedio_final_trimestre >= 0 && nota.promedio_final_trimestre <= 100
-                    )
-
-                    if (notasArray.length > 0) {
-                        const response = await fetch(`/api/aulas/${aulaId}/notas`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                trimestre,
-                                notas: notasArray
-                            })
-                        })
-
-                        if (!response.ok) {
-                            throw new Error(`Error guardando trimestre ${trimestre}`)
-                        }
-                    }
-                }
-
-                toast({
-                    title: "Éxito",
-                    description: "Notas de todos los trimestres guardadas correctamente",
-                })
-            } else {
-                // PROFESOR: Guardar solo el trimestre actual
-                if (!trimestreGlobal) return
-
-                const notasArray = Object.values(notas).filter(nota =>
-                    nota.promedio_final_trimestre >= 0 && nota.promedio_final_trimestre <= 100
+            // Función para comparar si dos notas son diferentes
+            const sonDiferentes = (nota1: Nota | undefined, nota2: Nota | undefined): boolean => {
+                if (!nota1 && !nota2) return false
+                if (!nota1 || !nota2) return true
+                
+                return (
+                    nota1.nota_ser !== nota2.nota_ser ||
+                    nota1.nota_saber !== nota2.nota_saber ||
+                    nota1.nota_hacer !== nota2.nota_hacer ||
+                    nota1.nota_decidir !== nota2.nota_decidir ||
+                    nota1.nota_autoevaluacion !== nota2.nota_autoevaluacion ||
+                    nota1.promedio_final_trimestre !== nota2.promedio_final_trimestre
                 )
-
-                const response = await fetch(`/api/aulas/${aulaId}/notas`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        trimestre: parseInt(trimestreGlobal),
-                        notas: notasArray
-                    })
-                })
-
-                if (!response.ok) {
-                    throw new Error('Error guardando notas')
-                }
-
-                toast({
-                    title: "Éxito",
-                    description: "Notas guardadas correctamente",
-                })
-
-                const t = parseInt(trimestreGlobal)
-                const updated: Record<number, Nota> = {}
-                notasArray.forEach((nota) => {
-                    updated[nota.id_inscripcion] = {
-                        id_inscripcion: nota.id_inscripcion,
-                        trimestre: t,
-                        nota_ser: nota.nota_ser || 0,
-                        nota_saber: nota.nota_saber || 0,
-                        nota_hacer: nota.nota_hacer || 0,
-                        nota_decidir: nota.nota_decidir || 0,
-                        nota_autoevaluacion: nota.nota_autoevaluacion || 0,
-                        promedio_final_trimestre: nota.promedio_final_trimestre || 0,
-                    }
-                })
-                setNotas((prev) => ({ ...prev, ...updated }))
-                setNotasPorTrimestre((prev) => ({
-                    ...prev,
-                    [t]: { ...(prev[t] || {}), ...updated }
-                }))
             }
 
+            // Preparar solo las notas que cambiaron
+            const notasParaGuardar: Record<string, any[]> = {}
+
+            if (aula?.es_tutor) {
+                // TUTOR: Preparar notas modificadas de los 3 trimestres
+                for (let trimestre = 1; trimestre <= 3; trimestre++) {
+                    const notasTrimestre = notasPorTrimestre[trimestre] || {}
+                    const notasInicialesTrimestre = notasPorTrimestreInicial[trimestre] || {}
+                    
+                    const notasModificadas = Object.values(notasTrimestre).filter(nota => {
+                        const notaInicial = notasInicialesTrimestre[nota.id_inscripcion]
+                        return sonDiferentes(nota, notaInicial) &&
+                               nota.promedio_final_trimestre >= 0 && 
+                               nota.promedio_final_trimestre <= 100
+                    })
+
+                    if (notasModificadas.length > 0) {
+                        notasParaGuardar[trimestre] = notasModificadas
+                        console.log(`✏️ Trimestre ${trimestre}: ${notasModificadas.length} notas modificadas`)
+                    }
+                }
+            } else {
+                // PROFESOR: Preparar solo trimestres habilitados y modificados
+                console.log('🔍 Guardando notas - Trimestres habilitados:', trimestresHabilitados)
+
+                for (let t = 1; t <= 3; t++) {
+                    if (!trimestresHabilitados[t]) {
+                        console.log(`⏭️ Trimestre ${t} NO habilitado - saltando`)
+                        continue
+                    }
+
+                    const notasMap = notasPorTrimestre[t] || {}
+                    const notasInicialesMap = notasPorTrimestreInicial[t] || {}
+                    
+                    const notasModificadas = Object.values(notasMap).filter(nota => {
+                        const notaInicial = notasInicialesMap[nota.id_inscripcion]
+                        return sonDiferentes(nota, notaInicial) &&
+                               nota.promedio_final_trimestre >= 0 && 
+                               nota.promedio_final_trimestre <= 100
+                    })
+
+                    console.log(`📊 Trimestre ${t}: ${notasModificadas.length} notas modificadas`)
+
+                    if (notasModificadas.length > 0) {
+                        notasParaGuardar[t] = notasModificadas
+                    }
+                }
+            }
+
+            // Verificar que hay algo que guardar
+            const totalTrimestres = Object.keys(notasParaGuardar).length
+            if (totalTrimestres === 0) {
+                toast({
+                    title: "Sin cambios",
+                    description: "No hay notas para guardar",
+                    variant: "destructive",
+                })
+                return
+            }
+
+            console.log(`📦 Enviando batch con ${totalTrimestres} trimestre(s)`)
+
+            // Enviar todas las notas en una sola petición
+            const response = await fetch(`/api/aulas/${aulaId}/notas/batch`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    notasPorTrimestre: notasParaGuardar
+                })
+            })
+
+            if (!response.ok) {
+                throw new Error('Error guardando notas')
+            }
+
+            const result = await response.json()
+
+            // Construir mensaje detallado con los trimestres guardados
+            const trimestresGuardadosNumeros = result.trimestresGuardados || Object.keys(notasParaGuardar).map(Number)
+            const trimestresTexto = trimestresGuardadosNumeros.length === 1 
+                ? `Trimestre ${trimestresGuardadosNumeros[0]}`
+                : `Trimestres ${trimestresGuardadosNumeros.join(', ')}`
+            
+            const totalNotasGuardadas = Object.values(notasParaGuardar).reduce((sum: number, notas: any) => sum + notas.length, 0)
+
+            toast({
+                title: "✅ Éxito",
+                description: `${totalNotasGuardadas} nota(s) del ${trimestresTexto} guardadas correctamente`,
+            })
+
             setHasChanges(false)
+            
+            // Actualizar el snapshot inicial con el estado actual (después de guardar)
+            setNotasPorTrimestreInicial(JSON.parse(JSON.stringify(notasPorTrimestre)))
+            
             await fetchNotasTodas()
 
         } catch (error: any) {
@@ -543,13 +569,43 @@ export default function NotasPage() {
     }
 
 
-    const handleImportClick = () => fileInputRef.current?.click()
+    const handleImportClick = () => {
+        // Verificar trimestres habilitados
+        const habilitados = Object.entries(trimestresHabilitados)
+            .filter(([_, enabled]) => enabled)
+            .map(([t]) => parseInt(t))
+
+        if (habilitados.length === 0) {
+            toast({
+                title: "Sin permisos",
+                description: "No tienes trimestres habilitados para importar notas",
+                variant: "destructive"
+            })
+            return
+        }
+
+        // Si hay solo 1 trimestre habilitado, seleccionarlo automáticamente
+        if (habilitados.length === 1) {
+            setSelectedTrimestreImport(habilitados[0])
+            fileInputRef.current?.click()
+        } else {
+            // Múltiples trimestres: mostrar selector
+            setShowTrimestreSelector(true)
+        }
+    }
+
+    const handleTrimestreSelected = (trimestre: number) => {
+        setSelectedTrimestreImport(trimestre)
+        setShowTrimestreSelector(false)
+        fileInputRef.current?.click()
+    }
 
     const handleImportNotasFromExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
-        if (!trimestreGlobal) {
-            toast({ title: "Selecciona trimestre", description: "Define el trimestre antes de importar", variant: "destructive" })
+
+        if (!selectedTrimestreImport) {
+            toast({ title: "Error", description: "No se seleccionó trimestre", variant: "destructive" })
             e.target.value = ""
             return
         }
@@ -615,7 +671,7 @@ export default function NotasPage() {
             let matched = 0
             let notFound = 0
             const updates: Record<number, Nota> = {}
-            const t = parseInt(trimestreGlobal)
+            const t = selectedTrimestreImport
 
             for (const notaImportada of notasImportadas) {
                 const tokens = tokenizeName(notaImportada.nombre)
@@ -899,7 +955,18 @@ export default function NotasPage() {
     }
 
     const handleDownloadTemplate = () => {
-        if (!aula || !trimestreGlobal) return
+        if (!aula) return
+
+        // Usar el primer trimestre habilitado para el template
+        const primerHabilitado = [1, 2, 3].find(t => trimestresHabilitados[t])
+        if (!primerHabilitado) {
+            toast({
+                title: "Sin permisos",
+                description: "No tienes trimestres habilitados",
+                variant: "destructive",
+            })
+            return
+        }
 
         const aulaInfo: AulaInfo = {
             nombre_aula: aula.nombre_aula,
@@ -911,7 +978,7 @@ export default function NotasPage() {
         }
 
         try {
-            const result = createNotasImportTemplate(aulaInfo, parseInt(trimestreGlobal))
+            const result = createNotasImportTemplate(aulaInfo, primerHabilitado)
             toast({
                 title: "📋 Template descargado",
                 description: `Archivo ${result.fileName} listo para usar`,
@@ -927,33 +994,50 @@ export default function NotasPage() {
     }
 
     const getEstadisticasNotas = () => {
-        const notasValidas = Object.values(notas).filter(n => n.promedio_final_trimestre > 0)
         const total = estudiantes.length
-        const conNotas = notasValidas.length
+        
+        // Recopilar todas las notas de todos los trimestres (solo los habilitados para profesores)
+        const todasLasNotas: number[] = []
+        const estudiantesConNotas = new Set<number>()
+
+        for (let t = 1; t <= 3; t++) {
+            // Para profesores, solo contar trimestres habilitados
+            if (!aula?.es_tutor && !trimestresHabilitados[t]) {
+                continue
+            }
+
+            const notasTrimestre = notasPorTrimestre[t] || {}
+            Object.entries(notasTrimestre).forEach(([inscripcionId, nota]) => {
+                if (nota.promedio_final_trimestre > 0) {
+                    todasLasNotas.push(nota.promedio_final_trimestre)
+                    estudiantesConNotas.add(parseInt(inscripcionId))
+                }
+            })
+        }
+
+        const conNotas = estudiantesConNotas.size
         const sinNotas = total - conNotas
 
-        if (notasValidas.length === 0) {
+        if (todasLasNotas.length === 0) {
             return { total, conNotas, sinNotas, promedio: 0, aprobados: 0, reprobados: 0 }
         }
 
-        const suma = notasValidas.reduce((acc, nota) => acc + nota.promedio_final_trimestre, 0)
-        const promedio = suma / notasValidas.length
-        const aprobados = notasValidas.filter(n => n.promedio_final_trimestre >= 51).length // >= 51% de 100
-        const reprobados = notasValidas.filter(n => n.promedio_final_trimestre < 51).length
+        const suma = todasLasNotas.reduce((acc, nota) => acc + nota, 0)
+        const promedio = suma / todasLasNotas.length
+        const aprobados = todasLasNotas.filter(n => n >= 51).length
+        const reprobados = todasLasNotas.filter(n => n < 51).length
 
         return { total, conNotas, sinNotas, promedio, aprobados, reprobados }
     }
 
     const stats = getEstadisticasNotas()
 
-    if (isLoading || !trimestreGlobal) {
+    if (isLoading) {
         return (
             <div className="flex items-center justify-center h-full">
                 <div className="text-center">
                     <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-                    <p className="mt-4 text-muted-foreground">
-                        {!trimestreGlobal ? "Cargando configuración..." : "Cargando notas..."}
-                    </p>
+                    <p className="mt-4 text-muted-foreground">Cargando notas...</p>
                 </div>
             </div>
         )
@@ -977,39 +1061,38 @@ export default function NotasPage() {
 
             </div>
 
-            {trimestreGlobal && (
-                <>
-                    <div className="flex justify-end gap-2">
-                        {!!aula?.es_tutor && (
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        disabled={estudiantes.length === 0 || isExporting}
-                                        title="Exportar notas (Solo tutores)"
-                                    >
-                                        {isExporting ? (
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        ) : (
-                                            <Download className="mr-2 h-4 w-4" />
-                                        )}
-                                        {isExporting ? "Exportando..." : "Exportar"}
-                                        <ChevronDown className="ml-2 h-4 w-4" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={handleExportarNotas}>
-                                        <FileText className="mr-2 h-4 w-4" />
-                                        Promedios
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={handleExportarDimensiones}>
-                                        <BarChart3 className="mr-2 h-4 w-4" />
-                                        Dimensiones
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        )}
-                        {/* Template button - Comentado para uso futuro
+            <>
+                <div className="flex justify-end gap-2">
+                    {!!aula?.es_tutor && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    disabled={estudiantes.length === 0 || isExporting}
+                                    title="Exportar notas (Solo tutores)"
+                                >
+                                    {isExporting ? (
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <Download className="mr-2 h-4 w-4" />
+                                    )}
+                                    {isExporting ? "Exportando..." : "Exportar"}
+                                    <ChevronDown className="ml-2 h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={handleExportarNotas}>
+                                    <FileText className="mr-2 h-4 w-4" />
+                                    Promedios
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={handleExportarDimensiones}>
+                                    <BarChart3 className="mr-2 h-4 w-4" />
+                                    Dimensiones
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
+                    {/* Template button - Comentado para uso futuro
                         {!!aula?.es_tutor && (
                             <Button
                                 variant="outline"
@@ -1021,302 +1104,226 @@ export default function NotasPage() {
                             </Button>
                         )}
                         */}
-                        <Button
-                            variant="outline"
-                            onClick={handleImportClick}
-                            disabled={isImporting}
-                            title="Importar notas desde Excel"
-                        >
-                            {isImporting ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                                <Send className="mr-2 h-4 w-4 rotate-[-90deg]" />
-                            )}
-                            Importar Excel
-                        </Button>
-                        <Button
-                            onClick={handleGuardarNotas}
-                            disabled={!hasChanges || isSaving || !puedeCentralizar}
-                            title={!puedeCentralizar ? "Necesitas permiso para guardar notas" : ""}
-                        >
-                            {isSaving ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                                <Save className="mr-2 h-4 w-4" />
-                            )}
-                            Guardar Notas
-                        </Button>
+                    <Button
+                        variant="outline"
+                        onClick={handleImportClick}
+                        disabled={isImporting}
+                        title="Importar notas desde Excel"
+                    >
+                        {isImporting ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <Send className="mr-2 h-4 w-4 rotate-[-90deg]" />
+                        )}
+                        Importar Excel
+                    </Button>
+                    <Button
+                        onClick={handleGuardarNotas}
+                        disabled={!hasChanges || isSaving || !puedeCentralizar}
+                        title={!puedeCentralizar ? "Necesitas permiso para guardar notas" : ""}
+                    >
+                        {isSaving ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <Save className="mr-2 h-4 w-4" />
+                        )}
+                        Guardar Notas
+                    </Button>
 
-                        {/* Centralización manual eliminada: el guardado ya centraliza automáticamente */}
-                    </div>
+                    {/* Centralización manual eliminada: el guardado ya centraliza automáticamente */}
+                </div>
 
-                    <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Total</CardTitle>
-                                <Users className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{stats.total}</div>
-                                <p className="text-xs text-muted-foreground">estudiantes</p>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Con Notas</CardTitle>
-                                <Calculator className="h-4 w-4 text-blue-600" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold text-blue-600">{stats.conNotas}</div>
-                                <p className="text-xs text-muted-foreground">
-                                    {stats.total > 0 ? Math.round((stats.conNotas / stats.total) * 100) : 0}%
-                                </p>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Sin Notas</CardTitle>
-                                <AlertTriangle className="h-4 w-4 text-orange-600" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold text-orange-600">{stats.sinNotas}</div>
-                                <p className="text-xs text-muted-foreground">pendientes</p>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Promedio</CardTitle>
-                                <TrendingUp className="h-4 w-4 text-purple-600" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold text-purple-600">
-                                    {stats.promedio.toFixed(1)}
-                                </div>
-                                <p className="text-xs text-muted-foreground">general</p>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Aprobados</CardTitle>
-                                <Award className="h-4 w-4 text-green-600" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold text-green-600">{stats.aprobados}</div>
-                                <p className="text-xs text-muted-foreground">≥ 51 pts</p>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Reprobados</CardTitle>
-                                <X className="h-4 w-4 text-red-600" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold text-red-600">{stats.reprobados}</div>
-                                <p className="text-xs text-muted-foreground">&lt; 51 pts</p>
-                            </CardContent>
-                        </Card>
-                    </div>
-
+                <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
                     <Card>
-                        <CardHeader>
-                            <CardTitle>
-                                Registro de Calificaciones
-                            </CardTitle>
-
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total</CardTitle>
+                            <Users className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="overflow-x-auto">
-                                <Table className="min-w-full">
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="w-12 sticky left-0 bg-background z-10 border-r">#</TableHead>
-                                            <TableHead className="min-w-[200px] sticky left-12 bg-background z-10 border-r">Estudiante</TableHead>
-                                            {!!aula?.es_tutor ? (
-                                                // Vista TUTOR: Todas las dimensiones de todos los trimestres (actual al final)
-                                                <>
-                                                    {[1, 2, 3].filter(t => t.toString() !== trimestreGlobal).map(t => (
-                                                        <TableHead key={t} colSpan={6} className={`text-center font-bold border-r-2 ${t === 1 ? "bg-blue-100" : t === 2 ? "bg-green-100" : "bg-purple-100"}`}>
-                                                            TRIMESTRE {t}
-                                                        </TableHead>
-                                                    ))}
-                                                    <TableHead colSpan={6} className={`text-center font-bold ${trimestreGlobal === "1" ? "bg-blue-100" : trimestreGlobal === "2" ? "bg-green-100" : "bg-purple-100"}`}>
-                                                        TRIMESTRE {trimestreGlobal} (ACTUAL)
+                            <div className="text-2xl font-bold">{stats.total}</div>
+                            <p className="text-xs text-muted-foreground">estudiantes</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Con Notas</CardTitle>
+                            <Calculator className="h-4 w-4 text-blue-600" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-blue-600">{stats.conNotas}</div>
+                            <p className="text-xs text-muted-foreground">
+                                {stats.total > 0 ? Math.round((stats.conNotas / stats.total) * 100) : 0}%
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Sin Notas</CardTitle>
+                            <AlertTriangle className="h-4 w-4 text-orange-600" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-orange-600">{stats.sinNotas}</div>
+                            <p className="text-xs text-muted-foreground">pendientes</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Promedio</CardTitle>
+                            <TrendingUp className="h-4 w-4 text-purple-600" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-purple-600">
+                                {stats.promedio.toFixed(1)}
+                            </div>
+                            <p className="text-xs text-muted-foreground">general</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Aprobados</CardTitle>
+                            <Award className="h-4 w-4 text-green-600" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-green-600">{stats.aprobados}</div>
+                            <p className="text-xs text-muted-foreground">≥ 51 pts</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Reprobados</CardTitle>
+                            <X className="h-4 w-4 text-red-600" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-red-600">{stats.reprobados}</div>
+                            <p className="text-xs text-muted-foreground">&lt; 51 pts</p>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>
+                            Registro de Calificaciones
+                        </CardTitle>
+
+                    </CardHeader>
+                    <CardContent>
+                        <div className="overflow-x-auto">
+                            <Table className="min-w-full">
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-12 sticky left-0 bg-background z-10 border-r">#</TableHead>
+                                        <TableHead className="min-w-[200px] sticky left-12 bg-background z-10 border-r">Estudiante</TableHead>
+                                        {!!aula?.es_tutor ? (
+                                            // Vista TUTOR: Todas las dimensiones de los 3 trimestres
+                                            <>
+                                                {[1, 2, 3].map(t => (
+                                                    <TableHead key={t} colSpan={6} className={`text-center font-bold border-r-2 ${t === 1 ? "bg-blue-100" : t === 2 ? "bg-green-100" : "bg-purple-100"}`}>
+                                                        TRIMESTRE {t}
                                                     </TableHead>
+                                                ))}
+                                            </>
+                                        ) : (
+                                            // Vista PROFESOR: Puntajes de los 3 trimestres (editables según permisos)
+                                            <>
+                                                {[1, 2, 3].map(t => {
+                                                    const esHabilitado = trimestresHabilitados[t]
+                                                    const bgColor = esHabilitado
+                                                        ? (t === 1 ? "bg-blue-100" : t === 2 ? "bg-green-100" : "bg-purple-100")
+                                                        : (t === 1 ? "bg-blue-50" : t === 2 ? "bg-green-50" : "bg-purple-50")
+                                                    return (
+                                                        <TableHead key={t} className={`text-center w-24 ${bgColor}`}>
+                                                            PUNTAJE T{t} {esHabilitado && "✓"}
+                                                        </TableHead>
+                                                    )
+                                                })}
+                                            </>
+                                        )}
+                                    </TableRow>
+                                    {!!aula?.es_tutor && (
+                                        <TableRow>
+                                            <TableHead className="w-12 sticky left-0 bg-background z-10 border-r"></TableHead>
+                                            <TableHead className="min-w-[200px] sticky left-12 bg-background z-10 border-r"></TableHead>
+                                            {!!aula?.es_tutor ? (
+                                                // TUTOR: Sub-headers de los 3 trimestres
+                                                <>
+                                                    {[1, 2, 3].map(t => (
+                                                        <React.Fragment key={t}>
+                                                            <TableHead className={`text-center w-16 text-xs ${t === 1 ? "bg-blue-50" : t === 2 ? "bg-green-50" : "bg-purple-50"}`}>SER</TableHead>
+                                                            <TableHead className={`text-center w-16 text-xs ${t === 1 ? "bg-blue-50" : t === 2 ? "bg-green-50" : "bg-purple-50"}`}>SABER</TableHead>
+                                                            <TableHead className={`text-center w-16 text-xs ${t === 1 ? "bg-blue-50" : t === 2 ? "bg-green-50" : "bg-purple-50"}`}>HACER</TableHead>
+                                                            <TableHead className={`text-center w-16 text-xs ${t === 1 ? "bg-blue-50" : t === 2 ? "bg-green-50" : "bg-purple-50"}`}>DECIDIR</TableHead>
+                                                            <TableHead className={`text-center w-16 text-xs ${t === 1 ? "bg-blue-50" : t === 2 ? "bg-green-50" : "bg-purple-50"}`}>AUTO</TableHead>
+                                                            <TableHead className={`text-center w-20 text-xs border-r-2 ${t === 1 ? "bg-blue-100" : t === 2 ? "bg-green-100" : "bg-purple-100"}`}>PUNTAJE</TableHead>
+                                                        </React.Fragment>
+                                                    ))}
                                                 </>
                                             ) : (
-                                                // Vista PROFESOR: Solo puntajes finales (actual al final)
+                                                // PROFESOR: Solo headers vacíos
                                                 <>
-                                                    {[1, 2, 3].filter(t => t.toString() !== trimestreGlobal).map(t => (
-                                                        <TableHead key={t} className={`text-center w-24 ${t === 1 ? "bg-blue-50" : t === 2 ? "bg-green-50" : "bg-purple-50"}`}>
-                                                            PUNTAJE T{t}
-                                                        </TableHead>
+                                                    {[1, 2, 3].map(t => (
+                                                        <TableHead key={t} className="w-24"></TableHead>
                                                     ))}
-                                                    <TableHead className={`text-center w-24 ${trimestreGlobal === "1" ? "bg-blue-100" : trimestreGlobal === "2" ? "bg-green-100" : "bg-purple-100"}`}>
-                                                        PUNTAJE T{trimestreGlobal} (ACTUAL)
-                                                    </TableHead>
                                                 </>
                                             )}
                                         </TableRow>
-                                        {!!aula?.es_tutor && (
-                                            <TableRow>
-                                                <TableHead className="w-12 sticky left-0 bg-background z-10 border-r"></TableHead>
-                                                <TableHead className="min-w-[200px] sticky left-12 bg-background z-10 border-r"></TableHead>
+                                    )}
+                                </TableHeader>
+                                <TableBody>
+                                    {sortedEstudiantes.map((estudiante, index) => {
+                                        const { apellido_paterno, apellido_materno, nombres } = deriveNames(estudiante)
+
+                                        return (
+                                            <TableRow key={estudiante.id} className="hover:bg-muted/50">
+                                                <TableCell className="font-medium sticky left-0 bg-background z-10 border-r">{index + 1}</TableCell>
+                                                <TableCell className="font-medium sticky left-12 bg-background z-10 border-r">
+                                                    {[apellido_paterno, apellido_materno, nombres].filter(Boolean).join(' ')}
+                                                </TableCell>
+
                                                 {!!aula?.es_tutor ? (
-                                                    // TUTOR: Sub-headers de los 3 trimestres (actual al final)
+                                                    // Vista TUTOR: Todas las dimensiones de los 3 trimestres
                                                     <>
-                                                        {/* Otros trimestres primero */}
-                                                        {[1, 2, 3].filter(t => t.toString() !== trimestreGlobal).map(t => (
-                                                            <React.Fragment key={t}>
-                                                                <TableHead className={`text-center w-16 text-xs ${t === 1 ? "bg-blue-50" : t === 2 ? "bg-green-50" : "bg-purple-50"}`}>SER</TableHead>
-                                                                <TableHead className={`text-center w-16 text-xs ${t === 1 ? "bg-blue-50" : t === 2 ? "bg-green-50" : "bg-purple-50"}`}>SABER</TableHead>
-                                                                <TableHead className={`text-center w-16 text-xs ${t === 1 ? "bg-blue-50" : t === 2 ? "bg-green-50" : "bg-purple-50"}`}>HACER</TableHead>
-                                                                <TableHead className={`text-center w-16 text-xs ${t === 1 ? "bg-blue-50" : t === 2 ? "bg-green-50" : "bg-purple-50"}`}>DECIDIR</TableHead>
-                                                                <TableHead className={`text-center w-16 text-xs ${t === 1 ? "bg-blue-50" : t === 2 ? "bg-green-50" : "bg-purple-50"}`}>AUTO</TableHead>
-                                                                <TableHead className={`text-center w-20 text-xs border-r-2 ${t === 1 ? "bg-blue-100" : t === 2 ? "bg-green-100" : "bg-purple-100"}`}>PUNTAJE</TableHead>
-                                                            </React.Fragment>
-                                                        ))}
-                                                        {/* Trimestre actual al final */}
-                                                        <TableHead className={`text-center w-16 text-xs ${trimestreGlobal === "1" ? "bg-blue-50" : trimestreGlobal === "2" ? "bg-green-50" : "bg-purple-50"}`}>SER</TableHead>
-                                                        <TableHead className={`text-center w-16 text-xs ${trimestreGlobal === "1" ? "bg-blue-50" : trimestreGlobal === "2" ? "bg-green-50" : "bg-purple-50"}`}>SABER</TableHead>
-                                                        <TableHead className={`text-center w-16 text-xs ${trimestreGlobal === "1" ? "bg-blue-50" : trimestreGlobal === "2" ? "bg-green-50" : "bg-purple-50"}`}>HACER</TableHead>
-                                                        <TableHead className={`text-center w-16 text-xs ${trimestreGlobal === "1" ? "bg-blue-50" : trimestreGlobal === "2" ? "bg-green-50" : "bg-purple-50"}`}>DECIDIR</TableHead>
-                                                        <TableHead className={`text-center w-16 text-xs ${trimestreGlobal === "1" ? "bg-blue-50" : trimestreGlobal === "2" ? "bg-green-50" : "bg-purple-50"}`}>AUTO</TableHead>
-                                                        <TableHead className={`text-center w-20 text-xs ${trimestreGlobal === "1" ? "bg-blue-100" : trimestreGlobal === "2" ? "bg-green-100" : "bg-purple-100"}`}>PUNTAJE</TableHead>
+                                                        {[1, 2, 3].map(t => {
+                                                            const notaT = notasPorTrimestre[t]?.[estudiante.inscripcion_id] || {
+                                                                nota_ser: 0, nota_saber: 0, nota_hacer: 0, nota_decidir: 0, nota_autoevaluacion: 0, promedio_final_trimestre: 0
+                                                            }
+                                                            const bgColor = t === 1 ? 'bg-blue-50' : t === 2 ? 'bg-green-50' : 'bg-purple-50'
+                                                            const bgColorPuntaje = t === 1 ? 'bg-blue-100' : t === 2 ? 'bg-green-100' : 'bg-purple-100'
+                                                            const textColor = t === 1 ? 'text-blue-700' : t === 2 ? 'text-green-700' : 'text-purple-700'
+
+                                                            return (
+                                                                <React.Fragment key={t}>
+                                                                    {renderTutorDimensionCell(estudiante.inscripcion_id, t, 'nota_ser', notaT.nota_ser, bgColor)}
+                                                                    {renderTutorDimensionCell(estudiante.inscripcion_id, t, 'nota_saber', notaT.nota_saber, bgColor)}
+                                                                    {renderTutorDimensionCell(estudiante.inscripcion_id, t, 'nota_hacer', notaT.nota_hacer, bgColor)}
+                                                                    {renderTutorDimensionCell(estudiante.inscripcion_id, t, 'nota_decidir', notaT.nota_decidir, bgColor)}
+                                                                    {renderTutorDimensionCell(estudiante.inscripcion_id, t, 'nota_autoevaluacion', notaT.nota_autoevaluacion, bgColor)}
+                                                                    <TableCell className={`text-center border-r-2 ${bgColorPuntaje}`}>
+                                                                        <span className={`font-bold ${textColor} text-sm`}>{notaT.promedio_final_trimestre?.toFixed(0) || "0"}</span>
+                                                                    </TableCell>
+                                                                </React.Fragment>
+                                                            )
+                                                        })}
                                                     </>
                                                 ) : (
-                                                    // PROFESOR: Solo headers vacíos para otros trimestres + header para actual
+                                                    // Vista PROFESOR: Puntajes de los 3 trimestres (editables según permisos)
                                                     <>
-                                                        {/* Headers vacíos para otros trimestres */}
-                                                        {[1, 2, 3].filter(t => t.toString() !== trimestreGlobal).map(t => (
-                                                            <TableHead key={t} className="w-24"></TableHead>
-                                                        ))}
-                                                        {/* Header vacío para el trimestre actual */}
-                                                        <TableHead className="w-24"></TableHead>
-                                                    </>
-                                                )}
-                                            </TableRow>
-                                        )}
-                                    </TableHeader>
-                                    <TableBody>
-                                        {sortedEstudiantes.map((estudiante, index) => {
-                                            const { apellido_paterno, apellido_materno, nombres } = deriveNames(estudiante)
-                                            const notaActual = notas[estudiante.inscripcion_id] || notasPorTrimestre[parseInt(trimestreGlobal)]?.[estudiante.inscripcion_id] || {
-                                                nota_ser: 0,
-                                                nota_saber: 0,
-                                                nota_hacer: 0,
-                                                nota_decidir: 0,
-                                                nota_autoevaluacion: 0,
-                                                promedio_final_trimestre: 0
-                                            }
+                                                        {[1, 2, 3].map(t => {
+                                                            const notaT = notasPorTrimestre[t]?.[estudiante.inscripcion_id] || { promedio_final_trimestre: 0 }
+                                                            const esHabilitado = trimestresHabilitados[t]
+                                                            const bgColor = esHabilitado
+                                                                ? (t === 1 ? 'bg-blue-100' : t === 2 ? 'bg-green-100' : 'bg-purple-100')
+                                                                : (t === 1 ? 'bg-blue-50' : t === 2 ? 'bg-green-50' : 'bg-purple-50')
+                                                            const textColor = t === 1 ? 'text-blue-700' : t === 2 ? 'text-green-700' : 'text-purple-700'
 
-                                            // Obtener notas por trimestre
-                                            const notaT1 = notasPorTrimestre[1]?.[estudiante.inscripcion_id] || {
-                                                nota_ser: 0, nota_saber: 0, nota_hacer: 0, nota_decidir: 0, nota_autoevaluacion: 0, promedio_final_trimestre: 0
-                                            }
-                                            const notaT2 = notasPorTrimestre[2]?.[estudiante.inscripcion_id] || {
-                                                nota_ser: 0, nota_saber: 0, nota_hacer: 0, nota_decidir: 0, nota_autoevaluacion: 0, promedio_final_trimestre: 0
-                                            }
-                                            const notaT3 = notasPorTrimestre[3]?.[estudiante.inscripcion_id] || {
-                                                nota_ser: 0, nota_saber: 0, nota_hacer: 0, nota_decidir: 0, nota_autoevaluacion: 0, promedio_final_trimestre: 0
-                                            }
-
-                                            return (
-                                                <TableRow key={estudiante.id} className="hover:bg-muted/50">
-                                                    <TableCell className="font-medium sticky left-0 bg-background z-10 border-r">{index + 1}</TableCell>
-                                                    <TableCell className="font-medium sticky left-12 bg-background z-10 border-r">
-                                                        {[apellido_paterno, apellido_materno, nombres].filter(Boolean).join(' ')}
-                                                    </TableCell>
-
-                                                    {!!aula?.es_tutor ? (
-                                                        // Vista TUTOR: Todas las dimensiones de los 3 trimestres (actual al final)
-                                                        <>
-                                                            {/* Otros trimestres primero (solo lectura) */}
-                                                            {[1, 2, 3].filter(t => t.toString() !== trimestreGlobal).map(t => {
-                                                                // Obtener valores del trimestre específico desde notasPorTrimestre
-                                                                const notaT = notasPorTrimestre[t]?.[estudiante.inscripcion_id] || {
-                                                                    nota_ser: 0, nota_saber: 0, nota_hacer: 0, nota_decidir: 0, nota_autoevaluacion: 0, promedio_final_trimestre: 0
-                                                                }
-                                                                const bgColor = t === 1 ? 'bg-blue-50' : t === 2 ? 'bg-green-50' : 'bg-purple-50'
-                                                                const bgColorPuntaje = t === 1 ? 'bg-blue-100' : t === 2 ? 'bg-green-100' : 'bg-purple-100'
-                                                                const textColor = t === 1 ? 'text-blue-700' : t === 2 ? 'text-green-700' : 'text-purple-700'
-
-                                                                return (
-                                                                    <React.Fragment key={t}>
-                                                                        {renderTutorDimensionCell(estudiante.inscripcion_id, t, 'nota_ser', notaT.nota_ser, bgColor)}
-                                                                        {renderTutorDimensionCell(estudiante.inscripcion_id, t, 'nota_saber', notaT.nota_saber, bgColor)}
-                                                                        {renderTutorDimensionCell(estudiante.inscripcion_id, t, 'nota_hacer', notaT.nota_hacer, bgColor)}
-                                                                        {renderTutorDimensionCell(estudiante.inscripcion_id, t, 'nota_decidir', notaT.nota_decidir, bgColor)}
-                                                                        {renderTutorDimensionCell(estudiante.inscripcion_id, t, 'nota_autoevaluacion', notaT.nota_autoevaluacion, bgColor)}
-                                                                        <TableCell className={`text-center border-r-2 ${bgColorPuntaje}`}>
-                                                                            <span className={`font-bold ${textColor} text-sm`}>{notaT.promedio_final_trimestre?.toFixed(0) || "0"}</span>
-                                                                        </TableCell>
-                                                                    </React.Fragment>
-                                                                )
-                                                            })}
-
-                                                            {/* Trimestre actual al final (editable) */}
-                                                            {(() => {
-                                                                const t = parseInt(trimestreGlobal)
-                                                                // Obtener valores del trimestre actual desde notasPorTrimestre
-                                                                const notaT = notasPorTrimestre[t]?.[estudiante.inscripcion_id] || {
-                                                                    nota_ser: 0, nota_saber: 0, nota_hacer: 0, nota_decidir: 0, nota_autoevaluacion: 0, promedio_final_trimestre: 0
-                                                                }
-                                                                const bgColor = t === 1 ? 'bg-blue-50' : t === 2 ? 'bg-green-50' : 'bg-purple-50'
-                                                                const bgColorPuntaje = t === 1 ? 'bg-blue-100' : t === 2 ? 'bg-green-100' : 'bg-purple-100'
-                                                                const textColor = t === 1 ? 'text-blue-700' : t === 2 ? 'text-green-700' : 'text-purple-700'
-
-                                                                return (
-                                                                    <>
-                                                                        {renderTutorDimensionCell(estudiante.inscripcion_id, t, 'nota_ser', notaT.nota_ser, bgColor)}
-                                                                        {renderTutorDimensionCell(estudiante.inscripcion_id, t, 'nota_saber', notaT.nota_saber, bgColor)}
-                                                                        {renderTutorDimensionCell(estudiante.inscripcion_id, t, 'nota_hacer', notaT.nota_hacer, bgColor)}
-                                                                        {renderTutorDimensionCell(estudiante.inscripcion_id, t, 'nota_decidir', notaT.nota_decidir, bgColor)}
-                                                                        {renderTutorDimensionCell(estudiante.inscripcion_id, t, 'nota_autoevaluacion', notaT.nota_autoevaluacion, bgColor)}
-                                                                        <TableCell className={`text-center ${bgColorPuntaje}`}>
-                                                                            <span className={`font-bold ${textColor} text-sm`}>{notaT.promedio_final_trimestre?.toFixed(0) || "0"}</span>
-                                                                        </TableCell>
-                                                                    </>
-                                                                )
-                                                            })()}
-                                                        </>
-                                                    ) : (
-                                                        // Vista PROFESOR: Solo puntajes finales (actual al final, editable)
-                                                        <>
-                                                            {/* Puntajes de los otros 2 trimestres (solo lectura) */}
-                                                            {[1, 2, 3].filter(t => t.toString() !== trimestreGlobal).map(t => {
-                                                                const notaT = t === 1 ? notaT1 : t === 2 ? notaT2 : notaT3
-                                                                const bgColor = t === 1 ? 'bg-blue-50' : t === 2 ? 'bg-green-50' : 'bg-purple-50'
-                                                                const textColor = t === 1 ? 'text-blue-700' : t === 2 ? 'text-green-700' : 'text-purple-700'
-
-                                                                return (
-                                                                    <TableCell key={t} className={`text-center ${bgColor}`}>
-                                                                        <div className="flex flex-col items-center">
-                                                                            <span className={`text-lg font-bold ${textColor}`}>
-                                                                                {notaT.promedio_final_trimestre?.toFixed(0) || "0"}
-                                                                            </span>
-                                                                            <span className="text-xs text-gray-500">/ 100</span>
-                                                                        </div>
-                                                                    </TableCell>
-                                                                )
-                                                            })}
-
-                                                            {/* Puntaje del trimestre actual (editable) */}
-                                                            {(() => {
-                                                                const t = parseInt(trimestreGlobal)
-                                                                // Para NO TUTOR, usar el valor más reciente de notasPorTrimestre o notas
-                                                                const notaT = notasPorTrimestre[t]?.[estudiante.inscripcion_id] ||
-                                                                    notas[estudiante.inscripcion_id] ||
-                                                                    { promedio_final_trimestre: 0 }
-                                                                const bgColor = t === 1 ? 'bg-blue-100' : t === 2 ? 'bg-green-100' : 'bg-purple-100'
-                                                                const textColor = t === 1 ? 'text-blue-700' : t === 2 ? 'text-green-700' : 'text-purple-700'
-
-                                                                return (
-                                                                    <TableCell className={`text-center ${bgColor}`}>
+                                                            return (
+                                                                <TableCell key={t} className={`text-center ${bgColor}`}>
+                                                                    {esHabilitado ? (
                                                                         <Input
                                                                             type="number"
                                                                             min="0"
@@ -1351,56 +1358,108 @@ export default function NotasPage() {
                                                                             }}
                                                                             className="w-20 text-center text-sm h-8 font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                         />
-                                                                    </TableCell>
-                                                                )
-                                                            })()}
-                                                        </>
-                                                    )}
-                                                </TableRow>
-                                            )
-                                        })}
-                                    </TableBody>
-                                </Table>
-                            </div>
+                                                                    ) : (
+                                                                        <div className="flex flex-col items-center">
+                                                                            <span className={`text-lg font-bold ${textColor}`}>
+                                                                                {notaT.promedio_final_trimestre?.toFixed(0) || "0"}
+                                                                            </span>
+                                                                            <span className="text-xs text-gray-500">/ 100</span>
+                                                                        </div>
+                                                                    )}
+                                                                </TableCell>
+                                                            )
+                                                        })}
+                                                    </>
+                                                )}
+                                            </TableRow>
+                                        )
+                                    })}
+                                </TableBody>
+                            </Table>
+                        </div>
 
-                            {estudiantes.length === 0 && (
-                                <div className="text-center py-8">
-                                    <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                                    <p className="text-muted-foreground">No hay estudiantes registrados en esta aula</p>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg">Escala de Calificación</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 rounded bg-red-500"></div>
-                                    <span className="text-sm">0-50: En Desarrollo (ED)</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 rounded bg-orange-500"></div>
-                                    <span className="text-sm">51-69: Desarrollo Aceptable (DA)</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 rounded bg-blue-500"></div>
-                                    <span className="text-sm">70-84: Desarrollo Óptimo (DO)</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 rounded bg-green-500"></div>
-                                    <span className="text-sm">85-100: Desarrollo Pleno (DP)</span>
-                                </div>
+                        {estudiantes.length === 0 && (
+                            <div className="text-center py-8">
+                                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                                <p className="text-muted-foreground">No hay estudiantes registrados en esta aula</p>
                             </div>
-                        </CardContent>
-                    </Card>
-                </>
-            )}
+                        )}
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg">Escala de Calificación</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded bg-red-500"></div>
+                                <span className="text-sm">0-50: En Desarrollo (ED)</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded bg-orange-500"></div>
+                                <span className="text-sm">51-69: Desarrollo Aceptable (DA)</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded bg-blue-500"></div>
+                                <span className="text-sm">70-84: Desarrollo Óptimo (DO)</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded bg-green-500"></div>
+                                <span className="text-sm">85-100: Desarrollo Pleno (DP)</span>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </>
+
             {/* Input oculto para importar */}
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleImportNotasFromExcel} style={{ display: "none" }} />
+
+            {/* Modal selector de trimestre para importar */}
+            <Dialog open={showTrimestreSelector} onOpenChange={setShowTrimestreSelector}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Seleccionar Trimestre</DialogTitle>
+                        <DialogDescription>
+                            Elige a qué trimestre importar las notas del archivo Excel
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        {Object.entries(trimestresHabilitados)
+                            .filter(([_, enabled]) => enabled)
+                            .map(([t]) => {
+                                const trimestre = parseInt(t)
+                                const color = trimestre === 1 ? 'blue' : trimestre === 2 ? 'green' : 'purple'
+                                return (
+                                    <Button
+                                        key={trimestre}
+                                        onClick={() => handleTrimestreSelected(trimestre)}
+                                        variant="outline"
+                                        className={`justify-start h-auto py-4 border-2 hover:bg-${color}-50 hover:border-${color}-500`}
+                                    >
+                                        <div className="flex flex-col items-start">
+                                            <span className="font-bold text-lg">
+                                                {trimestres[t as '1' | '2' | '3']?.label || `Trimestre ${trimestre}`}
+                                            </span>
+                                            <span className="text-sm text-muted-foreground">
+                                                {trimestre === 1 && "Febrero - Mayo"}
+                                                {trimestre === 2 && "Mayo - Agosto"}
+                                                {trimestre === 3 && "Septiembre - Diciembre"}
+                                            </span>
+                                        </div>
+                                    </Button>
+                                )
+                            })}
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setShowTrimestreSelector(false)}>
+                            Cancelar
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {hasChanges && (
                 <div className="fixed bottom-4 right-4 bg-yellow-100 border border-yellow-200 rounded-lg p-4 shadow-lg">

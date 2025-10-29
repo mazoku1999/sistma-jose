@@ -28,6 +28,7 @@ export async function GET(
         e.nombres,
         e.apellido_paterno,
         e.apellido_materno,
+        e.telefono_apoderado,
         CONCAT_WS(' ', e.nombres, e.apellido_paterno, e.apellido_materno) as nombre_completo,
         DATE_FORMAT(e.fecha_registro, '%Y-%m-%d') as fecha_registro
       FROM estudiantes e
@@ -70,6 +71,16 @@ export async function POST(
     const nombres: string = (body.nombres || '').toString().trim()
     const apellido_paterno: string = (body.apellido_paterno || body.apellidos || '').toString().trim()
     const apellido_materno: string = (body.apellido_materno || '').toString().trim()
+    const telefono_apoderado_raw: string = (body.telefono_apoderado || '').toString().trim()
+
+    const sanitizePhone = (value: string): string | null => {
+      if (!value) return null
+      const digits = value.replace(/\D/g, '')
+      if (!digits) return null
+      return digits.slice(0, 10)
+    }
+
+    const telefono_apoderado = sanitizePhone(telefono_apoderado_raw)
 
     if (!nombres || !apellido_paterno || !apellido_materno) {
       return NextResponse.json({ error: "Nombres, apellido paterno y apellido materno son requeridos" }, { status: 400 })
@@ -77,7 +88,7 @@ export async function POST(
 
     // Crear o reutilizar estudiante
     const existingStudent = await executeQuery<any[]>(
-      "SELECT id_estudiante FROM estudiantes WHERE nombres = ? AND COALESCE(apellido_paterno, '') = ? AND COALESCE(apellido_materno, '') = ?",
+      "SELECT id_estudiante, telefono_apoderado FROM estudiantes WHERE nombres = ? AND COALESCE(apellido_paterno, '') = ? AND COALESCE(apellido_materno, '') = ?",
       [nombres, apellido_paterno, apellido_materno]
     )
 
@@ -85,10 +96,17 @@ export async function POST(
 
     if (existingStudent.length > 0) {
       studentId = existingStudent[0].id_estudiante
+
+      if (telefono_apoderado && telefono_apoderado !== existingStudent[0].telefono_apoderado) {
+        await executeQuery(
+          "UPDATE estudiantes SET telefono_apoderado = ? WHERE id_estudiante = ?",
+          [telefono_apoderado, studentId]
+        )
+      }
     } else {
       const insertResult = await executeQuery<any>(
-        "INSERT INTO estudiantes (nombres, apellido_paterno, apellido_materno) VALUES (?, ?, ?)",
-        [nombres, apellido_paterno, apellido_materno]
+        "INSERT INTO estudiantes (nombres, apellido_paterno, apellido_materno, telefono_apoderado) VALUES (?, ?, ?, ?)",
+        [nombres, apellido_paterno, apellido_materno, telefono_apoderado]
       )
       studentId = insertResult.insertId
     }
@@ -106,10 +124,90 @@ export async function POST(
       )
     }
 
-    return NextResponse.json({ id: studentId, nombres, apellido_paterno, apellido_materno })
+    return NextResponse.json({ id: studentId, nombres, apellido_paterno, apellido_materno, telefono_apoderado })
   } catch (error) {
     console.error("Error al agregar estudiante:", error)
     return NextResponse.json({ error: "Error al agregar estudiante" }, { status: 500 })
+  }
+}
+
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession()
+
+    if (!session) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+    }
+
+    const aulaId = (await params).id
+
+    if (!aulaId) {
+      return NextResponse.json({ error: "ID de aula no proporcionado" }, { status: 400 })
+    }
+
+    const body = await request.json()
+    const estudianteId: number | undefined = body.estudiante_id
+    const nombres: string = (body.nombres || '').toString().trim()
+    const apellido_paterno: string = (body.apellido_paterno || '').toString().trim()
+    const apellido_materno: string = (body.apellido_materno || '').toString().trim()
+    const telefono_apoderado_raw: string = (body.telefono_apoderado || '').toString().trim()
+
+    if (!estudianteId || !nombres || !apellido_paterno || !apellido_materno) {
+      return NextResponse.json({ error: "Datos incompletos" }, { status: 400 })
+    }
+
+    const sanitizePhone = (value: string): string | null => {
+      if (!value) return null
+      const digits = value.replace(/\D/g, '')
+      if (!digits) return null
+      return digits.slice(0, 10)
+    }
+
+    const telefono_apoderado = sanitizePhone(telefono_apoderado_raw)
+
+    const studentInAula = await executeQuery<any[]>(
+      `SELECT 1
+       FROM inscripciones_aula
+       WHERE id_aula_profesor = ? AND id_estudiante = ?
+       LIMIT 1`,
+      [aulaId, estudianteId]
+    )
+
+    if (!studentInAula.length) {
+      return NextResponse.json({ error: "El estudiante no pertenece a esta aula" }, { status: 404 })
+    }
+
+    await executeQuery(
+      `UPDATE estudiantes
+         SET nombres = ?, apellido_paterno = ?, apellido_materno = ?, telefono_apoderado = ?
+       WHERE id_estudiante = ?`,
+      [nombres, apellido_paterno, apellido_materno, telefono_apoderado, estudianteId]
+    )
+
+    const updatedStudent = await executeQuery<any[]>(
+      `SELECT 
+         id_estudiante as id,
+         nombres,
+         apellido_paterno,
+         apellido_materno,
+         telefono_apoderado,
+         CONCAT_WS(' ', nombres, apellido_paterno, apellido_materno) as nombre_completo
+       FROM estudiantes
+       WHERE id_estudiante = ?`,
+      [estudianteId]
+    )
+
+    if (!updatedStudent.length) {
+      return NextResponse.json({ error: "Estudiante no encontrado" }, { status: 404 })
+    }
+
+    return NextResponse.json(updatedStudent[0])
+  } catch (error) {
+    console.error("Error al actualizar estudiante:", error)
+    return NextResponse.json({ error: "Error al actualizar estudiante" }, { status: 500 })
   }
 }
 

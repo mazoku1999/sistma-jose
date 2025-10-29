@@ -29,6 +29,7 @@ import {
   Award,
   Clock,
   TrendingUp,
+  MessageCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -43,7 +44,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { ThemeToggle } from "@/components/theme-toggle"
-import TrimestreSelector from "@/components/ui/trimestre-selector"
 import GestionSelectorGlobal from "@/components/ui/gestion-selector-global"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
@@ -518,6 +518,18 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
                           </SidebarMenuSub>
                         </CollapsibleContent>
                       </Collapsible>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={pathname.startsWith("/admin/contacto-apoderados")}
+                        tooltip="Contacto de apoderados"
+                      >
+                        <Link href="/admin/contacto-apoderados">
+                          <MessageCircle className="h-4 w-4" />
+                          <span>Contacto apoderados</span>
+                        </Link>
+                      </SidebarMenuButton>
                     </SidebarMenuItem>
                   </SidebarMenu>
                 </SidebarGroupContent>

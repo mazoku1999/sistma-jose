@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState, useCallback, useRef } from "react"
+import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import {
     Card,
@@ -20,7 +21,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Loader2, Search, ArrowLeft, ArrowRight, Check, Users, UserPlus, Trash2, Upload, X } from "lucide-react"
+import { Loader2, Search, ArrowLeft, ArrowRight, Check, Users, UserPlus, Trash2, Upload, X, MessageCircle } from "lucide-react"
 import * as XLSX from 'xlsx'
 
 /** Types **/
@@ -42,6 +43,52 @@ type Estudiante = {
     nombres?: string
     apellido_paterno?: string
     apellido_materno?: string
+    telefono_apoderado?: string | null
+}
+
+const normalizeString = (value: string | undefined | null) => (value ?? '').toString().trim()
+
+function deriveStudentNames(est: Estudiante | any) {
+    const nombres = normalizeString(est.nombres)
+    const apellido_paterno = normalizeString(est.apellido_paterno)
+    const apellido_materno = normalizeString(est.apellido_materno)
+
+    if (nombres || apellido_paterno || apellido_materno) {
+        return { nombres, apellido_paterno, apellido_materno }
+    }
+
+    const nombreCompleto = normalizeString(est.nombre_completo)
+    const parts = nombreCompleto.split(/\s+/).filter(Boolean)
+
+    if (parts.length >= 3) {
+        return {
+            nombres: parts.slice(0, parts.length - 2).join(' '),
+            apellido_paterno: parts[parts.length - 2] || '',
+            apellido_materno: parts[parts.length - 1] || '',
+        }
+    }
+
+    if (parts.length === 2) {
+        return {
+            nombres: parts[0],
+            apellido_paterno: '',
+            apellido_materno: parts[1],
+        }
+    }
+
+    if (parts.length === 1) {
+        return {
+            nombres: nombreCompleto,
+            apellido_paterno: '',
+            apellido_materno: '',
+        }
+    }
+
+    return {
+        nombres: '',
+        apellido_paterno: '',
+        apellido_materno: '',
+    }
 }
 
 /** Utils **/
@@ -164,6 +211,7 @@ function AssignScreen({
     onOpenCreate,
     onImportClick,
     importingExcel,
+    onEditStudent,
 }: any) {
     const [inscritosFilter, setInscritosFilter] = useState("")
     const filteredInscritos = useMemo(() =>
@@ -193,7 +241,12 @@ function AssignScreen({
                         <Input placeholder="Buscar inscritos" className="pl-8" value={inscritosFilter} onChange={(e) => setInscritosFilter(e.target.value)} aria-label="Buscar inscritos" />
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button size="sm" variant="outline" onClick={onImportClick} disabled={importingExcel}>
+                        <Button size="sm" asChild variant="ghost">
+                        <Link href="/admin/contacto-apoderados" className="flex items-center">
+                            <MessageCircle className="h-4 w-4 mr-1" /> Contactar apoderados
+                        </Link>
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={onImportClick} disabled={importingExcel}>
                             <Upload className="h-4 w-4 mr-1" /> {importingExcel ? 'Importando...' : 'Importar Excel'}
                         </Button>
                         <Button size="sm" onClick={onOpenCreate}><UserPlus className="h-4 w-4 mr-1" /> Nuevo</Button>
@@ -212,7 +265,16 @@ function AssignScreen({
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                        <InscritosPanel inscritos={filteredInscritos} loading={inscritosLoading} selectedInscritos={selectedInscritos} toggleInscrito={toggleInscrito} selectAllInscritos={selectAllInscritos} clearInscritosSelection={clearInscritosSelection} handleRemove={handleRemove} />
+                        <InscritosPanel
+                            inscritos={filteredInscritos}
+                            loading={inscritosLoading}
+                            selectedInscritos={selectedInscritos}
+                            toggleInscrito={toggleInscrito}
+                            selectAllInscritos={selectAllInscritos}
+                            clearInscritosSelection={clearInscritosSelection}
+                            handleRemove={handleRemove}
+                            onEdit={onEditStudent}
+                        />
                     </CardContent>
                 </Card>
             </div>
@@ -220,58 +282,21 @@ function AssignScreen({
     )
 }
 
-function InscritosPanel({ inscritos, loading, selectedInscritos, toggleInscrito, selectAllInscritos, clearInscritosSelection, handleRemove }: any) {
+function InscritosPanel({ inscritos, loading, selectedInscritos, toggleInscrito, selectAllInscritos, clearInscritosSelection, handleRemove, onEdit }: {
+    inscritos: Estudiante[]
+    loading: boolean
+    selectedInscritos: number[]
+    toggleInscrito: (id: number) => void
+    selectAllInscritos: () => void
+    clearInscritosSelection: () => void
+    handleRemove: (ids: number[]) => void
+    onEdit?: (student: Estudiante) => void
+}) {
     const [confirmOpen, setConfirmOpen] = useState(false)
-
-    const normalizeValue = (value: string | undefined | null) => (value ?? '').toString().trim()
-
-    const deriveNames = (est: Estudiante | any) => {
-        const nombres = normalizeValue(est.nombres)
-        const apellido_paterno = normalizeValue(est.apellido_paterno)
-        const apellido_materno = normalizeValue(est.apellido_materno)
-
-        if (nombres || apellido_paterno || apellido_materno) {
-            return { nombres, apellido_paterno, apellido_materno }
-        }
-
-        const nombreCompleto = normalizeValue(est.nombre_completo)
-        const parts = nombreCompleto.split(/\s+/).filter(Boolean)
-
-        if (parts.length >= 3) {
-            return {
-                nombres: parts.slice(0, parts.length - 2).join(' '),
-                apellido_paterno: parts[parts.length - 2] || '',
-                apellido_materno: parts[parts.length - 1] || '',
-            }
-        }
-
-        if (parts.length === 2) {
-            return {
-                nombres: parts[0],
-                apellido_paterno: '',
-                apellido_materno: parts[1],
-            }
-        }
-
-        if (parts.length === 1) {
-            return {
-                nombres: nombreCompleto,
-                apellido_paterno: '',
-                apellido_materno: '',
-            }
-        }
-
-        return {
-            nombres: '',
-            apellido_paterno: '',
-            apellido_materno: '',
-        }
-    }
-
     const compareFields = (fields: Array<'apellido_paterno' | 'apellido_materno' | 'nombres'>) => (a: any, b: any) => {
         for (const field of fields) {
-            const va = normalizeValue(a[field]).toLocaleLowerCase()
-            const vb = normalizeValue(b[field]).toLocaleLowerCase()
+            const va = normalizeString(a[field]).toLocaleLowerCase()
+            const vb = normalizeString(b[field]).toLocaleLowerCase()
             const cmp = va.localeCompare(vb, 'es', { sensitivity: 'base' })
             if (cmp !== 0) return cmp
         }
@@ -279,7 +304,7 @@ function InscritosPanel({ inscritos, loading, selectedInscritos, toggleInscrito,
     }
 
     const sortRows = (rows: Estudiante[]) => {
-        const mapped = rows.map((row) => ({ id: row.id, ...deriveNames(row) }))
+        const mapped = rows.map((row) => ({ id: row.id, raw: row, ...deriveStudentNames(row) }))
         const soloMaterno = mapped.filter(r => !r.apellido_paterno)
         const conPaterno = mapped.filter(r => r.apellido_paterno)
 
@@ -315,8 +340,9 @@ function InscritosPanel({ inscritos, loading, selectedInscritos, toggleInscrito,
                                 <TableHead>Apellido paterno</TableHead>
                                 <TableHead>Apellido materno</TableHead>
                                 <TableHead>Nombres</TableHead>
-                                <TableHead className="w-32 text-center">Seleccionar</TableHead>
-                                <TableHead className="w-24" />
+                                <TableHead>Tel. apoderado</TableHead>
+                                <TableHead className="w-28 text-center">Seleccionar</TableHead>
+                                <TableHead className="w-40 text-right">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -326,11 +352,15 @@ function InscritosPanel({ inscritos, loading, selectedInscritos, toggleInscrito,
                                     <TableCell>{row.apellido_paterno || <span className="text-muted-foreground italic">(sin paterno)</span>}</TableCell>
                                     <TableCell>{row.apellido_materno}</TableCell>
                                     <TableCell>{row.nombres}</TableCell>
+                                    <TableCell>{normalizeString(row.raw?.telefono_apoderado) || <span className="text-muted-foreground italic">(sin teléfono)</span>}</TableCell>
                                     <TableCell className="text-center">
                                         <Checkbox checked={selectedInscritos.includes(row.id)} onCheckedChange={() => toggleInscrito(row.id)} aria-label={`Seleccionar ${row.nombres}`} />
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <Button variant="outline" size="sm" onClick={() => handleRemove([row.id])}>Remover</Button>
+                                        <div className="flex justify-end gap-2">
+                                            <Button variant="secondary" size="sm" onClick={() => onEdit?.(row.raw)}>Editar</Button>
+                                            <Button variant="outline" size="sm" onClick={() => handleRemove([row.id])}>Remover</Button>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -386,7 +416,16 @@ export default function AsignacionEstudiantesAdminPage() {
     const [nuevoNombres, setNuevoNombres] = useState("")
     const [nuevoApellidoPaterno, setNuevoApellidoPaterno] = useState("")
     const [nuevoApellidoMaterno, setNuevoApellidoMaterno] = useState("")
+    const [nuevoTelefonoApoderado, setNuevoTelefonoApoderado] = useState("")
     const [creating, setCreating] = useState(false)
+
+    const [editOpen, setEditOpen] = useState(false)
+    const [editingStudent, setEditingStudent] = useState<Estudiante | null>(null)
+    const [editNombres, setEditNombres] = useState("")
+    const [editApellidoPaterno, setEditApellidoPaterno] = useState("")
+    const [editApellidoMaterno, setEditApellidoMaterno] = useState("")
+    const [editTelefonoApoderado, setEditTelefonoApoderado] = useState("")
+    const [updating, setUpdating] = useState(false)
 
     // Derived
     const cupoDisponible = useMemo(() => {
@@ -433,6 +472,7 @@ export default function AsignacionEstudiantesAdminPage() {
                 nombres: e.nombres,
                 apellido_paterno: e.apellido_paterno,
                 apellido_materno: e.apellido_materno,
+                telefono_apoderado: e.telefono_apoderado,
             })) as Estudiante[])
         } catch (e: any) {
             toast({ title: "Error al cargar inscritos", description: e.message, variant: "destructive" })
@@ -535,6 +575,7 @@ export default function AsignacionEstudiantesAdminPage() {
                 nombres: nuevoNombres.trim(),
                 apellido_paterno: nuevoApellidoPaterno.trim(),
                 apellido_materno: nuevoApellidoMaterno.trim(),
+                telefono_apoderado: nuevoTelefonoApoderado.trim() || undefined,
             }
             const est = await fetchJSON<{ id: number; nombre_completo: string; nombres?: string; apellido_paterno?: string; apellido_materno?: string }>(
                 `/api/aulas/${selectedAula.id}/estudiantes`,
@@ -551,15 +592,74 @@ export default function AsignacionEstudiantesAdminPage() {
                 nombres: est.nombres ?? payload.nombres,
                 apellido_paterno: est.apellido_paterno ?? payload.apellido_paterno,
                 apellido_materno: est.apellido_materno ?? payload.apellido_materno,
+                telefono_apoderado: payload.telefono_apoderado ?? null,
             }, ...prev])
             setSelectedAula((prev) => (prev ? { ...prev, inscritos: prev.inscritos + 1 } : prev))
             setCreateOpen(false)
             setNuevoNombres("")
             setNuevoApellidoPaterno("")
             setNuevoApellidoMaterno("")
+            setNuevoTelefonoApoderado("")
         } catch (e: any) {
             toast({ title: "Error al crear estudiante", description: e.message, variant: "destructive" })
         } finally { setCreating(false) }
+    }
+
+    const openEditModal = (student: Estudiante) => {
+        const { nombres, apellido_paterno, apellido_materno } = deriveStudentNames(student)
+        setEditingStudent(student)
+        setEditNombres(nombres)
+        setEditApellidoPaterno(apellido_paterno)
+        setEditApellidoMaterno(apellido_materno)
+        setEditTelefonoApoderado(student.telefono_apoderado ?? "")
+        setEditOpen(true)
+    }
+
+    const handleEditStudent = async () => {
+        if (!editingStudent || !selectedAula) return
+        if (!editNombres.trim() || !editApellidoPaterno.trim() || !editApellidoMaterno.trim()) {
+            toast({ title: "Completa nombres y apellidos", variant: "destructive" })
+            return
+        }
+
+        setUpdating(true)
+        try {
+            const payload = {
+                estudiante_id: editingStudent.id,
+                nombres: editNombres.trim(),
+                apellido_paterno: editApellidoPaterno.trim(),
+                apellido_materno: editApellidoMaterno.trim(),
+                telefono_apoderado: editTelefonoApoderado.trim() || undefined,
+            }
+
+            const updated = await fetchJSON<{ id: number; nombres: string; apellido_paterno: string; apellido_materno: string; telefono_apoderado: string | null; nombre_completo: string }>(
+                `/api/aulas/${selectedAula.id}/estudiantes`,
+                {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                },
+            )
+
+            toast({ title: "Estudiante actualizado" })
+            setInscritos((prev) => prev.map((est) => (est.id === editingStudent.id
+                ? {
+                    ...est,
+                    nombres: updated.nombres,
+                    apellido_paterno: updated.apellido_paterno,
+                    apellido_materno: updated.apellido_materno,
+                    telefono_apoderado: updated.telefono_apoderado,
+                    nombre_completo: updated.nombre_completo,
+                }
+                : est)))
+
+            setEditOpen(false)
+            setEditingStudent(null)
+        } catch (e: any) {
+            toast({ title: "Error al actualizar estudiante", description: e.message, variant: "destructive" })
+        } finally {
+            setUpdating(false)
+        }
     }
 
     // Importar estudiantes desde Excel
@@ -571,6 +671,7 @@ export default function AsignacionEstudiantesAdminPage() {
         ApellidoPaterno?: string
         ApellidoMaterno?: string
         Apellidos?: string
+        TelefonoApoderado?: string
     }
 
     const [importRows, setImportRows] = useState<ImportRow[]>([])
@@ -587,12 +688,13 @@ export default function AsignacionEstudiantesAdminPage() {
             const workbook = XLSX.read(new Uint8Array(data), { type: 'array' })
             const sheet = workbook.Sheets[workbook.SheetNames[0]]
 
-            // Leer columnas fijas: C (paterno), D (materno), E (nombres) a partir de fila 12
+            // Leer columnas fijas: C (paterno), D (materno), E (nombres), BS (teléfono) a partir de fila 12
             const rows: any[] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', blankrows: false })
             const startRow = 11
             const colPaterno = 2
             const colMaterno = 3
             const colNombres = 4
+            const colTelefono = 70 // Columna BS (0-indexed)
 
             const out: ImportRow[] = []
             for (let i = startRow; i < rows.length; i++) {
@@ -602,9 +704,10 @@ export default function AsignacionEstudiantesAdminPage() {
                 const apellidoPaterno = (r[colPaterno] || '').toString().trim()
                 const apellidoMaterno = (r[colMaterno] || '').toString().trim()
                 const nombres = (r[colNombres] || '').toString().trim()
+                const telefonoApoderado = (r[colTelefono] || '').toString().trim()
 
                 if (!apellidoPaterno && !apellidoMaterno && !nombres) continue
-                out.push({ Nombres: nombres, ApellidoPaterno: apellidoPaterno, ApellidoMaterno: apellidoMaterno })
+                out.push({ Nombres: nombres, ApellidoPaterno: apellidoPaterno, ApellidoMaterno: apellidoMaterno, TelefonoApoderado: telefonoApoderado })
             }
 
             if (out.length === 0) {
@@ -661,7 +764,8 @@ export default function AsignacionEstudiantesAdminPage() {
         const rowsToSend = validCandidates.slice(0, willImportCount).map(r => ({
             ApellidoPaterno: apellidoPaterno(r),
             ApellidoMaterno: apellidoMaterno(r),
-            Nombres: r.Nombres
+            Nombres: r.Nombres,
+            TelefonoApoderado: normalizeValue(r.TelefonoApoderado)
         }))
         try {
             setImportingExcel(true)
@@ -734,6 +838,7 @@ export default function AsignacionEstudiantesAdminPage() {
                     onOpenCreate={() => setCreateOpen(true)}
                     onImportClick={onImportClick}
                     importingExcel={importingExcel}
+                    onEditStudent={openEditModal}
                 />
             )}
 
@@ -769,9 +874,58 @@ export default function AsignacionEstudiantesAdminPage() {
                                 />
                             </div>
                         </div>
+                        <div>
+                            <Label htmlFor="telefono_apoderado">Teléfono del apoderado</Label>
+                            <Input
+                                id="telefono_apoderado"
+                                value={nuevoTelefonoApoderado}
+                                onChange={(e) => setNuevoTelefonoApoderado(e.target.value)}
+                                placeholder="Ej. 70900123"
+                                inputMode="tel"
+                                maxLength={10}
+                            />
+                        </div>
                         <div className="flex justify-end gap-2 pt-2">
                             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
                             <Button onClick={handleCreateStudent} disabled={creating}>{creating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Crear y asignar</Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Dialogo: editar estudiante */}
+            <Dialog open={editOpen} onOpenChange={(open) => { setEditOpen(open); if (!open) setEditingStudent(null) }}>
+                <DialogContent>
+                    <DialogHeaderUI><DialogTitleUI>Editar estudiante</DialogTitleUI></DialogHeaderUI>
+                    <div className="space-y-3">
+                        <div>
+                            <Label htmlFor="edit_nombres">Nombres</Label>
+                            <Input id="edit_nombres" value={editNombres} onChange={(e) => setEditNombres(e.target.value)} />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <Label htmlFor="edit_apellido_paterno">Apellido paterno</Label>
+                                <Input id="edit_apellido_paterno" value={editApellidoPaterno} onChange={(e) => setEditApellidoPaterno(e.target.value)} />
+                            </div>
+                            <div>
+                                <Label htmlFor="edit_apellido_materno">Apellido materno</Label>
+                                <Input id="edit_apellido_materno" value={editApellidoMaterno} onChange={(e) => setEditApellidoMaterno(e.target.value)} />
+                            </div>
+                        </div>
+                        <div>
+                            <Label htmlFor="edit_telefono_apoderado">Teléfono del apoderado</Label>
+                            <Input
+                                id="edit_telefono_apoderado"
+                                value={editTelefonoApoderado}
+                                onChange={(e) => setEditTelefonoApoderado(e.target.value)}
+                                placeholder="Ej. 70900123"
+                                inputMode="tel"
+                                maxLength={10}
+                            />
+                        </div>
+                        <div className="flex justify-end gap-2 pt-2">
+                            <Button variant="outline" onClick={() => { setEditOpen(false); setEditingStudent(null) }}>Cancelar</Button>
+                            <Button onClick={handleEditStudent} disabled={updating}>{updating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Guardar cambios</Button>
                         </div>
                     </div>
                 </DialogContent>
@@ -818,6 +972,7 @@ export default function AsignacionEstudiantesAdminPage() {
                                                     <TableHead>Apellido paterno</TableHead>
                                                     <TableHead>Apellido materno</TableHead>
                                                     <TableHead>Nombres</TableHead>
+                                                    <TableHead>Tel. apoderado</TableHead>
                                                     <TableHead>Estado</TableHead>
                                                     <TableHead className="w-28 text-right">Quitar</TableHead>
                                                 </TableRow>
@@ -840,6 +995,7 @@ export default function AsignacionEstudiantesAdminPage() {
                                                             <TableCell className="font-medium">{apellidoPaterno(row) || <span className="text-muted-foreground italic">(sin paterno)</span>}</TableCell>
                                                             <TableCell className="font-medium">{apellidoMaterno(row)}</TableCell>
                                                             <TableCell className="font-medium">{row.Nombres}</TableCell>
+                                                            <TableCell className="font-medium">{normalizeValue(row.TelefonoApoderado) || <span className="text-muted-foreground italic">(sin teléfono)</span>}</TableCell>
                                                             <TableCell>
                                                                 {status === 'ok' && <Badge className="bg-green-100 text-green-700 border-green-200">Listo</Badge>}
                                                                 {status === 'inscrito' && <Badge className="bg-red-100 text-red-700 border-red-200">Ya inscrito</Badge>}

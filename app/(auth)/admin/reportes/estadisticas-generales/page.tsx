@@ -130,7 +130,7 @@ export default function EstadisticasGeneralesPage() {
             if (selectedProfesor !== "all") params.append("profesor", selectedProfesor)
             if (selectedCurso !== "all") params.append("curso", selectedCurso)
             if (selectedMateria !== "all") params.append("materia", selectedMateria)
-            if (gestionActual) params.append("gestion", gestionActual.id_gestion.toString())
+            if (gestionActual?.id_gestion != null) params.append("gestion", gestionActual.id_gestion.toString())
 
             const response = await fetch(`/api/admin/reportes/estadisticas-generales?${params}`)
             if (response.ok) {
@@ -155,7 +155,7 @@ export default function EstadisticasGeneralesPage() {
             if (selectedProfesor !== "all") params.append("profesor", selectedProfesor)
             if (selectedCurso !== "all") params.append("curso", selectedCurso)
             if (selectedMateria !== "all") params.append("materia", selectedMateria)
-            if (gestionActual) params.append("gestion", gestionActual.id_gestion.toString())
+            if (gestionActual?.id_gestion != null) params.append("gestion", gestionActual.id_gestion.toString())
 
             const response = await fetch(`/api/admin/reportes/estadisticas-generales/export?${params}`)
             if (response.ok) {
@@ -230,8 +230,8 @@ export default function EstadisticasGeneralesPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">Todos</SelectItem>
-                                    {colegios.map((colegio) => (
-                                        <SelectItem key={colegio.id} value={colegio.id.toString()}>
+                                    {colegios.filter((colegio) => colegio.id != null).map((colegio) => (
+                                        <SelectItem key={colegio.id} value={colegio.id?.toString()}>
                                             {colegio.nombre}
                                         </SelectItem>
                                     ))}
@@ -246,8 +246,8 @@ export default function EstadisticasGeneralesPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">Todos</SelectItem>
-                                    {niveles.map((nivel) => (
-                                        <SelectItem key={nivel.id} value={nivel.id.toString()}>
+                                    {niveles.filter((nivel) => nivel.id != null).map((nivel) => (
+                                        <SelectItem key={nivel.id} value={nivel.id?.toString()}>
                                             {nivel.nombre}
                                         </SelectItem>
                                     ))}
@@ -262,8 +262,8 @@ export default function EstadisticasGeneralesPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">Todos</SelectItem>
-                                    {cursos.map((curso) => (
-                                        <SelectItem key={curso.id} value={curso.id.toString()}>
+                                    {cursos.filter((curso) => curso.id != null).map((curso) => (
+                                        <SelectItem key={curso.id} value={curso.id?.toString()}>
                                             {curso.nombre}
                                         </SelectItem>
                                     ))}
@@ -278,8 +278,8 @@ export default function EstadisticasGeneralesPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">Todos</SelectItem>
-                                    {profesores.map((profesor) => (
-                                        <SelectItem key={profesor.id} value={profesor.id.toString()}>
+                                    {profesores.filter((profesor) => profesor.id != null).map((profesor) => (
+                                        <SelectItem key={profesor.id} value={profesor.id?.toString()}>
                                             {profesor.nombre_completo}
                                         </SelectItem>
                                     ))}
@@ -294,8 +294,8 @@ export default function EstadisticasGeneralesPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">Todas</SelectItem>
-                                    {materias.map((materia) => (
-                                        <SelectItem key={materia.id} value={materia.id.toString()}>
+                                    {materias.filter((materia) => materia.id != null).map((materia) => (
+                                        <SelectItem key={materia.id} value={materia.id?.toString()}>
                                             {materia.nombre_corto}
                                         </SelectItem>
                                     ))}

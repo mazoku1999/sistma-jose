@@ -31,6 +31,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import AssignAulaWizard from "./assign-aula-wizard"
 import { useGestionGlobal } from "@/hooks/use-gestion-global"
+import { cn } from "@/lib/utils"
 
 interface Profesor {
   id: number | null
@@ -102,6 +103,14 @@ export default function ProfesoresPage() {
     puede_centralizar_notas: true,
   })
 
+  // Control de trimestres habilitados
+  const [trimestresHabilitados, setTrimestresHabilitados] = useState({
+    1: false,
+    2: false,
+    3: false
+  })
+  const [isLoadingTrimestres, setIsLoadingTrimestres] = useState(false)
+
   // Asignaciones por colegio (simplificadas)
   const [asignaciones, setAsignaciones] = useState<ColegioAsignacion[]>([])
 
@@ -160,6 +169,59 @@ export default function ProfesoresPage() {
     }
   }
 
+  const fetchTrimestresHabilitados = async (profesorId: number) => {
+    try {
+      setIsLoadingTrimestres(true)
+      const response = await fetch(`/api/admin/profesores/${profesorId}/trimestres`)
+      if (response.ok) {
+        const data = await response.json()
+        const trimestresMap: any = { 1: false, 2: false, 3: false }
+        data.trimestres.forEach((t: any) => {
+          trimestresMap[t.trimestre] = !!t.habilitado
+        })
+        setTrimestresHabilitados(trimestresMap)
+      }
+    } catch (error) {
+      console.error("Error fetching trimestres habilitados:", error)
+    } finally {
+      setIsLoadingTrimestres(false)
+    }
+  }
+
+  const handleTrimestreToggle = async (trimestre: number, habilitado: boolean) => {
+    if (!editingProfesor?.id) return
+
+    try {
+      const response = await fetch(`/api/admin/profesores/${editingProfesor.id}/trimestres`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trimestre, habilitado }),
+      })
+
+      if (response.ok) {
+        setTrimestresHabilitados(prev => ({ ...prev, [trimestre]: habilitado }))
+        toast({
+          title: "Actualizado",
+          description: `Trimestre ${trimestre} ${habilitado ? 'habilitado' : 'deshabilitado'} correctamente`,
+        })
+      } else {
+        const error = await response.json()
+        toast({
+          title: "Error",
+          description: error.error || "No se pudo actualizar el trimestre",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error updating trimestre:", error)
+      toast({
+        title: "Error",
+        description: "Error al actualizar el trimestre",
+        variant: "destructive",
+      })
+    }
+  }
+
   const resetForm = () => {
     setFormData({
       usuario: "",
@@ -172,12 +234,13 @@ export default function ProfesoresPage() {
       es_tutor: false,
       puede_centralizar_notas: true,
     })
+    setTrimestresHabilitados({ 1: false, 2: false, 3: false })
     setAsignaciones([])
     setEditingProfesor(null)
     setCurrentStep(1)
   }
 
-  const handleOpenDialog = (profesor?: Profesor) => {
+  const handleOpenDialog = async (profesor?: Profesor) => {
     resetForm()
     if (profesor) {
       setEditingProfesor(profesor)
@@ -195,6 +258,11 @@ export default function ProfesoresPage() {
         es_tutor: !!profesor.es_tutor,
         puede_centralizar_notas: profesor.puede_centralizar_notas !== undefined ? !!profesor.puede_centralizar_notas : true,
       })
+
+      // Cargar trimestres habilitados si es profesor
+      if (profesor.id && (profesor.roles.includes("PROFESOR") || profesor.roles.includes("ADMIN"))) {
+        await fetchTrimestresHabilitados(profesor.id)
+      }
     }
     setOpenDialog(true)
   }
@@ -727,6 +795,57 @@ export default function ProfesoresPage() {
                 )}
               </div>
             </section>
+
+            {/* Control de trimestres - Solo para profesores existentes */}
+            {editingProfesor && formData.role === "PROFESOR" && (
+              <section className="rounded-lg border p-4 md:p-6 space-y-4 bg-gradient-to-br from-blue-50/50 to-indigo-50/50">
+                <div className="space-y-1">
+                  <h3 className="text-base font-semibold flex items-center gap-2">
+                    <span className="text-blue-600">📅</span>
+                    Control de Trimestres
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Habilita o deshabilita los trimestres en los que el profesor puede subir notas.
+                  </p>
+                </div>
+                {isLoadingTrimestres ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {[1, 2, 3].map((trimestre) => (
+                      <div
+                        key={trimestre}
+                        className={cn(
+                          "flex items-center justify-between rounded-lg border-2 px-4 py-4 transition-all",
+                          trimestresHabilitados[trimestre as 1 | 2 | 3]
+                            ? "border-green-300 bg-green-50"
+                            : "border-gray-200 bg-white"
+                        )}
+                      >
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold leading-none">
+                            {trimestre === 1 && "1er Trimestre"}
+                            {trimestre === 2 && "2do Trimestre"}
+                            {trimestre === 3 && "3er Trimestre"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {trimestre === 1 && "Feb - May"}
+                            {trimestre === 2 && "May - Ago"}
+                            {trimestre === 3 && "Sep - Dic"}
+                          </p>
+                        </div>
+                        <Switch
+                          checked={trimestresHabilitados[trimestre as 1 | 2 | 3]}
+                          onCheckedChange={(checked) => handleTrimestreToggle(trimestre, checked)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
 
             <div className="flex justify-end gap-2 pt-4 border-t">
               <Button type="button" variant="outline" onClick={handleCloseDialog}>Cancelar</Button>

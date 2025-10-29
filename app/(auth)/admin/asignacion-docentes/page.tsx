@@ -19,6 +19,7 @@ interface Profesor {
     usuario: string
     email: string
     aulas_asignadas?: number
+    roles?: string[]
 }
 
 interface Asignacion {
@@ -70,8 +71,15 @@ export default function AsignacionDocentesPage() {
                 const res = await fetch("/api/profesores")
                 if (res.ok) {
                     const data = await res.json()
-                    setProfesores(data)
-                    setFiltered(data)
+                    const profesoresFiltrados = data.filter((prof: Profesor) => {
+                        const roles = (prof.roles ?? []).map((role) => String(role).toUpperCase())
+                        const esAdmin = roles.includes("ADMIN") || roles.includes("ADMINISTRATIVO")
+                        const esProfesor = roles.includes("PROFESOR")
+                        return esProfesor && !esAdmin
+                    })
+
+                    setProfesores(profesoresFiltrados)
+                    setFiltered(profesoresFiltrados)
                 }
             } finally {
                 setIsLoading(false)
@@ -211,40 +219,52 @@ export default function AsignacionDocentesPage() {
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {filtered.map((p) => {
-                                const isExpanded = expandedProfesor === p.id
-                                const profesorAsignaciones = asignaciones[p.id] || []
-                                const isLoadingAsigs = loadingAsignaciones === p.id
+                            {filtered.map((p, profesorIndex) => {
+                                const profesorId = typeof p.id === "number" ? p.id : null
+                                const roles = (p.roles ?? []).map((role) => String(role).toUpperCase())
+                                const canShowAssignments = profesorId !== null && roles.includes("PROFESOR")
+                                const profesorAsignaciones = canShowAssignments ? (asignaciones[profesorId!] || []) : []
+                                const isLoadingAsigs = canShowAssignments ? loadingAsignaciones === profesorId : false
                                 // Usar el conteo del servidor o el conteo local si ya se cargaron
                                 const aulasCount = profesorAsignaciones.length > 0 ? profesorAsignaciones.length : (p.aulas_asignadas || 0)
+                                const profesorKey = String(p.id ?? p.usuario ?? p.email ?? `fallback-${profesorIndex}`)
+                                const isExpanded = canShowAssignments && profesorId !== null && expandedProfesor === profesorId
 
                                 return (
-                                    <Card key={p.id} className="overflow-hidden">
+                                    <Card key={`prof-${profesorKey}`} className="overflow-hidden">
                                         <CardContent className="p-4">
                                             <div className="flex items-start justify-between gap-4">
                                                 <div className="min-w-0 flex-1">
                                                     <div className="flex items-center gap-2">
                                                         <div className="font-medium truncate">{p.nombre_completo}</div>
-                                                        <Badge variant="secondary" className="shrink-0">
-                                                            {aulasCount} {aulasCount === 1 ? 'aula' : 'aulas'}
-                                                        </Badge>
+                                                        {canShowAssignments && (
+                                                            <Badge variant="secondary" className="shrink-0">
+                                                                {aulasCount} {aulasCount === 1 ? 'aula' : 'aulas'}
+                                                            </Badge>
+                                                        )}
                                                     </div>
                                                     <div className="text-xs text-muted-foreground truncate mt-1">
                                                         @{p.usuario} · {p.email}
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-2 shrink-0">
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => toggleExpanded(p.id)}
-                                                    >
-                                                        {isExpanded ? (
-                                                            <ChevronUp className="h-4 w-4" />
-                                                        ) : (
-                                                            <ChevronDown className="h-4 w-4" />
-                                                        )}
-                                                    </Button>
+                                                    {canShowAssignments && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => {
+                                                                if (profesorId !== null) {
+                                                                    toggleExpanded(profesorId)
+                                                                }
+                                                            }}
+                                                        >
+                                                            {isExpanded ? (
+                                                                <ChevronUp className="h-4 w-4" />
+                                                            ) : (
+                                                                <ChevronDown className="h-4 w-4" />
+                                                            )}
+                                                        </Button>
+                                                    )}
                                                     <Button
                                                         size="sm"
                                                         onClick={() => handleAssign(p)}
@@ -255,7 +275,7 @@ export default function AsignacionDocentesPage() {
                                                 </div>
                                             </div>
 
-                                            {isExpanded && (
+                                            {canShowAssignments && isExpanded && (
                                                 <div className="mt-4 border-t pt-4">
                                                     {isLoadingAsigs ? (
                                                         <div className="flex justify-center py-8">
@@ -268,55 +288,62 @@ export default function AsignacionDocentesPage() {
                                                     ) : (
                                                         <div className="space-y-2">
                                                             <h4 className="text-sm font-semibold mb-3">Asignaciones actuales:</h4>
-                                                            {profesorAsignaciones.map((asig) => (
-                                                                <Card key={asig.id} className="p-3">
-                                                                    <div className="flex items-start justify-between gap-3">
-                                                                        <div className="min-w-0 flex-1">
-                                                                            <div className="font-medium text-sm truncate">
-                                                                                {asig.nombre_aula}
+                                                            {profesorAsignaciones.map((asig, asigIndex) => {
+                                                                const asignacionKey = String(
+                                                                    asig.id ??
+                                                                    `${asig.id_profesor}-${asig.id_materia}-${asig.id_colegio}-${asig.id_curso}-${asig.id_paralelo}-${asig.gestion_nombre ?? `idx-${asigIndex}`}`
+                                                                )
+
+                                                                return (
+                                                                    <Card key={`asig-${asignacionKey}`} className="p-3">
+                                                                        <div className="flex items-start justify-between gap-3">
+                                                                            <div className="min-w-0 flex-1">
+                                                                                <div className="font-medium text-sm truncate">
+                                                                                    {asig.nombre_aula}
+                                                                                </div>
+                                                                                <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                                                                                    <div className="flex flex-wrap gap-2">
+                                                                                        <Badge variant="outline" className="text-xs">
+                                                                                            {asig.materia_corta}
+                                                                                        </Badge>
+                                                                                        <Badge variant="outline" className="text-xs">
+                                                                                            {asig.curso} {asig.paralelo}
+                                                                                        </Badge>
+                                                                                        <Badge variant="outline" className="text-xs">
+                                                                                            {asig.nivel}
+                                                                                        </Badge>
+                                                                                        <Badge variant="outline" className="text-xs">
+                                                                                            {asig.colegio}
+                                                                                        </Badge>
+                                                                                    </div>
+                                                                                    <div className="mt-1">
+                                                                                        Estudiantes: {asig.estudiantes_inscritos} / {asig.max_estudiantes}
+                                                                                    </div>
+                                                                                </div>
                                                                             </div>
-                                                                            <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
-                                                                                <div className="flex flex-wrap gap-2">
-                                                                                    <Badge variant="outline" className="text-xs">
-                                                                                        {asig.materia_corta}
-                                                                                    </Badge>
-                                                                                    <Badge variant="outline" className="text-xs">
-                                                                                        {asig.curso} {asig.paralelo}
-                                                                                    </Badge>
-                                                                                    <Badge variant="outline" className="text-xs">
-                                                                                        {asig.nivel}
-                                                                                    </Badge>
-                                                                                    <Badge variant="outline" className="text-xs">
-                                                                                        {asig.colegio}
-                                                                                    </Badge>
-                                                                                </div>
-                                                                                <div className="mt-1">
-                                                                                    Estudiantes: {asig.estudiantes_inscritos} / {asig.max_estudiantes}
-                                                                                </div>
+                                                                            <div className="flex gap-1 shrink-0">
+                                                                                <Button
+                                                                                    size="sm"
+                                                                                    variant="ghost"
+                                                                                    onClick={() => handleEdit(asig)}
+                                                                                    title="Editar asignación"
+                                                                                >
+                                                                                    <Edit2 className="h-3.5 w-3.5" />
+                                                                                </Button>
+                                                                                <Button
+                                                                                    size="sm"
+                                                                                    variant="ghost"
+                                                                                    onClick={() => handleDeleteClick(asig)}
+                                                                                    title="Eliminar asignación"
+                                                                                    className="text-destructive hover:text-destructive"
+                                                                                >
+                                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                                </Button>
                                                                             </div>
                                                                         </div>
-                                                                        <div className="flex gap-1 shrink-0">
-                                                                            <Button
-                                                                                size="sm"
-                                                                                variant="ghost"
-                                                                                onClick={() => handleEdit(asig)}
-                                                                                title="Editar asignación"
-                                                                            >
-                                                                                <Edit2 className="h-3.5 w-3.5" />
-                                                                            </Button>
-                                                                            <Button
-                                                                                size="sm"
-                                                                                variant="ghost"
-                                                                                onClick={() => handleDeleteClick(asig)}
-                                                                                title="Eliminar asignación"
-                                                                                className="text-destructive hover:text-destructive"
-                                                                            >
-                                                                                <Trash2 className="h-3.5 w-3.5" />
-                                                                            </Button>
-                                                                        </div>
-                                                                    </div>
-                                                                </Card>
-                                                            ))}
+                                                                    </Card>
+                                                                )
+                                                            })}
                                                         </div>
                                                     )}
                                                 </div>

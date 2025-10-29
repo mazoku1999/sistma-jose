@@ -31,13 +31,24 @@ export async function GET(
 
     // Verificar que el aula pertenece al profesor
     const aulaQuery = await executeQuery<any[]>(
-      "SELECT id_aula_profesor FROM aulas_profesor WHERE id_aula_profesor = ? AND id_profesor = ?",
+      "SELECT id_aula_profesor, id_gestion FROM aulas_profesor WHERE id_aula_profesor = ? AND id_profesor = ?",
       [aulaId, profesorId]
     )
 
     if (!aulaQuery.length) {
       return NextResponse.json({ error: "Aula no encontrada" }, { status: 404 })
     }
+
+    const gestionId = aulaQuery[0].id_gestion
+
+    // Verificar si el profesor tiene habilitado este trimestre
+    const permisoTrimestreQuery = await executeQuery<any[]>(
+      "SELECT habilitado FROM profesores_trimestres_habilitados WHERE id_profesor = ? AND trimestre = ? AND id_gestion = ?",
+      [profesorId, trimestre, gestionId]
+    )
+
+    // Si no hay registro o está deshabilitado, denegar acceso (solo para lectura informativa)
+    const trimestreBloqueado = !permisoTrimestreQuery.length || !permisoTrimestreQuery[0].habilitado
 
     // Obtener notas para el trimestre específico con todas las dimensiones
     const notasQuery = await executeQuery<any[]>(
@@ -102,12 +113,28 @@ export async function POST(
 
     // Verificar que el aula pertenece al profesor
     const aulaQuery = await executeQuery<any[]>(
-      "SELECT id_aula_profesor FROM aulas_profesor WHERE id_aula_profesor = ? AND id_profesor = ?",
+      "SELECT id_aula_profesor, id_gestion FROM aulas_profesor WHERE id_aula_profesor = ? AND id_profesor = ?",
       [aulaId, profesorId]
     )
 
     if (!aulaQuery.length) {
       return NextResponse.json({ error: "Aula no encontrada" }, { status: 404 })
+    }
+
+    const gestionId = aulaQuery[0].id_gestion
+
+    // Verificar si el profesor tiene habilitado este trimestre para guardar notas
+    const permisoTrimestreQuery = await executeQuery<any[]>(
+      "SELECT habilitado FROM profesores_trimestres_habilitados WHERE id_profesor = ? AND trimestre = ? AND id_gestion = ?",
+      [profesorId, trimestre, gestionId]
+    )
+
+    // Si no hay registro o está deshabilitado, denegar acceso
+    if (!permisoTrimestreQuery.length || !permisoTrimestreQuery[0].habilitado) {
+      return NextResponse.json({ 
+        error: "No tienes permiso para subir notas en este trimestre. Contacta al administrador.",
+        trimestre_bloqueado: true
+      }, { status: 403 })
     }
 
     // Iniciar transacción

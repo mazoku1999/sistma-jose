@@ -31,13 +31,22 @@ export async function POST(
     let addedToAula = 0
     const errors: string[] = []
 
+    const sanitizePhone = (value: any): string | null => {
+      if (typeof value === 'undefined' || value === null) return null
+      const digits = value.toString().replace(/\D/g, '')
+      if (!digits) return null
+      return digits.slice(0, 10)
+    }
+
     for (const estudiante of estudiantes) {
       const nombresRaw = (estudiante.Nombres || estudiante.NOMBRES || '')
       const paternoRaw = (estudiante.ApellidoPaterno || estudiante['Apellido Paterno'] || estudiante.apellido_paterno || estudiante.APELLIDOPATERNO || estudiante['APELLIDO PATERNO'] || '').toString().trim()
       const maternoRaw = (estudiante.ApellidoMaterno || estudiante['Apellido Materno'] || estudiante.apellido_materno || estudiante.APELLIDOMATERNO || estudiante['APELLIDO MATERNO'] || '').toString().trim()
       const apellidosRaw = (estudiante.Apellidos || estudiante.APELLIDOS || '').toString().trim()
+      const telefonoRaw = estudiante.TelefonoApoderado || estudiante.telefono_apoderado || estudiante['Telefono Apoderado'] || estudiante['Teléfono Apoderado'] || estudiante.TELEFONOAPODERADO || estudiante['TELÉFONO APODERADO'] || ''
 
       const nombres = nombresRaw.toString().trim()
+      const telefono_apoderado = sanitizePhone(telefonoRaw)
 
       if (!nombres) {
         errors.push(`Estudiante sin nombres`)
@@ -65,7 +74,7 @@ export async function POST(
 
         // Verificar si el estudiante ya existe
         const existingStudent = await executeQuery<any[]>(
-          "SELECT id_estudiante FROM estudiantes WHERE nombres = ? AND COALESCE(apellido_paterno, '') = ? AND COALESCE(apellido_materno, '') = ?",
+          "SELECT id_estudiante, telefono_apoderado FROM estudiantes WHERE nombres = ? AND COALESCE(apellido_paterno, '') = ? AND COALESCE(apellido_materno, '') = ?",
           [nombres, apellido_paterno || '', apellido_materno || '']
         )
 
@@ -74,11 +83,18 @@ export async function POST(
         if (existingStudent.length > 0) {
           studentId = existingStudent[0].id_estudiante
           reusedExistingStudents += 1
+
+          if (telefono_apoderado && telefono_apoderado !== existingStudent[0].telefono_apoderado) {
+            await executeQuery(
+              "UPDATE estudiantes SET telefono_apoderado = ? WHERE id_estudiante = ?",
+              [telefono_apoderado, studentId]
+            )
+          }
         } else {
           // Crear nuevo estudiante
           const insertResult = await executeQuery<any>(
-            "INSERT INTO estudiantes (nombres, apellido_paterno, apellido_materno) VALUES (?, ?, ?)",
-            [nombres, apellido_paterno || null, apellido_materno || null]
+            "INSERT INTO estudiantes (nombres, apellido_paterno, apellido_materno, telefono_apoderado) VALUES (?, ?, ?, ?)",
+            [nombres, apellido_paterno || null, apellido_materno || null, telefono_apoderado]
           )
           studentId = insertResult.insertId
           createdNewStudents += 1

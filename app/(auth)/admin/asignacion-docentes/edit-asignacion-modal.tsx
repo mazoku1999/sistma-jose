@@ -204,7 +204,13 @@ export default function EditAsignacionModal({
 
     const isParaleloDisponible = () => {
         const paraleloSeleccionado = paralelos.find(p => p.id.toString() === formData.id_paralelo)
-        return paraleloSeleccionado?.disponible !== false
+        if (!paraleloSeleccionado) return false
+
+        if (asignacion && paraleloSeleccionado.id.toString() === asignacion.id_paralelo.toString()) {
+            return true
+        }
+
+        return paraleloSeleccionado.disponible !== false
     }
 
     const handleSave = async () => {
@@ -302,11 +308,13 @@ export default function EditAsignacionModal({
                                     <SelectValue placeholder="Seleccionar profesor" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {profesores.map((prof) => (
-                                        <SelectItem key={prof.id} value={prof.id.toString()}>
-                                            {prof.nombre_completo}
-                                        </SelectItem>
-                                    ))}
+                                    {profesores
+                                        .filter((prof) => prof && prof.id != null)
+                                        .map((prof) => (
+                                            <SelectItem key={prof.id} value={prof.id.toString()}>
+                                                {prof.nombre_completo ?? `Profesor ${prof.id}`}
+                                            </SelectItem>
+                                        ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -322,11 +330,13 @@ export default function EditAsignacionModal({
                                     <SelectValue placeholder="Seleccionar materia" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {materias.map((mat) => (
-                                        <SelectItem key={mat.id} value={mat.id.toString()}>
-                                            {mat.nombre_completo}
-                                        </SelectItem>
-                                    ))}
+                                    {materias
+                                        .filter((mat) => mat && mat.id != null)
+                                        .map((mat) => (
+                                            <SelectItem key={mat.id} value={mat.id.toString()}>
+                                                {mat.nombre_completo ?? `Materia ${mat.id}`}
+                                            </SelectItem>
+                                        ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -343,11 +353,13 @@ export default function EditAsignacionModal({
                                         <SelectValue placeholder="Seleccionar" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {colegios.map((col) => (
-                                            <SelectItem key={col.id} value={col.id.toString()}>
-                                                {col.nombre}
-                                            </SelectItem>
-                                        ))}
+                                        {colegios
+                                            .filter((col) => col && col.id != null)
+                                            .map((col) => (
+                                                <SelectItem key={col.id} value={col.id.toString()}>
+                                                    {col.nombre ?? `Colegio ${col.id}`}
+                                                </SelectItem>
+                                            ))}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -362,11 +374,13 @@ export default function EditAsignacionModal({
                                         <SelectValue placeholder="Seleccionar" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {niveles.map((niv) => (
-                                            <SelectItem key={niv.id} value={niv.id.toString()}>
-                                                {niv.nombre}
-                                            </SelectItem>
-                                        ))}
+                                        {niveles
+                                            .filter((niv) => niv && niv.id != null)
+                                            .map((niv) => (
+                                                <SelectItem key={niv.id} value={niv.id.toString()}>
+                                                    {niv.nombre ?? `Nivel ${niv.id}`}
+                                                </SelectItem>
+                                            ))}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -384,11 +398,13 @@ export default function EditAsignacionModal({
                                         <SelectValue placeholder="Seleccionar" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {cursos.map((cur) => (
-                                            <SelectItem key={cur.id} value={cur.id.toString()}>
-                                                {cur.nombre}
-                                            </SelectItem>
-                                        ))}
+                                        {cursos
+                                            .filter((cur) => cur && cur.id != null)
+                                            .map((cur) => (
+                                                <SelectItem key={cur.id} value={cur.id.toString()}>
+                                                    {cur.nombre ?? `Curso ${cur.id}`}
+                                                </SelectItem>
+                                            ))}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -404,7 +420,8 @@ export default function EditAsignacionModal({
                                     value={formData.id_paralelo}
                                     onValueChange={(value) => {
                                         const paralelo = paralelos.find(p => p.id.toString() === value)
-                                        if (paralelo?.disponible !== false) {
+                                        const esParaleloOriginal = asignacion && paralelo?.id.toString() === asignacion.id_paralelo.toString()
+                                        if (paralelo?.disponible !== false || esParaleloOriginal) {
                                             setFormData(prev => ({ ...prev, id_paralelo: value }))
                                         } else {
                                             toast({
@@ -419,28 +436,29 @@ export default function EditAsignacionModal({
                                         <SelectValue placeholder="Seleccionar" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {paralelos.map((par) => (
-                                            <SelectItem
-                                                key={par.id}
-                                                value={par.id.toString()}
-                                                disabled={par.disponible === false}
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    {par.disponible === false && (
-                                                        <Lock className="h-3 w-3" />
-                                                    )}
-                                                    <span>{par.nombre}</span>
-                                                    {par.disponible === false && (
-                                                        <span className="text-xs text-muted-foreground">
-                                                            (Ocupado por {par.profesor_asignado})
+                                        {paralelos
+                                            .filter((par) => par && par.id != null)
+                                            .map((par) => (
+                                                <SelectItem
+                                                    key={par.id}
+                                                    value={par.id.toString()}
+                                                    disabled={par.disponible === false}
+                                                >
+                                                    {par.nombre ?? `Paralelo ${par.id}`}
+                                                    {par.disponible === false && par.profesor_asignado && (!asignacion || par.id.toString() !== asignacion.id_paralelo.toString()) && (
+                                                        <span className="text-xs text-muted-foreground block">
+                                                            Ocupado por {par.profesor_asignado}
                                                         </span>
                                                     )}
-                                                </div>
-                                            </SelectItem>
-                                        ))}
+                                                </SelectItem>
+                                            ))}
                                     </SelectContent>
                                 </Select>
-                                {paralelos.find(p => p.id.toString() === formData.id_paralelo)?.disponible === false && (
+                                {(() => {
+                                    const seleccionado = paralelos.find(p => p.id.toString() === formData.id_paralelo)
+                                    const esOriginal = asignacion && seleccionado && seleccionado.id.toString() === asignacion.id_paralelo.toString()
+                                    return seleccionado?.disponible === false && !esOriginal
+                                })() && (
                                     <p className="text-xs text-destructive">
                                         ⚠️ Este paralelo ya está ocupado
                                     </p>

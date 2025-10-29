@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS estudiantes (
   nombres VARCHAR(50) NOT NULL,
   apellido_paterno VARCHAR(50),
   apellido_materno VARCHAR(50),
+  telefono_apoderado VARCHAR(10),
   fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -197,6 +198,22 @@ CREATE TABLE IF NOT EXISTS horario_profesor (
   hora_inicio TIME NOT NULL,
   hora_fin TIME NOT NULL,
   FOREIGN KEY (id_aula_profesor) REFERENCES aulas_profesor(id_aula_profesor) ON DELETE CASCADE
+);
+
+-- Tabla de control de trimestres habilitados por profesor
+CREATE TABLE IF NOT EXISTS profesores_trimestres_habilitados (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  id_profesor INT NOT NULL,
+  id_gestion INT NOT NULL,
+  trimestre INT NOT NULL CHECK (trimestre BETWEEN 1 AND 3),
+  habilitado BOOLEAN DEFAULT FALSE,
+  fecha_habilitacion DATETIME,
+  habilitado_por INT, -- id del admin que lo habilitó
+  fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_profesor) REFERENCES profesores(id_profesor) ON DELETE CASCADE,
+  FOREIGN KEY (id_gestion) REFERENCES gestiones_academicas(id_gestion) ON DELETE CASCADE,
+  FOREIGN KEY (habilitado_por) REFERENCES usuarios(id_usuario),
+  UNIQUE KEY unique_profesor_gestion_trimestre (id_profesor, id_gestion, trimestre)
 );
 
 -- Insertar roles básicos
