@@ -27,8 +27,8 @@ export async function POST(
       return NextResponse.json({ error: "Profesor no encontrado" }, { status: 404 })
     }
 
-    // Generar nueva contraseña temporal
-    const newPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8)
+    // Generar nueva contraseña temporal (8 caracteres)
+    const newPassword = Math.random().toString(36).slice(-8)
     const hashedPassword = await bcrypt.hash(newPassword, 10)
 
     // Actualizar contraseña

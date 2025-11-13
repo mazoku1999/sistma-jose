@@ -16,7 +16,8 @@ import {
     TrendingUp,
     AlertTriangle,
     BookOpen,
-    Filter
+    Filter,
+    Download
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-provider"
@@ -200,6 +201,226 @@ export default function CentralPage() {
             }
         }))
         setHasChanges(true)
+    }
+
+    const exportarAPDF = async () => {
+        if (estudiantes.length === 0 || materias.length === 0) {
+            toast({
+                title: "Sin datos",
+                description: "No hay datos para exportar",
+                variant: "destructive"
+            })
+            return
+        }
+
+        try {
+            const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib')
+
+            const pdfDoc = await PDFDocument.create()
+            const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica)
+            const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
+
+            let page = pdfDoc.addPage([842, 595]) // A4 landscape
+            const { width, height } = page.getSize()
+            const margin = 50
+            let yPosition = height - margin
+
+            // Título
+            page.drawText('CENTRALIZADOR DE NOTAS', {
+                x: margin,
+                y: yPosition,
+                size: 16,
+                font: helveticaBold,
+                color: rgb(0, 0, 0),
+            })
+            yPosition -= 30
+
+            // Información del curso
+            const colegioNombre = colegios.find(c => c.id.toString() === selectedColegio)?.nombre || ''
+            const nivelNombre = niveles.find(n => n.id.toString() === selectedNivel)?.nombre || ''
+            const cursoNombre = cursos.find(c => c.id.toString() === selectedCurso)?.nombre || ''
+            const paraleloNombre = paralelos.find(p => p.id.toString() === selectedParalelo)?.nombre || ''
+
+            page.drawText(`Colegio: ${colegioNombre}`, {
+                x: margin,
+                y: yPosition,
+                size: 10,
+                font: helveticaFont,
+            })
+            yPosition -= 15
+
+            page.drawText(`Nivel: ${nivelNombre} | Curso: ${cursoNombre} | Paralelo: ${paraleloNombre} | Trimestre: ${selectedTrimestre}`, {
+                x: margin,
+                y: yPosition,
+                size: 10,
+                font: helveticaFont,
+            })
+            yPosition -= 25
+
+            // Calcular anchos de columna dinámicamente
+            const numColumnWidth = 30
+            const nameColumnWidth = 120
+            const promedioColumnWidth = 50
+            const availableWidth = width - (2 * margin) - numColumnWidth - nameColumnWidth - promedioColumnWidth
+            const columnWidth = Math.max(40, Math.min(60, availableWidth / materias.length))
+
+            // Encabezados de tabla
+            let xPosition = margin
+
+            page.drawText('N°', {
+                x: xPosition,
+                y: yPosition,
+                size: 8,
+                font: helveticaBold,
+            })
+            xPosition += numColumnWidth
+
+            page.drawText('Estudiante', {
+                x: xPosition,
+                y: yPosition,
+                size: 8,
+                font: helveticaBold,
+            })
+            xPosition += nameColumnWidth
+
+            // Encabezados de materias
+            for (const materia of materias) {
+                let nombreCorto = materia.nombre_corto || materia.nombre
+                // Acortar si es muy largo
+                if (columnWidth < 50) {
+                    nombreCorto = nombreCorto.substring(0, 6)
+                } else if (columnWidth < 60) {
+                    nombreCorto = nombreCorto.substring(0, 8)
+                } else {
+                    nombreCorto = nombreCorto.substring(0, 10)
+                }
+                page.drawText(nombreCorto, {
+                    x: xPosition + 2,
+                    y: yPosition,
+                    size: 6,
+                    font: helveticaBold,
+                })
+                xPosition += columnWidth
+            }
+
+            page.drawText('Prom', {
+                x: xPosition,
+                y: yPosition,
+                size: 8,
+                font: helveticaBold,
+            })
+
+            yPosition -= 15
+
+            // Datos de estudiantes
+            for (let i = 0; i < sortedEstudiantes.length; i++) {
+                const estudiante = sortedEstudiantes[i]
+                const { apellido_paterno, apellido_materno, nombres } = deriveNames(estudiante)
+
+                // Nueva página si es necesario
+                if (yPosition < margin + 20) {
+                    page = pdfDoc.addPage([842, 595])
+                    yPosition = height - margin
+                }
+
+                xPosition = margin
+
+                // Número
+                page.drawText((i + 1).toString(), {
+                    x: xPosition,
+                    y: yPosition,
+                    size: 7,
+                    font: helveticaFont,
+                })
+                xPosition += numColumnWidth
+
+                // Nombre completo
+                const nombreCompleto = `${apellido_paterno || ''} ${apellido_materno} ${nombres}`.trim()
+                const maxNombreLength = nameColumnWidth < 120 ? 18 : 22
+                const nombreRecortado = nombreCompleto.length > maxNombreLength ? nombreCompleto.substring(0, maxNombreLength) + '...' : nombreCompleto
+                page.drawText(nombreRecortado, {
+                    x: xPosition,
+                    y: yPosition,
+                    size: 6,
+                    font: helveticaFont,
+                })
+                xPosition += nameColumnWidth
+
+                // Notas
+                for (const materia of materias) {
+                    const key = `${estudiante.id_estudiante}-${materia.id}`
+                    const notaValue = notasCentralizadas[key]?.nota_final || 0
+                    const nota = typeof notaValue === 'number' ? notaValue : parseFloat(notaValue) || 0
+                    const notaText = nota > 0 ? nota.toFixed(1) : '-'
+                    // Centrar la nota en la columna
+                    const textWidth = notaText.length * 3.5
+                    const centerX = xPosition + (columnWidth / 2) - textWidth
+                    page.drawText(notaText, {
+                        x: centerX,
+                        y: yPosition,
+                        size: 6,
+                        font: helveticaFont,
+                    })
+                    xPosition += columnWidth
+                }
+
+                // Promedio
+                const promedioValue = getPromedioEstudiante(estudiante.id_estudiante)
+                const promedio = typeof promedioValue === 'number' ? promedioValue : parseFloat(promedioValue) || 0
+                const promedioText = promedio > 0 ? promedio.toFixed(1) : '-'
+                const promedioTextWidth = promedioText.length * 3.5
+                const promedioCenterX = xPosition + (promedioColumnWidth / 2) - promedioTextWidth
+                page.drawText(promedioText, {
+                    x: promedioCenterX,
+                    y: yPosition,
+                    size: 6,
+                    font: helveticaBold,
+                    color: promedio >= stats.puntajeMinimo ? rgb(0, 0.5, 0) : rgb(0.8, 0, 0),
+                })
+
+                yPosition -= 12
+            }
+
+            // Calcular estadísticas para el PDF
+            const promediosEstudiantes = sortedEstudiantes.map(est => getPromedioEstudiante(est.id_estudiante)).filter(p => p > 0)
+            const promedioGeneralCalc = promediosEstudiantes.length > 0
+                ? promediosEstudiantes.reduce((a, b) => a + b, 0) / promediosEstudiantes.length
+                : 0
+            const puntajeMinimo = stats.puntajeMinimo || 51
+            const aprobadosCalc = promediosEstudiantes.filter(p => p >= puntajeMinimo).length
+            const reprobadosCalc = promediosEstudiantes.filter(p => p < puntajeMinimo).length
+            const destacadosCalc = promediosEstudiantes.filter(p => p >= 85).length
+
+            // Estadísticas al final
+            yPosition -= 20
+            page.drawText(`Estadísticas: Promedio General: ${promedioGeneralCalc.toFixed(1)} | Aprobados: ${aprobadosCalc} | Reprobados: ${reprobadosCalc} | Destacados: ${destacadosCalc}`, {
+                x: margin,
+                y: yPosition,
+                size: 9,
+                font: helveticaBold,
+            })
+
+            const pdfBytes = await pdfDoc.save()
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' })
+            const url = window.URL.createObjectURL(blob)
+            const link = document.createElement('a')
+            link.href = url
+            link.download = `centralizador_${cursoNombre}_${paraleloNombre}_T${selectedTrimestre}.pdf`
+            link.click()
+            window.URL.revokeObjectURL(url)
+
+            toast({
+                title: "PDF exportado",
+                description: "El centralizador se ha exportado exitosamente",
+            })
+        } catch (error) {
+            console.error("Error al exportar PDF:", error)
+            toast({
+                title: "Error",
+                description: "Error al exportar el PDF",
+                variant: "destructive",
+            })
+        }
     }
 
     const rellenarAleatorio = () => {
@@ -426,6 +647,12 @@ export default function CentralPage() {
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
+                    {estudiantes.length > 0 && materias.length > 0 && (
+                        <Button variant="outline" onClick={exportarAPDF} disabled={isLoading}>
+                            <Download className="mr-2 h-4 w-4" />
+                            Exportar PDF
+                        </Button>
+                    )}
                     <Button variant="outline" onClick={rellenarAleatorio} disabled={isLoading}>
                         <Calculator className="mr-2 h-4 w-4" />
                         Rellenar aleatorio

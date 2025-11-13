@@ -131,8 +131,10 @@ export default function AdminDashboardPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Panel de Administración</h1>
-                    <p className="text-muted-foreground">Gestiona el sistema académico completo desde aquí.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">Bienvenido, {user?.nombre_completo}</h1>
+                    <p className="text-muted-foreground">
+                        Panel de Administración - Gestiona el sistema académico completo desde aquí.
+                    </p>
                 </div>
                 <div className="flex gap-2">
                     <Button asChild>

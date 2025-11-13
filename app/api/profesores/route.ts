@@ -108,8 +108,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "El usuario o email ya existe" }, { status: 400 })
     }
 
-    // Generar contraseña automática siempre
-    const password = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10).toUpperCase()
+    // Generar contraseña automática siempre (8 caracteres)
+    const password = Math.random().toString(36).slice(-8)
     const hashedPassword = await bcrypt.hash(password, 10)
 
     // Iniciar transacción

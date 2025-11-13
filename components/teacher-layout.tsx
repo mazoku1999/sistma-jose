@@ -154,6 +154,14 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
   const isProfesor = user?.roles.includes("PROFESOR")
   const isAdministrativo = user?.roles.includes("ADMINISTRATIVO")
 
+  // Obtener rol principal para mostrar
+  const getRolPrincipal = () => {
+    if (isAdmin) return "Administrador"
+    if (isAdministrativo) return "Administrativo"
+    if (isProfesor) return "Profesor"
+    return "Usuario"
+  }
+
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full !max-w-none">
@@ -584,6 +592,13 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Mostrar rol del usuario */}
+              <div className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground">
+                <span>{getRolPrincipal()}</span>
+                <span className="text-muted-foreground/40">|</span>
+                <span className="font-medium text-foreground">{user?.nombre_completo}</span>
+              </div>
+
               {/* Selectores globales (solo ADMIN) - COMENTADO */}
               {/* {isAdmin && (
                 <div className="flex items-center gap-2 mr-2">
@@ -609,6 +624,7 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium">{user?.nombre_completo}</p>
                       <p className="text-xs text-muted-foreground">{user?.usuario}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{getRolPrincipal()}</p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
