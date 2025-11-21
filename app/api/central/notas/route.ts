@@ -65,7 +65,7 @@ export async function GET(request: Request) {
     // IDs 10 y 11 (Física y Química) solo para cursos 4-6
     const baseMateriaIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13] // Todos excepto Física (10) y Química (11)
     const extraMateriaIds = [10, 11] // Física y Química solo para 4-6
-    
+
     const materiasPermitidas = cursoNumero >= 4 ? [...baseMateriaIds, ...extraMateriaIds] : [...baseMateriaIds]
 
     // Obtener las materias por ID (no depende de nombre_corto editable)
@@ -84,7 +84,7 @@ export async function GET(request: Request) {
     )
 
     // Ajustar nombre de Técnica para cursos 1-3 (mantener lógica especial)
-    const materiasQuery = (materiasRaw || []).map((m) => {
+    const materiasBase = (materiasRaw || []).map((m) => {
       // Si es TEC (id 8) y curso 1-3, cambiar el nombre
       if (cursoNumero > 0 && cursoNumero <= 3 && m.id_materia === 8) {
         return {
@@ -94,6 +94,30 @@ export async function GET(request: Request) {
       }
       return m
     })
+
+    // Obtener materias adicionales (ID > 13) que tengan aulas creadas para este curso/paralelo
+    const materiasAdicionalesRaw = await executeQuery<any[]>(
+      `
+      SELECT DISTINCT 
+        m.id_materia,
+        m.nombre_corto,
+        m.nombre_completo
+      FROM materias m
+      JOIN aulas_profesor ap ON m.id_materia = ap.id_materia
+      WHERE ap.id_colegio = ? 
+        AND ap.id_nivel = ? 
+        AND ap.id_curso = ? 
+        AND ap.id_paralelo = ?
+        AND ap.activa = TRUE
+        AND ap.fecha_eliminacion IS NULL
+        AND m.id_materia > 13
+      ORDER BY m.id_materia
+      `,
+      [colegio, nivel, curso, paralelo]
+    )
+
+    // Combinar materias base (1-13) con materias adicionales (>13)
+    const materiasQuery = [...materiasBase, ...materiasAdicionalesRaw]
 
     // Obtener notas centralizadas existentes
     const notasQuery = await executeQuery<any[]>(

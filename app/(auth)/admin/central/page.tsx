@@ -62,6 +62,8 @@ export default function CentralPage() {
 
     const [estudiantes, setEstudiantes] = useState<Estudiante[]>([])
     const [notasCentralizadas, setNotasCentralizadas] = useState<Record<string, NotaCentralizada>>({})
+    const [notasTrimestre1, setNotasTrimestre1] = useState<Record<string, NotaCentralizada>>({})
+    const [notasTrimestre2, setNotasTrimestre2] = useState<Record<string, NotaCentralizada>>({})
     const [estadisticas, setEstadisticas] = useState<any>(null)
     const [hasChanges, setHasChanges] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
@@ -151,6 +153,12 @@ export default function CentralPage() {
 
                 setNotasCentralizadas(notasMap)
                 
+                // Si es trimestre 3, cargar notas de trimestres anteriores para calcular promedio anual
+                if (selectedTrimestre === "3") {
+                    await fetchNotasTrimestreAnterior(1, materiasDelCurso)
+                    await fetchNotasTrimestreAnterior(2, materiasDelCurso)
+                }
+                
                 // Cargar estadísticas desde el backend
                 await fetchEstadisticas()
             } else {
@@ -160,6 +168,51 @@ export default function CentralPage() {
             console.error("Error:", error)
         } finally {
             setIsLoading(false)
+        }
+    }
+
+    const fetchNotasTrimestreAnterior = async (trimestre: number, materiasDelCurso: any[]) => {
+        try {
+            const response = await fetch(
+                `/api/central/notas?colegio=${selectedColegio}&nivel=${selectedNivel}&curso=${selectedCurso}&paralelo=${selectedParalelo}&trimestre=${trimestre}`
+            )
+
+            if (response.ok) {
+                const data = await response.json()
+                const notasMap: Record<string, NotaCentralizada> = {}
+
+                // Crear entradas con 0 para todas las combinaciones
+                data.estudiantes?.forEach((estudiante: Estudiante) => {
+                    materiasDelCurso.forEach((materia: any) => {
+                        const key = `${estudiante.id_estudiante}-${materia.id}`
+                        notasMap[key] = {
+                            id_estudiante: estudiante.id_estudiante,
+                            id_materia: materia.id,
+                            materia_nombre: materia.nombre,
+                            materia_corto: materia.nombre_corto,
+                            nota_final: 0
+                        }
+                    })
+                })
+
+                // Actualizar con las notas reales
+                if (data.notas) {
+                    data.notas.forEach((nota: any) => {
+                        const key = `${nota.id_estudiante}-${nota.id_materia}`
+                        if (notasMap[key]) {
+                            notasMap[key].nota_final = nota.nota_final || 0
+                        }
+                    })
+                }
+
+                if (trimestre === 1) {
+                    setNotasTrimestre1(notasMap)
+                } else if (trimestre === 2) {
+                    setNotasTrimestre2(notasMap)
+                }
+            }
+        } catch (error) {
+            console.error(`Error cargando notas del trimestre ${trimestre}:`, error)
         }
     }
 
@@ -309,6 +362,17 @@ export default function CentralPage() {
                 size: 8,
                 font: helveticaBold,
             })
+            xPosition += promedioColumnWidth
+
+            // Agregar columna de Promedio Anual si es trimestre 3
+            if (selectedTrimestre === "3") {
+                page.drawText('P.Anual', {
+                    x: xPosition,
+                    y: yPosition,
+                    size: 8,
+                    font: helveticaBold,
+                })
+            }
 
             yPosition -= 15
 
@@ -377,6 +441,23 @@ export default function CentralPage() {
                     font: helveticaBold,
                     color: promedio >= stats.puntajeMinimo ? rgb(0, 0.5, 0) : rgb(0.8, 0, 0),
                 })
+                xPosition += promedioColumnWidth
+
+                // Promedio Anual si es trimestre 3
+                if (selectedTrimestre === "3") {
+                    const promedioAnualValue = getPromedioAnual(estudiante.id_estudiante)
+                    const promedioAnual = typeof promedioAnualValue === 'number' ? promedioAnualValue : parseFloat(promedioAnualValue) || 0
+                    const promedioAnualText = promedioAnual > 0 ? promedioAnual.toFixed(1) : '-'
+                    const promedioAnualTextWidth = promedioAnualText.length * 3.5
+                    const promedioAnualCenterX = xPosition + (promedioColumnWidth / 2) - promedioAnualTextWidth
+                    page.drawText(promedioAnualText, {
+                        x: promedioAnualCenterX,
+                        y: yPosition,
+                        size: 7,
+                        font: helveticaBold,
+                        color: promedioAnual >= stats.puntajeMinimo ? rgb(0, 0.3, 0.8) : rgb(0.8, 0, 0),
+                    })
+                }
 
                 yPosition -= 12
             }
@@ -595,6 +676,27 @@ export default function CentralPage() {
 
         const suma = notasEstudiante.reduce((acc, nota) => acc + nota, 0)
         return suma / notasEstudiante.length
+    }
+
+    const getPromedioAnual = (estudianteId: number) => {
+        // Calcular promedio de los 3 trimestres
+        const promedioT1 = materias.map(materia => {
+            const key = `${estudianteId}-${materia.id}`
+            const nota = notasTrimestre1[key]
+            return nota ? parseFloat(nota.nota_final.toString()) : 0
+        }).reduce((acc, nota) => acc + nota, 0) / materias.length
+
+        const promedioT2 = materias.map(materia => {
+            const key = `${estudianteId}-${materia.id}`
+            const nota = notasTrimestre2[key]
+            return nota ? parseFloat(nota.nota_final.toString()) : 0
+        }).reduce((acc, nota) => acc + nota, 0) / materias.length
+
+        const promedioT3 = getPromedioEstudiante(estudianteId)
+
+        // Promedio de los 3 promedios trimestrales
+        const promedioAnual = (promedioT1 + promedioT2 + promedioT3) / 3
+        return promedioAnual
     }
 
     // Usar estadísticas calculadas por el backend
@@ -858,6 +960,11 @@ export default function CentralPage() {
                                             </TableHead>
                                         ))}
                                         <TableHead className="text-center min-w-[100px]">Promedio</TableHead>
+                                        {selectedTrimestre === "3" && (
+                                            <TableHead className="text-center min-w-[100px] bg-blue-50">
+                                                Promedio Anual
+                                            </TableHead>
+                                        )}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -911,6 +1018,16 @@ export default function CentralPage() {
                                                         {promedio.toFixed(1)}
                                                     </Badge>
                                                 </TableCell>
+                                                {selectedTrimestre === "3" && (
+                                                    <TableCell className="text-center bg-blue-50">
+                                                        <Badge
+                                                            variant="outline"
+                                                            className={cn("min-w-[60px] font-bold", getNotaColor(getPromedioAnual(estudiante.id_estudiante)))}
+                                                        >
+                                                            {getPromedioAnual(estudiante.id_estudiante).toFixed(1)}
+                                                        </Badge>
+                                                    </TableCell>
+                                                )}
                                             </TableRow>
                                         )
                                     })}
