@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { executeQuery } from "@/lib/db"
 import { getServerSession } from "@/lib/get-server-session"
+import { enviarCredencialesProfesor } from "@/lib/email-utils"
 import bcrypt from "bcrypt"
 
 export async function POST(
@@ -17,15 +18,17 @@ export async function POST(
     const { id } = await params
     const profesorId = id
 
-    // Verificar que el profesor existe
+    // Verificar que el profesor existe y obtener datos para el email
     const existingProfesor = await executeQuery<any[]>(
-      "SELECT usuario FROM usuarios WHERE id_usuario = ?",
+      "SELECT usuario, email, nombre_completo, nombres, apellido_paterno, apellido_materno FROM usuarios WHERE id_usuario = ?",
       [profesorId]
     )
 
     if (!existingProfesor.length) {
       return NextResponse.json({ error: "Profesor no encontrado" }, { status: 404 })
     }
+
+    const userData = existingProfesor[0]
 
     // Generar nueva contraseña temporal (8 caracteres)
     const newPassword = Math.random().toString(36).slice(-8)
@@ -37,10 +40,33 @@ export async function POST(
       [hashedPassword, profesorId]
     )
 
-    return NextResponse.json({ 
+    // Enviar email con credenciales si tiene email
+    let emailEnviado = false
+    let emailError = null
+
+    if (userData.email) {
+      try {
+        const emailResult = await enviarCredencialesProfesor({
+          nombreCompleto: userData.nombre_completo || `${userData.nombres} ${userData.apellido_paterno}`,
+          usuario: userData.usuario,
+          password: newPassword,
+          email: userData.email,
+          esTemporal: true
+        })
+        emailEnviado = emailResult.success
+        emailError = emailResult.error
+      } catch (e) {
+        console.error("Error al enviar email de reset:", e)
+        emailError = e instanceof Error ? e.message : "Error desconocido al enviar email"
+      }
+    }
+
+    return NextResponse.json({
       message: "Contraseña restablecida correctamente",
       password: newPassword,
-      usuario: existingProfesor[0].usuario
+      usuario: userData.usuario,
+      emailEnviado,
+      emailError
     })
   } catch (error) {
     console.error("Error resetting password:", error)

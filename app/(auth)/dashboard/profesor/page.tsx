@@ -236,8 +236,8 @@ export default function ProfesorDashboardPage() {
                     <CardContent>
                         {stats.proximasClases.length > 0 ? (
                             <div className="space-y-3">
-                                {stats.proximasClases.map((clase) => (
-                                    <div key={clase.id} className="flex items-center gap-3 p-3 rounded-lg border">
+                                {stats.proximasClases.map((clase, index) => (
+                                    <div key={`${clase.id}-${index}`} className="flex items-center gap-3 p-3 rounded-lg border">
                                         <div className="bg-primary/10 rounded-full p-2">
                                             <BookOpen className="h-4 w-4 text-primary" />
                                         </div>
@@ -325,7 +325,7 @@ export default function ProfesorDashboardPage() {
                         {stats.estudiantesDestacados.map((estudiante, index) => {
                             const promedio = typeof estudiante.promedio === 'number' ? estudiante.promedio : parseFloat(estudiante.promedio) || 0;
                             return (
-                                <div key={estudiante.id} className="flex items-center justify-between p-3 rounded-lg border">
+                                <div key={`${estudiante.id}-${index}`} className="flex items-center justify-between p-3 rounded-lg border">
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center">
                                             <Star className="h-4 w-4 text-amber-500" />

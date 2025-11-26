@@ -401,27 +401,39 @@ function viewAdminStudents(estudiantes, materias, notas, filters) {
 
 async function fillNotasOnPage(estudiante, materias, notas) {
     try {
+        console.log('[SIS-EXT] fillNotasOnPage START', { estudiante: estudiante.id_estudiante });
         const byEst = notas.filter(n => String(n.id_estudiante) === String(estudiante.id_estudiante));
         const idToNota = new Map(byEst.map(n => [String(n.id_materia), n.nota_final]));
-        const materiaRecords = materias.map(m => {
-            const id = String(m.id_materia || m.id);
-            const name = (m.nombre_completo || m.nombre || '').toString();
-            const norm = normalizeMateriaName(name).replace(/\u00a0/g, ' ');
-            let base = norm.split(':')[0].trim();
-            if (base.startsWith('tecnica tecnologica')) base = 'tecnica tecnologica';
-            const rawNota = idToNota.get(id);
-            const nota = (typeof rawNota === 'number') ? rawNota : parseFloat(String(rawNota ?? ''));
-            return { id, name, norm, base, nota };
-        }).filter(r => Number.isFinite(r.nota) && r.nota >= 0);
 
-        console.log('[SIS-EXT] fillNotasOnPage: estudiante', estudiante?.id_estudiante, 'records', materiaRecords);
+        const materiaRecords = materias.map(m => {
+            try {
+                const id = String(m.id_materia || m.id);
+                const name = (m.nombre_completo || m.nombre || '').toString();
+                const norm = normalizeMateriaName(name).replace(/\u00a0/g, ' ');
+                let base = norm.split(':')[0].trim();
+                if (base.startsWith('tecnica tecnologica')) base = 'tecnica tecnologica';
+
+                const rawNota = idToNota.get(id);
+                const nota = (typeof rawNota === 'number') ? rawNota : parseFloat(String(rawNota ?? ''));
+                return { id, name, norm, base, nota };
+            } catch (e) { return null; }
+        }).filter(r => r && Number.isFinite(r.nota) && r.nota >= 0);
+
+        console.log('[SIS-EXT] Records ready to inject:', materiaRecords.length);
+
+        if (materiaRecords.length === 0) {
+            console.warn('[SIS-EXT] No grades to upload for this student');
+            return;
+        }
 
         await chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
             const tabId = tabs[0]?.id;
             if (!tabId) { console.warn('[SIS-EXT] No active tab found'); return; }
+
             await chrome.scripting.executeScript({
                 target: { tabId, allFrames: true },
                 func: (records) => {
+                    console.log('[SIS-EXT] Script injected. Records:', records);
                     try {
                         const norm = (s) => String(s || '')
                             .replace(/\u00a0/g, ' ')
@@ -431,61 +443,81 @@ async function fillNotasOnPage(estudiante, materias, notas) {
                             .replace(/[^a-z\s:]/g, ' ')
                             .replace(/\s+/g, ' ')
                             .trim();
+
                         const root = (b) => {
                             let x = String(b || '');
                             if (x.startsWith('tecnica tecnologica')) x = 'tecnica tecnologica';
                             return x;
                         };
-                        const notaByBase = Object.fromEntries(records.map(r => [r.base, r.nota]));
-                        const notaByNorm = Object.fromEntries(records.map(r => [r.norm, r.nota]));
-                        const notaByRoot = Object.fromEntries(records.map(r => [root(r.base), r.nota]));
-                        console.log('[SIS-EXT] Inject: records', records);
+
+                        let notaByBase = {}, notaByNorm = {}, notaByRoot = {};
+                        try {
+                            notaByBase = Object.fromEntries(records.map(r => [r.base, r.nota]));
+                            notaByNorm = Object.fromEntries(records.map(r => [r.norm, r.nota]));
+                            notaByRoot = Object.fromEntries(records.map(r => [root(r.base), r.nota]));
+                        } catch (e) { console.error('[SIS-EXT] Error building lookups', e); }
+
                         const updateDoc = (doc) => {
                             const rows = Array.from(doc.querySelectorAll('tbody tr'));
-                            console.log('[SIS-EXT] Inject: rows found', rows.length, 'doc', doc === document ? 'main' : 'iframe');
+                            console.log('[SIS-EXT] Found rows:', rows.length);
+
                             rows.forEach((tr, idx) => {
                                 try {
                                     let asignaturaTd = tr.querySelector('td[data-title="Asignatura"]');
                                     if (!asignaturaTd) asignaturaTd = tr.querySelector('td');
                                     if (!asignaturaTd) return;
+
                                     const raw = asignaturaTd.textContent;
                                     const rowNorm = norm(raw);
                                     let rowBase = rowNorm.split(':')[0].trim();
                                     const rowRoot = root(rowBase);
                                     const rowNormNoColon = rowNorm.replace(/:/g, ' ').replace(/\s+/g, ' ').trim();
+
                                     let valor = notaByBase[rowBase];
                                     if (!Number.isFinite(valor)) valor = notaByNorm[rowNormNoColon];
                                     if (!Number.isFinite(valor)) valor = notaByNorm[rowNorm];
                                     if (!Number.isFinite(valor)) valor = notaByRoot[rowRoot];
+
                                     if (!Number.isFinite(valor)) {
                                         const found = records.find(r => r.base.startsWith(rowBase) || rowBase.startsWith(r.base));
                                         if (found && Number.isFinite(found.nota)) valor = found.nota;
                                     }
-                                    console.log('[SIS-EXT] Row', idx, { raw, rowNorm, rowNormNoColon, rowBase, rowRoot, valor });
+
                                     if (!Number.isFinite(valor)) return;
+
                                     let input = tr.querySelector('td[data-title*="Trimestre"] input[type="text"].nota');
                                     if (!input) input = tr.querySelector('input.nota[id$="-7"]');
-                                    if (!input) { console.log('[SIS-EXT] No input found for row', idx); return; }
-                                    input.value = String(valor);
-                                    input.dispatchEvent(new Event('input', { bubbles: true }));
-                                    input.dispatchEvent(new Event('change', { bubbles: true }));
-                                    input.dispatchEvent(new Event('keyup', { bubbles: true }));
-                                    input.dispatchEvent(new Event('blur', { bubbles: true }));
-                                    console.log('[SIS-EXT] Set value on input', input.id || '(no id)', 'valor', valor);
-                                } catch (e) { console.error('[SIS-EXT] Row error', idx, e); }
+
+                                    if (input) {
+                                        input.value = String(valor);
+                                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                                        input.dispatchEvent(new Event('keyup', { bubbles: true }));
+                                        input.dispatchEvent(new Event('blur', { bubbles: true }));
+                                        console.log('[SIS-EXT] Updated row', idx, rowBase, valor);
+                                    }
+                                } catch (rowErr) {
+                                    console.error('[SIS-EXT] Error processing row', idx, rowErr);
+                                }
                             });
                         };
+
                         updateDoc(document);
                         const iframes = Array.from(document.querySelectorAll('iframe'));
                         for (const frame of iframes) {
-                            try { if (frame.contentDocument) updateDoc(frame.contentDocument); } catch (e) { console.warn('[SIS-EXT] Cannot access iframe (cross-origin)'); }
+                            try { if (frame.contentDocument) updateDoc(frame.contentDocument); } catch (e) { }
                         }
-                    } catch (e) { console.error('[SIS-EXT] Inject error', e); }
+
+                    } catch (fatal) {
+                        console.error('[SIS-EXT] Fatal injection error', fatal);
+                    }
                 },
                 args: [materiaRecords]
             });
         });
-    } catch (e) { console.error('[SIS-EXT] fillNotasOnPage error', e); }
+    } catch (e) {
+        console.error('[SIS-EXT] fillNotasOnPage error', e);
+    }
 }
 
 function viewStudentDetail(estudiante, materias, notas, filters, trimestre) {

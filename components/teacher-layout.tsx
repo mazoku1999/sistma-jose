@@ -194,17 +194,17 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
                     <Collapsible className="w-full" defaultOpen={pathname.startsWith("/aulas")}>
                       <SidebarMenuItem>
                         <CollapsibleTrigger className="w-full" asChild>
-                          <SidebarMenuButton asChild tooltip="Aulas" isActive={pendingPath ? pendingPath.startsWith("/aulas") : pathname.startsWith("/aulas")}>
-                            <Link href="/aulas" onClick={(e) => { e.preventDefault(); setPendingPath("/aulas"); router.push("/aulas"); }}>
-                              <BookOpen className="h-4 w-4" />
-                              <span>Mis Aulas</span>
-                              <ChevronDown className="ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                            </Link>
+                          <SidebarMenuButton tooltip="Aulas" isActive={pendingPath ? pendingPath.startsWith("/aulas") : pathname.startsWith("/aulas")}>
+                            <BookOpen className="h-4 w-4" />
+                            <span>Mis Aulas</span>
+                            {aulas.length > 0 && (
+                              <span className="ml-2 rounded-md bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">
+                                {aulas.length}
+                              </span>
+                            )}
+                            <ChevronDown className="ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
                           </SidebarMenuButton>
                         </CollapsibleTrigger>
-                        {aulas.length > 0 && (
-                          <SidebarMenuBadge className="bg-primary/10 text-primary">{aulas.length}</SidebarMenuBadge>
-                        )}
                       </SidebarMenuItem>
                       <CollapsibleContent>
                         <SidebarMenuSub>

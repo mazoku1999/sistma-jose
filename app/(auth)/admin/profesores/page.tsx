@@ -253,8 +253,8 @@ export default function ProfesoresPage() {
         apellido_materno: profesor.apellido_materno || "",
         email: profesor.email || "",
         estado: profesor.estado,
-        role: (profesor.roles && profesor.roles.includes("ADMIN")) ? "ADMIN" : 
-              (profesor.roles && profesor.roles.includes("ADMINISTRATIVO")) ? "ADMINISTRATIVO" : "PROFESOR",
+        role: (profesor.roles && profesor.roles.includes("ADMIN")) ? "ADMIN" :
+          (profesor.roles && profesor.roles.includes("ADMINISTRATIVO")) ? "ADMINISTRATIVO" : "PROFESOR",
         es_tutor: !!profesor.es_tutor,
         puede_centralizar_notas: profesor.puede_centralizar_notas !== undefined ? !!profesor.puede_centralizar_notas : true,
       })
@@ -281,8 +281,8 @@ export default function ProfesoresPage() {
 
   const handleRoleSelect = (value: string) => {
     const newRole = (value === "ADMIN" ? "ADMIN" : value === "ADMINISTRATIVO" ? "ADMINISTRATIVO" : "PROFESOR")
-    setFormData(prev => ({ 
-      ...prev, 
+    setFormData(prev => ({
+      ...prev,
       role: newRole,
       // Resetear campos de profesor si no es rol PROFESOR
       es_tutor: newRole === "PROFESOR" ? prev.es_tutor : false,
@@ -431,10 +431,24 @@ export default function ProfesoresPage() {
 
       if (response.ok) {
         const data = await response.json()
-        toast({
-          title: "Contraseña restablecida",
-          description: `Nueva contraseña: ${data.password}`,
-        })
+
+        if (data.emailEnviado) {
+          toast({
+            title: "Credenciales enviadas",
+            description: "Se han enviado las nuevas credenciales al correo electrónico del usuario exitosamente.",
+          })
+        } else if (data.emailError) {
+          toast({
+            title: "Contraseña restablecida (No se envió email)",
+            description: `Nueva contraseña: ${data.password}. Error al enviar correo: ${data.emailError}`,
+            variant: "destructive",
+          })
+        } else {
+          toast({
+            title: "Contraseña restablecida",
+            description: `Nueva contraseña: ${data.password}`,
+          })
+        }
       } else {
         const error = await response.json()
         toast({
@@ -564,8 +578,8 @@ export default function ProfesoresPage() {
                               rol === "ADMIN"
                                 ? "bg-red-50 text-red-700 border-red-200"
                                 : rol === "ADMINISTRATIVO"
-                                ? "bg-blue-50 text-blue-700 border-blue-200"
-                                : "bg-green-50 text-green-700 border-green-200"
+                                  ? "bg-blue-50 text-blue-700 border-blue-200"
+                                  : "bg-green-50 text-green-700 border-green-200"
                             }
                           >
                             {rol === "ADMIN" ? "Admin" : rol === "ADMINISTRATIVO" ? "Administrativo" : "Profesor"}
