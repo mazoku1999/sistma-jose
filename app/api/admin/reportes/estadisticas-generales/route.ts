@@ -50,15 +50,15 @@ export async function GET(request: NextRequest) {
 
         // 1. ESTADÍSTICAS GENERALES
         const estadisticasGeneralesQuery = `
-            SELECT 
+            SELECT
                 COUNT(DISTINCT e.id_estudiante) as total_estudiantes,
                 COUNT(DISTINCT ap.id_profesor) as total_profesores,
                 COUNT(DISTINCT ap.id_aula_profesor) as total_aulas,
                 COUNT(DISTINCT ap.id_materia) as total_materias,
                 COUNT(DISTINCT ap.id_colegio) as total_colegios,
                 ROUND(AVG(nap.promedio_final_trimestre), 2) as promedio_general_colegio,
-                ROUND(SUM(CASE WHEN nap.promedio_final_trimestre >= 60 THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT e.id_estudiante), 2) as porcentaje_aprobacion_general,
-                ROUND(SUM(CASE WHEN nap.promedio_final_trimestre < 60 THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT e.id_estudiante), 2) as porcentaje_reprobacion_general
+                ROUND(SUM(CASE WHEN nap.promedio_final_trimestre >= 60 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(nap.id_nota_aula_profesor), 0), 2) as porcentaje_aprobacion_general,
+                ROUND(SUM(CASE WHEN nap.promedio_final_trimestre < 60 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(nap.id_nota_aula_profesor), 0), 2) as porcentaje_reprobacion_general
             FROM estudiantes e
             JOIN inscripciones_aula iap ON e.id_estudiante = iap.id_estudiante
             JOIN aulas_profesor ap ON iap.id_aula_profesor = ap.id_aula_profesor
@@ -95,12 +95,12 @@ export async function GET(request: NextRequest) {
 
         // 3. ESTUDIANTES POR NIVEL
         const estudiantesPorNivelQuery = `
-            SELECT 
+            SELECT
                 n.nombre as nivel,
                 COUNT(DISTINCT e.id_estudiante) as total_estudiantes,
                 ROUND(AVG(nap.promedio_final_trimestre), 2) as promedio_general,
-                ROUND(SUM(CASE WHEN nap.promedio_final_trimestre >= 60 THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT e.id_estudiante), 2) as porcentaje_aprobacion,
-                ROUND(SUM(CASE WHEN nap.promedio_final_trimestre < 60 THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT e.id_estudiante), 2) as porcentaje_reprobacion
+                ROUND(SUM(CASE WHEN nap.promedio_final_trimestre >= 60 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(nap.id_nota_aula_profesor), 0), 2) as porcentaje_aprobacion,
+                ROUND(SUM(CASE WHEN nap.promedio_final_trimestre < 60 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(nap.id_nota_aula_profesor), 0), 2) as porcentaje_reprobacion
             FROM estudiantes e
             JOIN inscripciones_aula iap ON e.id_estudiante = iap.id_estudiante
             JOIN aulas_profesor ap ON iap.id_aula_profesor = ap.id_aula_profesor
@@ -153,13 +153,13 @@ export async function GET(request: NextRequest) {
 
         // 6. RENDIMIENTO POR TRIMESTRE
         const rendimientoPorTrimestreQuery = `
-            SELECT 
+            SELECT
                 nap.trimestre,
                 n.nombre as nivel,
                 COUNT(DISTINCT e.id_estudiante) as total_estudiantes,
                 ROUND(AVG(nap.promedio_final_trimestre), 2) as promedio_general,
-                ROUND(SUM(CASE WHEN nap.promedio_final_trimestre >= 60 THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT e.id_estudiante), 2) as porcentaje_aprobacion,
-                ROUND(SUM(CASE WHEN nap.promedio_final_trimestre < 60 THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT e.id_estudiante), 2) as porcentaje_reprobacion
+                ROUND(SUM(CASE WHEN nap.promedio_final_trimestre >= 60 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(nap.id_nota_aula_profesor), 0), 2) as porcentaje_aprobacion,
+                ROUND(SUM(CASE WHEN nap.promedio_final_trimestre < 60 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(nap.id_nota_aula_profesor), 0), 2) as porcentaje_reprobacion
             FROM estudiantes e
             JOIN inscripciones_aula iap ON e.id_estudiante = iap.id_estudiante
             JOIN aulas_profesor ap ON iap.id_aula_profesor = ap.id_aula_profesor
@@ -174,13 +174,13 @@ export async function GET(request: NextRequest) {
 
         // 7. RENDIMIENTO POR CURSO Y MATERIA
         const rendimientoCursoMateriaQuery = `
-            SELECT 
+            SELECT
                 c.nombre as curso,
                 m.nombre_corto as materia,
                 COUNT(DISTINCT e.id_estudiante) as total_estudiantes,
                 ROUND(AVG(nap.promedio_final_trimestre), 2) as promedio_general,
-                ROUND(SUM(CASE WHEN nap.promedio_final_trimestre >= 60 THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT e.id_estudiante), 2) as porcentaje_aprobacion,
-                ROUND(SUM(CASE WHEN nap.promedio_final_trimestre < 60 THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT e.id_estudiante), 2) as porcentaje_reprobacion
+                ROUND(SUM(CASE WHEN nap.promedio_final_trimestre >= 60 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(nap.id_nota_aula_profesor), 0), 2) as porcentaje_aprobacion,
+                ROUND(SUM(CASE WHEN nap.promedio_final_trimestre < 60 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(nap.id_nota_aula_profesor), 0), 2) as porcentaje_reprobacion
             FROM estudiantes e
             JOIN inscripciones_aula iap ON e.id_estudiante = iap.id_estudiante
             JOIN aulas_profesor ap ON iap.id_aula_profesor = ap.id_aula_profesor

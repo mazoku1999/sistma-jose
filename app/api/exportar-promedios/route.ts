@@ -251,8 +251,19 @@ export async function POST(request: NextRequest) {
       const rowNumber = 9 + index
       const promedio = calcularPromedio(estudiante.notaTrimestre1, estudiante.notaTrimestre2, estudiante.notaTrimestre3)
 
-      worksheet.getCell(`C${rowNumber}`).value = estudiante.apellidos
-      worksheet.getCell(`D${rowNumber}`).value = estudiante.nombres
+      // Concatenar apellidos y nombres para la columna C (que está fusionada con D)
+      const apellidosYNombres = [estudiante.apellidos, estudiante.nombres].filter(Boolean).join(' ')
+
+      console.log(`📝 Fila ${rowNumber}: "${estudiante.apellidos}" + "${estudiante.nombres}" = "${apellidosYNombres}"`)
+
+      // Fusionar celdas C y D para esta fila si no están fusionadas
+      try {
+        worksheet.mergeCells(`C${rowNumber}:D${rowNumber}`)
+      } catch (e) {
+        // Ya están fusionadas, ignorar error
+      }
+
+      worksheet.getCell(`C${rowNumber}`).value = apellidosYNombres
       worksheet.getCell(`E${rowNumber}`).value = estudiante.situacion
       worksheet.getCell(`F${rowNumber}`).value = estudiante.notaTrimestre1
       worksheet.getCell(`G${rowNumber}`).value = estudiante.notaTrimestre2

@@ -894,10 +894,18 @@ export default function NotasPage() {
                 const notaT2 = notasPorTrimestre['2']?.[estudiante.inscripcion_id] || { promedio_final_trimestre: 0 }
                 const notaT3 = notasPorTrimestre['3']?.[estudiante.inscripcion_id] || { promedio_final_trimestre: 0 }
 
+                // Derivar nombres y apellidos
+                const { nombres, apellido_paterno, apellido_materno } = deriveNames(estudiante)
+
+                console.log('📋 Exportando estudiante:', {
+                    original: estudiante,
+                    derivado: { nombres, apellido_paterno, apellido_materno }
+                })
+
                 return {
-                    apellidos: [estudiante.apellido_paterno, estudiante.apellido_materno].filter(Boolean).join(' '),
-                    nombres: estudiante.nombres || '',
-                    situacion: estudiante.situacion || 'REGULAR',
+                    apellidos: [apellido_paterno, apellido_materno].filter(Boolean).join(' '),
+                    nombres: nombres || '',
+                    situacion: estudiante.situacion || 'E',
                     notaTrimestre1: notaT1.promedio_final_trimestre || 0,
                     notaTrimestre2: notaT2.promedio_final_trimestre || 0,
                     notaTrimestre3: notaT3.promedio_final_trimestre || 0

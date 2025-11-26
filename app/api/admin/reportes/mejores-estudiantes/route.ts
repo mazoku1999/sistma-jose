@@ -76,18 +76,18 @@ export async function GET(request: NextRequest) {
         if (tipo === "colegio") {
             // TOP N estudiantes globales del colegio
             estudiantesQuery = `
-                SELECT 
+                SELECT
                     e.id_estudiante,
                     e.nombres,
                     e.apellido_paterno,
                     e.apellido_materno,
                     TRIM(CONCAT_WS(' ', e.nombres, e.apellido_paterno, e.apellido_materno)) as nombre_completo,
                     AVG(nap.promedio_final_trimestre) as promedio_general,
-                    COUNT(DISTINCT nap.id_nota_aula_profesor) as total_materias,
+                    COUNT(DISTINCT iap.id_aula_profesor) as total_materias,
                     COUNT(DISTINCT CASE WHEN nap.promedio_final_trimestre >= 60 THEN nap.id_nota_aula_profesor END) as materias_aprobadas,
                     COUNT(DISTINCT CASE WHEN nap.promedio_final_trimestre < 60 THEN nap.id_nota_aula_profesor END) as materias_reprobadas,
-                    ROUND((COUNT(DISTINCT CASE WHEN nap.promedio_final_trimestre >= 60 THEN nap.id_nota_aula_profesor END) * 100.0 / 
-                     COUNT(DISTINCT nap.id_nota_aula_profesor)), 2) as porcentaje_aprobacion,
+                    ROUND((COUNT(DISTINCT CASE WHEN nap.promedio_final_trimestre >= 60 THEN nap.id_nota_aula_profesor END) * 100.0 /
+                     COUNT(DISTINCT CASE WHEN nap.id_nota_aula_profesor IS NOT NULL THEN nap.id_nota_aula_profesor END)), 2) as porcentaje_aprobacion,
                     MAX(n.nombre) as nivel,
                     MAX(c.nombre) as curso,
                     MAX(p.letra) as paralelo,
@@ -99,10 +99,10 @@ export async function GET(request: NextRequest) {
                 INNER JOIN cursos c ON ap.id_curso = c.id_curso
                 INNER JOIN paralelos p ON ap.id_paralelo = p.id_paralelo
                 INNER JOIN colegios col ON ap.id_colegio = col.id_colegio
-                INNER JOIN notas_aula_profesor nap ON iap.id_inscripcion = nap.id_inscripcion
+                LEFT JOIN notas_aula_profesor nap ON iap.id_inscripcion = nap.id_inscripcion
                 WHERE ${whereClause}
                 GROUP BY e.id_estudiante
-                HAVING COUNT(DISTINCT nap.id_nota_aula_profesor) > 0
+                HAVING COUNT(DISTINCT CASE WHEN nap.id_nota_aula_profesor IS NOT NULL THEN nap.id_nota_aula_profesor END) > 0
                 ORDER BY AVG(nap.promedio_final_trimestre) DESC
                 LIMIT ?
             `
@@ -111,18 +111,18 @@ export async function GET(request: NextRequest) {
             // TOP N por cada curso usando window function
             estudiantesQuery = `
                 SELECT * FROM (
-                    SELECT 
+                    SELECT
                         e.id_estudiante,
                         e.nombres,
                         e.apellido_paterno,
                         e.apellido_materno,
                         TRIM(CONCAT_WS(' ', e.nombres, e.apellido_paterno, e.apellido_materno)) as nombre_completo,
                         AVG(nap.promedio_final_trimestre) as promedio_general,
-                        COUNT(DISTINCT nap.id_nota_aula_profesor) as total_materias,
+                        COUNT(DISTINCT iap.id_aula_profesor) as total_materias,
                         COUNT(DISTINCT CASE WHEN nap.promedio_final_trimestre >= 60 THEN nap.id_nota_aula_profesor END) as materias_aprobadas,
                         COUNT(DISTINCT CASE WHEN nap.promedio_final_trimestre < 60 THEN nap.id_nota_aula_profesor END) as materias_reprobadas,
-                        ROUND((COUNT(DISTINCT CASE WHEN nap.promedio_final_trimestre >= 60 THEN nap.id_nota_aula_profesor END) * 100.0 / 
-                         COUNT(DISTINCT nap.id_nota_aula_profesor)), 2) as porcentaje_aprobacion,
+                        ROUND((COUNT(DISTINCT CASE WHEN nap.promedio_final_trimestre >= 60 THEN nap.id_nota_aula_profesor END) * 100.0 /
+                         COUNT(DISTINCT CASE WHEN nap.id_nota_aula_profesor IS NOT NULL THEN nap.id_nota_aula_profesor END)), 2) as porcentaje_aprobacion,
                         MAX(n.nombre) as nivel,
                         MAX(c.nombre) as curso,
                         MAX(p.letra) as paralelo,
@@ -135,10 +135,10 @@ export async function GET(request: NextRequest) {
                     INNER JOIN cursos c ON ap.id_curso = c.id_curso
                     INNER JOIN paralelos p ON ap.id_paralelo = p.id_paralelo
                     INNER JOIN colegios col ON ap.id_colegio = col.id_colegio
-                    INNER JOIN notas_aula_profesor nap ON iap.id_inscripcion = nap.id_inscripcion
+                    LEFT JOIN notas_aula_profesor nap ON iap.id_inscripcion = nap.id_inscripcion
                     WHERE ${whereClause}
                     GROUP BY e.id_estudiante, c.id_curso
-                    HAVING COUNT(DISTINCT nap.id_nota_aula_profesor) > 0
+                    HAVING COUNT(DISTINCT CASE WHEN nap.id_nota_aula_profesor IS NOT NULL THEN nap.id_nota_aula_profesor END) > 0
                 ) as ranked
                 WHERE ranking <= ?
                 ORDER BY curso, promedio_general DESC
@@ -148,18 +148,18 @@ export async function GET(request: NextRequest) {
             // tipo === "paralelo": TOP N por cada paralelo usando window function
             estudiantesQuery = `
                 SELECT * FROM (
-                    SELECT 
+                    SELECT
                         e.id_estudiante,
                         e.nombres,
                         e.apellido_paterno,
                         e.apellido_materno,
                         TRIM(CONCAT_WS(' ', e.nombres, e.apellido_paterno, e.apellido_materno)) as nombre_completo,
                         AVG(nap.promedio_final_trimestre) as promedio_general,
-                        COUNT(DISTINCT nap.id_nota_aula_profesor) as total_materias,
+                        COUNT(DISTINCT iap.id_aula_profesor) as total_materias,
                         COUNT(DISTINCT CASE WHEN nap.promedio_final_trimestre >= 60 THEN nap.id_nota_aula_profesor END) as materias_aprobadas,
                         COUNT(DISTINCT CASE WHEN nap.promedio_final_trimestre < 60 THEN nap.id_nota_aula_profesor END) as materias_reprobadas,
-                        ROUND((COUNT(DISTINCT CASE WHEN nap.promedio_final_trimestre >= 60 THEN nap.id_nota_aula_profesor END) * 100.0 / 
-                         COUNT(DISTINCT nap.id_nota_aula_profesor)), 2) as porcentaje_aprobacion,
+                        ROUND((COUNT(DISTINCT CASE WHEN nap.promedio_final_trimestre >= 60 THEN nap.id_nota_aula_profesor END) * 100.0 /
+                         COUNT(DISTINCT CASE WHEN nap.id_nota_aula_profesor IS NOT NULL THEN nap.id_nota_aula_profesor END)), 2) as porcentaje_aprobacion,
                         MAX(n.nombre) as nivel,
                         MAX(c.nombre) as curso,
                         MAX(p.letra) as paralelo,
@@ -172,10 +172,10 @@ export async function GET(request: NextRequest) {
                     INNER JOIN cursos c ON ap.id_curso = c.id_curso
                     INNER JOIN paralelos p ON ap.id_paralelo = p.id_paralelo
                     INNER JOIN colegios col ON ap.id_colegio = col.id_colegio
-                    INNER JOIN notas_aula_profesor nap ON iap.id_inscripcion = nap.id_inscripcion
+                    LEFT JOIN notas_aula_profesor nap ON iap.id_inscripcion = nap.id_inscripcion
                     WHERE ${whereClause}
                     GROUP BY e.id_estudiante, c.id_curso, p.id_paralelo
-                    HAVING COUNT(DISTINCT nap.id_nota_aula_profesor) > 0
+                    HAVING COUNT(DISTINCT CASE WHEN nap.id_nota_aula_profesor IS NOT NULL THEN nap.id_nota_aula_profesor END) > 0
                 ) as ranked
                 WHERE ranking <= ?
                 ORDER BY curso, paralelo, promedio_general DESC
